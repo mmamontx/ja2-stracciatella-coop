@@ -3,6 +3,7 @@
 #include "Types.h"
 #include "Font.h"
 #include "Debug.h"
+#include "Object_Cache.h"
 #include "VSurface.h"
 #include "VObject.h"
 #include "VObject_Blitters.h"
@@ -86,15 +87,6 @@ SGPFont LoadFontFile(const char *filename)
 	SGPFont const font = AddVideoObjectFromFile(filename);
 	if (!FontDefault) FontDefault = font;
 	return font;
-}
-
-
-/* Deletes the video object of a particular font. Frees up the memory and
- * resources allocated for it. */
-void UnloadFont(SGPFont const font)
-{
-	Assert(font);
-	DeleteVideoObject(font);
 }
 
 
@@ -296,21 +288,21 @@ void MPrint(int const x, int const y, ST::string const& text, IAlignment const& 
 
 
 SDL_Point CenterAlign::operator()(int x, int y,
-	ST::utf32_buffer const& codepoints, SGPFont const font) const noexcept
+	ST::utf32_buffer const& codepoints, SGPFont const font) const
 {
 	return { (width - StringPixLength(codepoints, font) + 1) / 2 + x, y };
 }
 
 
 SDL_Point RightAlign::operator()(int x, int y,
-	ST::utf32_buffer const& codepoints, SGPFont const font) const noexcept
+	ST::utf32_buffer const& codepoints, SGPFont const font) const
 {
 	return { width - StringPixLength(codepoints, font) + x, y };
 }
 
 
 SDL_Point HCenterVCenterAlign::operator()(int x, int y,
-	ST::utf32_buffer const& codepoints, SGPFont const font) const noexcept
+	ST::utf32_buffer const& codepoints, SGPFont const font) const
 {
 	return { (width - StringPixLength(codepoints, font) + 1) / 2 + x,
 		(height - GetFontHeight(font)) / 2 + y };
@@ -318,7 +310,7 @@ SDL_Point HCenterVCenterAlign::operator()(int x, int y,
 
 
 SDL_Point HRightVCenterAlign::operator()(int x, int y,
-	ST::utf32_buffer const& codepoints, SGPFont const font) const noexcept
+	ST::utf32_buffer const& codepoints, SGPFont const font) const
 {
 	return { width - StringPixLength(codepoints, font) + x,
 		(height - GetFontHeight(font)) / 2 + y };

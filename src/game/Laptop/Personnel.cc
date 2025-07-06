@@ -4,6 +4,7 @@
 #include "Laptop.h"
 #include "MercPortrait.h"
 #include "Personnel.h"
+#include "Object_Cache.h"
 #include "VObject.h"
 #include "Debug.h"
 #include "WordWrap.h"
@@ -237,12 +238,12 @@ static const INT16 pers_stat_y[] =
 	405
 };
 
-
-static SGPVObject* guiSCREEN;
-static SGPVObject* guiTITLE;
-static SGPVObject* guiDEPARTEDTEAM;
-static SGPVObject* guiCURRENTTEAM;
-static SGPVObject* guiPersonnelInventory;
+namespace {
+cache_key_t const guiSCREEN { LAPTOPDIR "/personnelwindow.sti" };
+cache_key_t const guiDEPARTEDTEAM{ LAPTOPDIR "/departed.sti" };
+cache_key_t const guiCURRENTTEAM{ LAPTOPDIR "/currentteam.sti" };
+cache_key_t const guiPersonnelInventory{ LAPTOPDIR "/personnel_inventory.sti" };
+}
 
 static struct
 {
@@ -289,8 +290,6 @@ static void CreateDestroyMouseRegionsForPersonnelPortraits(BOOLEAN create);
 static void CreateDestroyStartATMButton(BOOLEAN create);
 static void CreatePersonnelButtons(void);
 static void SelectFirstDisplayedMerc(void);
-static void LoadPersonnelGraphics(void);
-static void LoadPersonnelScreenBackgroundGraphics(void);
 static void SetPersonnelButtonStates(void);
 
 
@@ -301,14 +300,8 @@ void EnterPersonnel(void)
 	uiCurrentInventoryIndex = 0;
 	guiSliderPosition = 0;
 
-	// load graphics for screen
-	LoadPersonnelGraphics();
-
 	// show atm panel
 	CreateDestroyStartATMButton(TRUE);
-
-	// load personnel
-	LoadPersonnelScreenBackgroundGraphics();
 
 	SelectFirstDisplayedMerc();
 
@@ -380,26 +373,11 @@ void HandlePersonnel(void)
 }
 
 
-static void LoadPersonnelGraphics(void)
-{
-	// load graphics needed for personnel screen
-
-	// title bar
-	guiTITLE = AddVideoObjectFromFile(LAPTOPDIR "/programtitlebar.sti");
-
-	// the background grpahics
-	guiSCREEN = AddVideoObjectFromFile(LAPTOPDIR "/personnelwindow.sti");
-
-	guiPersonnelInventory = AddVideoObjectFromFile(LAPTOPDIR "/personnel_inventory.sti");
-}
-
-
 static void RemovePersonnelGraphics(void)
 {
 	// delete graphics needed for personnel screen
-	DeleteVideoObject(guiSCREEN);
-	DeleteVideoObject(guiTITLE);
-	DeleteVideoObject(guiPersonnelInventory);
+	RemoveVObject(guiSCREEN);
+	RemoveVObject(guiPersonnelInventory);
 }
 
 
@@ -419,7 +397,7 @@ void RenderPersonnel(void)
 	// re-renders personnel screen
 	// render main background
 
-	BltVideoObject(FRAME_BUFFER, guiTITLE,  0, LAPTOP_SCREEN_UL_X, LAPTOP_SCREEN_UL_Y -  2);
+	BltVideoObject(FRAME_BUFFER, guiTITLEBARLAPTOP, 0, LAPTOP_SCREEN_UL_X, LAPTOP_SCREEN_UL_Y - 2);
 	BltVideoObject(FRAME_BUFFER, guiSCREEN, 0, LAPTOP_SCREEN_UL_X, LAPTOP_SCREEN_UL_Y + 22);
 
 	// render personnel screen background
@@ -868,23 +846,11 @@ static void RenderPersonnelScreenBackground(void)
 }
 
 
-static void LoadPersonnelScreenBackgroundGraphics(void)
-{
-	// will load the graphics for the personeel screen background
-
-	// departed bar
-	guiDEPARTEDTEAM = AddVideoObjectFromFile(LAPTOPDIR "/departed.sti");
-
-	// current bar
-	guiCURRENTTEAM = AddVideoObjectFromFile(LAPTOPDIR "/currentteam.sti");
-}
-
-
 static void DeletePersonnelScreenBackgroundGraphics(void)
 {
 	// delete background V/O's
-	DeleteVideoObject(guiCURRENTTEAM);
-	DeleteVideoObject(guiDEPARTEDTEAM);
+	RemoveVObject(guiCURRENTTEAM);
+	RemoveVObject(guiDEPARTEDTEAM);
 }
 
 
@@ -1922,17 +1888,12 @@ static void EnableDisableDeparturesButtons(void)
 static void DisplayDepartedCharName(MERCPROFILESTRUCT const& p, const INT32 iState)
 {
 	// get merc's nickName, assignment, and sector location info
-	INT16 sX, sY;
 
 	SetFontAttributes(CHAR_NAME_FONT, PERS_TEXT_FONT_COLOR);
+	CenterAlign const alignment{ CHAR_NAME_LOC_WIDTH };
 
-	ST::string name = p.zNickname;
-	FindFontCenterCoordinates(CHAR_NAME_LOC_X, 0, CHAR_NAME_LOC_WIDTH, 0, name, CHAR_NAME_FONT, &sX, &sY);
-	MPrint(sX, CHAR_NAME_Y, name);
-
-	ST::string state_txt = pPersonnelDepartedStateStrings[iState];
-	FindFontCenterCoordinates(CHAR_NAME_LOC_X, 0, CHAR_NAME_LOC_WIDTH, 0, state_txt, CHAR_NAME_FONT, &sX, &sY);
-	MPrint(sX, CHAR_LOC_Y, state_txt);
+	MPrint(CHAR_NAME_LOC_X, CHAR_NAME_Y, p.zNickname, alignment);
+	MPrint(CHAR_NAME_LOC_X, CHAR_LOC_Y, pPersonnelDepartedStateStrings[iState], alignment);
 }
 
 

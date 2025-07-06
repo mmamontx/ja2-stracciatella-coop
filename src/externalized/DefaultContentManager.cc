@@ -22,6 +22,7 @@
 #include "ExplosiveCalibreModel.h"
 #include "LoadingScreenModel.h"
 #include "MagazineModel.h"
+#include "NPC.h"
 #include "RustInterface.h"
 #include "ShippingDestinationModel.h"
 #include "Soldier_Profile_Type.h"
@@ -292,21 +293,32 @@ SGPFile* DefaultContentManager::openMapForReading(const ST::string& mapName) con
 	return openGameResForReading(getMapPath(mapName));
 }
 
-/** Get all available tilecache. */
-std::vector<ST::string> DefaultContentManager::getAllTilecache() const
+/** Get all files in a specified virtual directory. */
+std::vector<ST::string> DefaultContentManager::getAllFiles(const ST::string& directory, const ST::string& extension) const
 {
-	RustPointer<VecCString> vec(Vfs_readDir(m_vfs.get(), TILECACHEDIR, "jsd"));
+	RustPointer<VecCString> vec(Vfs_readDir(m_vfs.get(), directory.c_str(), extension.c_str()));
 	if (vec.get() == NULL) {
-		throw std::runtime_error(ST::format("DefaultContentManager::getAllTilecache: {}", getRustError()).c_str());
+		throw std::runtime_error(ST::format("DefaultContentManager::getAllFiles in {}: {}", directory.c_str(), getRustError()).c_str());
 	}
 	auto len = VecCString_len(vec.get());
 	std::vector<ST::string> paths;
-	for (size_t i = 0; i < len; i++)
-	{
-		RustPointer<char> path{VecCString_get(vec.get(), i)};
-		paths.emplace_back(FileMan::joinPaths(TILECACHEDIR, path.get()));
+	for (size_t i = 0; i < len; i++) {
+		RustPointer<char> path{ VecCString_get(vec.get(), i) };
+		paths.emplace_back(FileMan::joinPaths(directory, path.get()));
 	}
 	return paths;
+}
+
+/** Get all available tilecache. */
+std::vector<ST::string> DefaultContentManager::getAllTilecache() const
+{
+	return getAllFiles(TILECACHEDIR, "jsd");
+}
+
+/** Get all available script records. */
+std::vector<ST::string> DefaultContentManager::getAllScriptRecords() const
+{
+	return getAllFiles(NPCDATADIR, "npc");
 }
 
 /* Open a game resource file for reading.
@@ -324,7 +336,6 @@ SGPFile* DefaultContentManager::openGameResForReading(ST::string filename) const
 		RustPointer<char> err{getRustError()};
 		throw std::runtime_error(ST::format("openGameResForReading: {}", err.get()).to_std_string());
 	}
-	SLOGD("Opened resource file from VFS: '{}'", filename);
 	return new SGPFile(vfile.release(), std::move(filename));
 }
 
@@ -347,7 +358,6 @@ std::vector<std::unique_ptr<SGPFile>> DefaultContentManager::openGameResForReadi
 			RustPointer<char> err{getRustError()};
 			throw std::runtime_error(ST::format("openGameResForReadingOnAllLayers: {}", err.get()).to_std_string());
 		}
-		SLOGD("Opened resource file from VFS layer {}: '{}'", layerIndex, filename);
 		result.push_back(std::make_unique<SGPFile>(vfile.release(), filename));
 	}
 	return result;
@@ -519,7 +529,7 @@ const ExplosionAnimationModel* DefaultContentManager::getExplosionAnimation(uint
 	return *it;
 }
 
-bool DefaultContentManager::loadWeapons(const VanillaItemStrings& vanillaItemStrings)
+bool DefaultContentManager::loadWeapons(const BinaryData& vanillaItemStrings)
 {
 	auto json = readJsonDataFileWithSchema("weapons.json");
 	for (auto& element : json.toVec()) {
@@ -579,7 +589,7 @@ bool DefaultContentManager::loadExplosiveCalibres()
 	return true;
 }
 
-bool DefaultContentManager::loadExplosives(const VanillaItemStrings& vanillaItemStrings, const std::vector<const ExplosionAnimationModel*>& animations)
+bool DefaultContentManager::loadExplosives(const BinaryData& vanillaItemStrings, const std::vector<const ExplosionAnimationModel*>& animations)
 {
 	auto json = readJsonDataFileWithSchema("explosives.json");
 	for (auto& element : json.toVec()) {
@@ -592,7 +602,7 @@ bool DefaultContentManager::loadExplosives(const VanillaItemStrings& vanillaItem
 	return true;
 }
 
-bool DefaultContentManager::loadItems(const VanillaItemStrings& vanillaItemStrings)
+bool DefaultContentManager::loadItems(const BinaryData& vanillaItemStrings)
 {
 	auto json = readJsonDataFileWithSchema("items.json");
 	for (auto& el : json.toVec())
@@ -614,7 +624,7 @@ bool DefaultContentManager::loadItems(const VanillaItemStrings& vanillaItemStrin
 	return true;
 }
 
-bool DefaultContentManager::loadMagazines(const VanillaItemStrings& vanillaItemStrings)
+bool DefaultContentManager::loadMagazines(const BinaryData& vanillaItemStrings)
 {
 	auto json = readJsonDataFileWithSchema("magazines.json");
 	for (auto& element : json.toVec())
@@ -817,26 +827,27 @@ void DefaultContentManager::loadStringRes(const ST::string& name, std::vector<ST
 /** Load the game data and the item descriptions from the original game resources. */
 bool DefaultContentManager::loadGameData()
 {
-	return loadGameData(VanillaItemStrings::deserialize(
-		AutoSGPFile{ openGameResForReading(VanillaItemStrings::filename()) }));
+	return loadGameData(BinaryData::deserialize(
+		AutoSGPFile{ openGameResForReading(BinaryData::itemsFilename()) },
+		AutoSGPFile{ openGameResForReading(BinaryData::profilesFilename()) }));
 }
 
 
 /** Load the game data. */
-bool DefaultContentManager::loadGameData(VanillaItemStrings const& vanillaItemStrings)
+bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
 {
 	loadPrioritizedData();
 
 	m_items.resize(MAXITEMS);
-	bool result = loadItems(vanillaItemStrings)
+	bool result = loadItems(binaryData)
 		&& loadCalibres()
 		&& loadExplosiveCalibres()
 		&& loadAmmoTypes()
-		&& loadMagazines(vanillaItemStrings)
-		&& loadWeapons(vanillaItemStrings)
+		&& loadMagazines(binaryData)
+		&& loadWeapons(binaryData)
 		&& loadSmokeEffects()
 		&& loadExplosionAnimations()
-		&& loadExplosives(vanillaItemStrings, m_explosionAnimations)
+		&& loadExplosives(binaryData, m_explosionAnimations)
 		&& loadArmyData()
 		&& loadMusic();
 
@@ -849,7 +860,7 @@ bool DefaultContentManager::loadGameData(VanillaItemStrings const& vanillaItemSt
 
 	m_mapItemReplacements = MapItemReplacementModel::deserialize(replacement_json, this);
 
-	loadMercsData();
+	loadMercsData(binaryData);
 	loadAllDealersAndInventory();
 
 	auto game_json = readJsonDataFileWithSchema("game.json");
@@ -1174,18 +1185,19 @@ bool DefaultContentManager::loadTacticalLayerData()
 	return true;
 }
 
-bool DefaultContentManager::loadMercsData()
+bool DefaultContentManager::loadMercsData(const BinaryData& binaryProfiles)
 {
 	MercProfileInfo::load = [this](uint8_t p) { return this->getMercProfileInfo(p); };
 
 	std::vector<std::unique_ptr<MERCPROFILESTRUCT>> temp_mercStructs(NUM_PROFILES);
-	auto json = readJsonDataFileWithSchema("mercs-profiles.json");
+	auto json = readJsonDataFileWithSchema("mercs-profile-info.json");
 	for (auto& element : json.toVec()) {
-		auto profileInfo = MercProfileInfo::deserialize(element);
+		auto charProperties = element.toObject();
+		auto profileInfo = MercProfileInfo::deserialize(charProperties);
 		ProfileID profileID = profileInfo->profileID;
 		m_mercProfileInfo[profileID] = profileInfo;
 		m_mercProfiles.push_back(new MercProfile(profileID));
-		temp_mercStructs[profileID] = MercProfile::deserializeStruct(element, this);
+		temp_mercStructs[profileID] = MercProfile::deserializeStruct(binaryProfiles.getProfile(profileID), charProperties, this);
 	}
 	MercProfileInfo::validateData(m_mercProfileInfo);
 
@@ -1193,14 +1205,14 @@ bool DefaultContentManager::loadMercsData()
 	for (auto& element : json.toVec()) {
 		JsonObject reader = element.toObject();
 		const MercProfileInfo* inf = this->getMercProfileInfoByName(reader.GetString("profile"));
-		MercProfile::deserializeStructRelations(temp_mercStructs[inf->profileID].get(), reader, this);
+		MercProfile::deserializeStructRelations(binaryProfiles.getProfile(inf->profileID), temp_mercStructs[inf->profileID].get(), reader, this);
 	}
 	for (auto& element : temp_mercStructs) {
 		if (element != nullptr) {
-			m_mercStructs.push_back( std::make_unique<const MERCPROFILESTRUCT>( *element ) );
+			m_mercStructs.push_back(std::make_unique<const MERCPROFILESTRUCT>(*element));
 		}
 		else {
-			m_mercStructs.push_back( std::make_unique<const MERCPROFILESTRUCT>() );
+			m_mercStructs.push_back(std::make_unique<const MERCPROFILESTRUCT>());
 		}
 	}
 
@@ -1279,27 +1291,48 @@ void DefaultContentManager::loadTranslationTable()
 
 void DefaultContentManager::loadAllScriptRecords()
 {
+	// hack for failures during unit-testing
+	if (!doesGameResExists(BINARYDATADIR "/prof.dat")) return;
+
+	auto ctrl = readJsonDataFileWithSchema("script-records-control.json").toObject();
+	auto meanwhiles = ctrl.GetValue("meanwhiles").toVec();
+
+	for (auto& element : meanwhiles) {
+		auto meanwhile = element.toObject();
+		auto jsonMeanwhileId = meanwhile.GetUInt("id");
+		for (auto& subElement : meanwhile.GetValue("chars").toVec()) {
+			auto charToFileInfo = subElement.toObject();
+			auto jsonProfileId = (this->getMercProfileInfoByName(charToFileInfo.GetString("name")))->profileID;
+			auto fullPath = NPCDATADIR "/" + charToFileInfo.GetString("fileName");
+			m_scriptRecordsMeanwhiles.insert_or_assign(
+				{ jsonMeanwhileId, jsonProfileId },
+				ExtractNPCQuoteInfoArrayFromFile(openGameResForReading(fullPath)) );
+		}
+	}
+
+	auto scriptsControllingPCsFileName = ctrl.GetString("fileNameForScriptControlledPCs");
+	m_scriptRecordsRecruited = ExtractNPCQuoteInfoArrayFromFile(openGameResForReading(NPCDATADIR "/" + scriptsControllingPCsFileName));
+
 	auto json = readJsonDataFileWithSchema("script-records-NPCs.json");
-	for (auto& element : json.toVec())
-	{
+	for (auto& element : json.toVec()) {
 		auto reader = element.toObject();
 		ST::string jsonProfileName = reader.GetString("profile");
 		uint8_t jsonProfileId = (this->getMercProfileInfoByName(jsonProfileName))->profileID;
 		m_scriptRecords[jsonProfileId] = NPCQuoteInfo::deserialize(element, this);
 	}
 
-	auto json2 = readJsonDataFileWithSchema("script-records-meanwhiles.json");
-	for (auto& element : json2.toVec())
-	{
-		auto reader = element.toObject();
-		ST::string jsonProfileName = reader.GetString("profile");
-		uint8_t jsonProfileId = (this->getMercProfileInfoByName(jsonProfileName))->profileID;
-		uint8_t jsonMeanwhileId = reader.GetUInt("meanwhileIndex");
-		m_scriptRecordsMeanwhiles.insert_or_assign({ jsonMeanwhileId, jsonProfileId }, NPCQuoteInfo::deserialize(element, this));
+	auto npcFiles = getAllScriptRecords();
+	for (auto& path : npcFiles) {
+		auto splitPath = path.split('\\');
+		ST::string fileName = splitPath[1];
+		if (fileName == scriptsControllingPCsFileName) continue;
+		if (std::isdigit(fileName[0])) {
+			auto binProfileId = fileName.left(3).trim_left("0").to_int();
+			if (binProfileId < NUM_PROFILES && m_scriptRecords[binProfileId] == nullptr) {
+				m_scriptRecords[binProfileId] = ExtractNPCQuoteInfoArrayFromFile(openGameResForReading(path));
+			}
+		}
 	}
-
-	auto json3 = readJsonDataFileWithSchema("script-records-recruited.json");
-	m_scriptRecordsRecruited = NPCQuoteInfo::deserialize(json3.toVec()[0], this);
 }
 
 const std::vector<const BloodCatPlacementsModel*>& DefaultContentManager::getBloodCatPlacements() const

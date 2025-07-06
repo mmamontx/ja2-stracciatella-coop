@@ -47,6 +47,7 @@
 #include "Merc_Hiring.h"
 #include "Message.h"
 #include "NewStrings.h"
+#include "Object_Cache.h"
 #include "Options_Screen.h"
 #include "Overhead.h"
 #include "Player_Command.h"
@@ -351,13 +352,15 @@ UINT32 guiFlashContractBaseTime = 0;
 UINT32 guiFlashCursorBaseTime = 0;
 UINT32 guiPotCharPathBaseTime = 0;
 
-static SGPVObject* guiCHARLIST;
-static SGPVObject* guiCHARINFO;
-static SGPVObject* guiSleepIcon;
-static SGPVObject* guiMAPINV;
-static SGPVObject* guiULICONS;
-static SGPVObject* guiNewMailIcons;
-
+namespace {
+cache_key_t const guiSleepIcon { INTERFACEDIR "/sleepicon.sti" };
+cache_key_t const guiCHARINFO { INTERFACEDIR "/charinfo.sti" };
+//cache_key_t const guiCHARLIST { INTERFACEDIR "/newgoldpiece3.sti" };
+cache_key_t const guiCHARLIST{ INTERFACEDIR "/newgoldpiece3mp.sti" }; // A custom panel that includes the list of players
+cache_key_t const guiMAPINV { INTERFACEDIR "/mapinv.sti" };
+cache_key_t const guiULICONS { INTERFACEDIR "/top_left_corner_icons.sti" };
+cache_key_t const guiNewMailIcons{ INTERFACEDIR "/newemail.sti" };
+}
 
 // misc mouse regions
 static MOUSE_REGION gCharInfoFaceRegion;
@@ -6197,30 +6200,7 @@ static bool AnyMercsLeavingRealSoon()
 
 void HandlePreloadOfMapGraphics(void)
 {
-	guiSleepIcon                = AddVideoObjectFromFile(INTERFACEDIR "/sleepicon.sti");
-	guiCHARINFO                 = AddVideoObjectFromFile(INTERFACEDIR "/charinfo.sti");
-	//guiCHARLIST                 = AddVideoObjectFromFile(INTERFACEDIR "/newgoldpiece3.sti");
-	guiCHARLIST                 = AddVideoObjectFromFile(INTERFACEDIR "/newgoldpiece3mp.sti"); // A custom panel that includes the list of players
-
-	guiMAPINV                   = AddVideoObjectFromFile(INTERFACEDIR "/mapinv.sti");
-
-	// the upper left corner piece icons
-	guiULICONS                  = AddVideoObjectFromFile(INTERFACEDIR "/top_left_corner_icons.sti");
-
-	HandleLoadOfMapBottomGraphics( );
-
-	//Kris:  Added this because I need to blink the icons button.
-	guiNewMailIcons             = AddVideoObjectFromFile(INTERFACEDIR "/newemail.sti");
-
-	// graphic for pool inventory
-	LoadInventoryPoolGraphic( );
-
-	// load border graphics
-	LoadMapBorderGraphics( );
-
 	LoadInterfaceItemsGraphics();
-	LoadInterfaceUtilsGraphics();
-	LoadMapScreenInterfaceGraphics();
 	LoadMapScreenInterfaceMapGraphics();
 }
 
@@ -6228,16 +6208,16 @@ void HandlePreloadOfMapGraphics(void)
 void HandleRemovalOfPreLoadedMapGraphics( void )
 {
 	DeleteMapBottomGraphics();
-	DeleteVideoObject(guiSleepIcon);
+	RemoveVObject(guiSleepIcon);
 
-	DeleteVideoObject(guiCHARLIST);
-	DeleteVideoObject(guiCHARINFO);
+	RemoveVObject(guiCHARLIST);
+	RemoveVObject(guiCHARINFO);
 
-	DeleteVideoObject(guiMAPINV);
-	DeleteVideoObject(guiULICONS);
+	RemoveVObject(guiMAPINV);
+	RemoveVObject(guiULICONS);
 
 	//Kris:  Remove the email icons.
-	DeleteVideoObject(guiNewMailIcons);
+	RemoveVObject(guiNewMailIcons);
 
 	// remove inventory pool graphic
 	RemoveInventoryPoolGraphic();

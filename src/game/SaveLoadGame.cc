@@ -1088,7 +1088,6 @@ void LoadSavedGame(const ST::string &saveName)
 	BAR(1, "Final Checks...");
 
 	PreloadExternalNPCFaces();
-	LoadCarPortraitValues();
 
 	// OK, turn OFF show all enemies....
 	gTacticalStatus.uiFlags &= ~(SHOW_ALL_MERCS | SHOW_ALL_ITEMS);
@@ -1298,7 +1297,7 @@ static void LoadSavedMercProfiles(HWFILE const f, UINT32 const savegame_version,
 		std::array<BYTE, std::max(MERC_PROFILE_SIZE_STRAC_LINUX, MERC_PROFILE_SIZE)> data;
 		UINT32 dataSize = stracLinuxFormat ? MERC_PROFILE_SIZE_STRAC_LINUX : MERC_PROFILE_SIZE;
 		reader(f, data.data(), dataSize);
-		ExtractMercProfile(data.data(), profile, stracLinuxFormat, &checksum);
+		ExtractMercProfile(data.data(), profile, stracLinuxFormat, &checksum, true);
 		if (checksum != SoldierProfileChecksum(profile))
 		{
 			throw std::runtime_error("Merc profile checksum mismatch");

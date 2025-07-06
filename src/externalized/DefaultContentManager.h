@@ -9,9 +9,8 @@
 #include "ContentManager.h"
 #include "ContentMusic.h"
 #include "IEDT.h"
-#include "IGameDataLoader.h"
 #include "ItemStrings.h"
-#include "RustInterface.h"
+#include "Json.h"
 #include "StringEncodingTypes.h"
 
 #include <string_theory/string>
@@ -21,7 +20,7 @@
 #include <string_view>
 #include <vector>
 
-class DefaultContentManager : public ContentManager, public IGameDataLoader
+class DefaultContentManager : public ContentManager
 {
 public:
 	DefaultContentManager(RustPointer<EngineOptions> engineOptions);
@@ -48,8 +47,14 @@ public:
 	/** Open map for reading. */
 	virtual SGPFile* openMapForReading(const ST::string& mapName) const override;
 
+	/** Get all files in a specified directory. */
+	virtual std::vector<ST::string> getAllFiles(const ST::string& directory, const ST::string& extension) const override;
+
 	/** Get all available tilecache. */
 	virtual std::vector<ST::string> getAllTilecache() const override;
+
+	/** Get all available script records. */
+	virtual std::vector<ST::string> getAllScriptRecords() const override;
 
 	/** User private file (e.g. settings) */
 	virtual DirFs* userPrivateFiles() const override;
@@ -280,16 +285,16 @@ protected:
 
 	RustPointer<Vfs> m_vfs;
 
-	bool loadGameData(const VanillaItemStrings& vanillaItemStrings);
+	bool loadGameData(const BinaryData& vanillaItemStrings);
 	/* Extracts the content that requires load precedence and it can't be resolved
 	   by changing the order of execution of other functions. */
 	bool loadPrioritizedData();
-	bool loadWeapons(const VanillaItemStrings& vanillaItemStrings);
+	bool loadWeapons(const BinaryData& vanillaItemStrings);
 	bool loadSmokeEffects();
 	bool loadExplosionAnimations();
-	bool loadExplosives(const VanillaItemStrings& vanillaItemStrings, const std::vector<const ExplosionAnimationModel*>& animations);
-	bool loadItems(const VanillaItemStrings& vanillaItemStrings);
-	bool loadMagazines(const VanillaItemStrings& vanillaItemStrings);
+	bool loadExplosives(const BinaryData& vanillaItemStrings, const std::vector<const ExplosionAnimationModel*>& animations);
+	bool loadItems(const BinaryData& vanillaItemStrings);
+	bool loadMagazines(const BinaryData& vanillaItemStrings);
 	bool loadExplosiveCalibres();
 	bool loadCalibres();
 	bool loadAmmoTypes();
@@ -307,7 +312,7 @@ protected:
 
 	bool loadStrategicLayerData();
 	bool loadTacticalLayerData();
-	bool loadMercsData();
+	bool loadMercsData(const BinaryData& binaryProfiles);
 	void loadVehicles();
 	void loadTranslationTable();
 	void loadAllScriptRecords();
