@@ -3292,7 +3292,8 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 
 		data.id = Soldier2ID(gpItemPointerSoldier);
 		data.ubHandPos = gbItemPointerSrcSlot;
-		data.usMapPos = usMapPos;
+		// If the cursor is over a person - ensure that his position is passed (instead of an adjacent tile)
+		data.usMapPos = gUIFullTarget ? (gUIFullTarget->sGridNo) : usMapPos;
 		data.tgt_id = Soldier2ID(gUIFullTarget);
 		data.sCurrentActionPoints = gsCurrentActionPoints;
 

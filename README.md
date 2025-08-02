@@ -28,9 +28,6 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
 
 ## Backlog
 
-- Incomplete:
-    - Sometimes items that were intended to be passed on client side get dropped on server side (probably there is something wrong with handling mouse position or the target variable).
-    - Shooting from the roof initiated by the client makes the server shoot above the target head (level above).
 - Bugs:
     - The rectangle move cursor when it is hovered on the selected merc is shown on top instead of behind the soldier (for the client).
     - Some the original squares where mercs occur become unavailable for moving to (for the client).

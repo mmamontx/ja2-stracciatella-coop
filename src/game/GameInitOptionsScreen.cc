@@ -23,12 +23,12 @@
 #include "SysUtil.h"
 #include "Text.h"
 #include "Types.h"
+#include "VObject.h"
 #include "VSurface.h"
 #include "Video.h"
 #include "WordWrap.h"
 #include "UILayout.h"
 #include "Utils/Text_Input.h"
-#include "VObject.h"
 
 #include <string_theory/string>
 
