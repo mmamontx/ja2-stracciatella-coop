@@ -18,7 +18,7 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
 1. Multiplayer on the strategic screen. So that players can see squad members and chat messages of each other. **Basic functionality - for the game beginning before the helicopter drop in Omerta - is done.**
 2. Multiplayer on the tactical screen:
     1. In the real-time mode. So that players can observe actions of each other and interact. **The object replication concept works well. Now offloading all the possible client (merc) actions to the server side so it can then be broadcasted to everyone - mostly done.**
-    2. In the battle/turn-based mode.
+    2. In the battle/turn-based mode. **Surprisingly it worked almost with no modifications. However there are still minor fixes required.**
 3. Moving to another sector:
     1. From the tactical screen.
     2. From the strategic screen.
