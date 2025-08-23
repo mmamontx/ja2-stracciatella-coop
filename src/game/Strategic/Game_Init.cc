@@ -267,7 +267,9 @@ void InitNewGame()
 		// Set the fact the game is in progress
 		gTacticalStatus.fHasAGameBeenStarted = TRUE;
 
-		gEnemyEnabled = FALSE; // FIXME: Disabling enemies for debugging purposes - to be removed
+		if (IS_CLIENT) {
+			gEnemyEnabled = FALSE; // Disabling creating enemies for the client (he receives the 'replicants')
+		}
 		gNetworkOptions.peer = RakPeerInterface::GetInstance();
 
 		// Register RPC

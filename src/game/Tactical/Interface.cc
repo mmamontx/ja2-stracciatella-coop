@@ -1855,6 +1855,14 @@ static void CreateTopMessage(void)
 	SetFontShadow(DEFAULT_SHADOW);
 
 	gfTopMessageDirty = TRUE;
+
+	// Broadcasting to all the clients
+	struct USER_PACKET_TOP_MESSAGE up;
+	up.id = ID_USER_PACKET_TOP_MESSAGE;
+	up.usTactialTurnLimitCounter = gTacticalStatus.usTactialTurnLimitCounter;
+	up.usTactialTurnLimitMax = gTacticalStatus.usTactialTurnLimitMax;
+	up.ubTopMessageType = gTacticalStatus.ubTopMessageType;
+	gNetworkOptions.peer->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 }
 
 

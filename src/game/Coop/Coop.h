@@ -19,6 +19,7 @@ using namespace RakNet;
 #define ID_USER_PACKET_READY            (ID_USER_PACKET_ENUM + 2)
 #define ID_USER_PACKET_START            (ID_USER_PACKET_ENUM + 3)
 #define ID_USER_PACKET_TEAM_PANEL_DIRTY (ID_USER_PACKET_ENUM + 4)
+#define ID_USER_PACKET_TOP_MESSAGE      (ID_USER_PACKET_ENUM + 5)
 
 #define MAX_NAME_LEN    16
 #define MAX_MESSAGE_LEN 128
@@ -67,6 +68,13 @@ struct USER_PACKET_START {
 
 struct USER_PACKET_TEAM_PANEL_DIRTY {
 	unsigned char id;
+};
+
+struct USER_PACKET_TOP_MESSAGE {
+	unsigned char id;
+	UINT8 ubTopMessageType;
+	UINT16 usTactialTurnLimitCounter;
+	UINT16 usTactialTurnLimitMax;
 };
 
 struct PLAYER : public Replica3 {

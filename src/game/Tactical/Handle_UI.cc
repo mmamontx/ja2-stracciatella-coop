@@ -1183,6 +1183,12 @@ static ScreenID UIHandleEnterEditMode(UI_EVENT* pUIEvent)
 
 ScreenID UIHandleEndTurn(UI_EVENT* pUIEvent)
 {
+	// Only the server can properly handle this logic
+	// TODO: Imitate individual player turns within a single global player turn
+	if (IS_CLIENT) {
+		return GAME_SCREEN;
+	}
+
 	CancelItemPointer( );
 
 	// If we show tactical touch ui hide it and reset cursor target

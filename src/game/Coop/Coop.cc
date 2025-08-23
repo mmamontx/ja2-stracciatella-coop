@@ -378,6 +378,18 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 
 				break;
 			}
+			case ID_USER_PACKET_TOP_MESSAGE:
+			{
+				struct USER_PACKET_TOP_MESSAGE* up;
+				up = (struct USER_PACKET_TOP_MESSAGE*)p->data;
+
+				gTacticalStatus.ubTopMessageType = (MESSAGE_TYPES)(up->ubTopMessageType);
+				gTacticalStatus.usTactialTurnLimitCounter = up->usTactialTurnLimitCounter;
+				gTacticalStatus.usTactialTurnLimitMax = up->usTactialTurnLimitMax;
+				AddTopMessage((MESSAGE_TYPES)(up->ubTopMessageType));
+
+				break;
+			}
 			default:
 				char unknown_id[3];
 				itoa(SpacketIdentifier, unknown_id, 10);
