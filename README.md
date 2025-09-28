@@ -29,10 +29,14 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
 ## Backlog
 
 - Bugs (by default it is implied that it happens on the side of the client):
+    - In the battle mode the mercs are centered in the end of their movement. This should be prevented for the mercs controlled by other players.
+    - When Fatima is given the letter and starts leading to Miguel, her clone can be observed at her original position.
+    - Clients finish the battle independently from the server.
+    - Mercs can't change stance when adjacent to the roof (the climbing is enabled).
+    - When putting more points into aiming it resets back to the server value.
     - On the interrupts all the mercs can do their turns no matter who is eligible.
     - When the battle is over, but the sector is not yet clear, the client remains in the turn based mode while the host leaves to the realtime.
     - When the battle is over the top bar doesn't disappear.
-    - Top message bar status flickers during enemy turns (it looks like something constantly resets the progress).
     - The rectangle move cursor when it is hovered on the selected merc is shown on top instead of behind the soldier.
     - Some the original squares where mercs occur become unavailable for moving to (for the client).
     - Fix the bug when client mercs do not arrive in time and become inaccessible.
@@ -40,7 +44,8 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
     - Sometimes a just connected client doesn't see himself in the player list until he clicks 'ready'.
     - Still, animation surfaces are not loaded for the client (it doesn't cause any crash).
 - Regular priority:
-    - Imitate individual player turns within a single global player turn.
+    - Imitate individual player turns within a single global player turn. The global turn gets finished once every player finish their individual turn.
+    - Block the interface of clients during the enemies turn.
     - Implement the following RPC actions from the client:
         - Opening doors.
         - Picking up items (after ground items are replicated - see below).

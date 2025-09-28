@@ -267,6 +267,8 @@ void InitNewGame()
 		// Set the fact the game is in progress
 		gTacticalStatus.fHasAGameBeenStarted = TRUE;
 
+		DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &gMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
+
 		if (IS_CLIENT) {
 			gEnemyEnabled = FALSE; // Disabling creating enemies for the client (he receives the 'replicants')
 		}

@@ -72,6 +72,7 @@ struct USER_PACKET_TEAM_PANEL_DIRTY {
 
 struct USER_PACKET_TOP_MESSAGE {
 	unsigned char id;
+	UINT8 ubCurrentTeam;
 	UINT8 ubTopMessageType;
 	UINT16 usTactialTurnLimitCounter;
 	UINT16 usTactialTurnLimitMax;
@@ -253,6 +254,7 @@ extern RPC_DATA* gRPC_Inv;
 extern RPC4 gRPC;
 extern std::list<RPC_DATA> gRPC_Events;
 extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
+extern HANDLE gMainThread;
 
 extern DWORD WINAPI client_packet(LPVOID lpParam);
 extern DWORD WINAPI replicamgr(LPVOID lpParam);

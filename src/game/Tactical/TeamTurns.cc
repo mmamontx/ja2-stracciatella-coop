@@ -358,9 +358,12 @@ void BeginTeamTurn( UINT8 ubTeam )
 				SOLDIERTYPE* const s = RemoveFirstAIListEntry();
 				if (s != NULL)
 				{
-					// Dirty panel interface!
-					fInterfacePanelDirty = DIRTYLEVEL2;
-					AddTopMessage(COMPUTER_TURN_MESSAGE);
+					if (!(IS_CLIENT))
+					{
+						// Dirty panel interface!
+						fInterfacePanelDirty = DIRTYLEVEL2;
+						AddTopMessage(COMPUTER_TURN_MESSAGE);
+					}
 					StartNPCAI(*s);
 					return;
 				}
@@ -410,7 +413,10 @@ void DisplayHiddenInterrupt( SOLDIERTYPE * pSoldier )
 	const MESSAGE_TYPES msg =
 		pSoldier->bTeam == MILITIA_TEAM ? MILITIA_INTERRUPT_MESSAGE:
 					COMPUTER_INTERRUPT_MESSAGE;
-	AddTopMessage(msg);
+	if (!(IS_CLIENT))
+	{
+		AddTopMessage(msg);
+	}
 
 	gfHiddenInterrupt = FALSE;
 }
@@ -444,9 +450,12 @@ void DisplayHiddenTurnbased( SOLDIERTYPE * pActingSoldier )
 
 	if ( gTacticalStatus.ubTopMessageType != COMPUTER_TURN_MESSAGE)
 	{
-		// Dirty panel interface!
-		fInterfacePanelDirty = DIRTYLEVEL2;
-		AddTopMessage(COMPUTER_TURN_MESSAGE);
+		if (!(IS_CLIENT))
+		{
+			// Dirty panel interface!
+			fInterfacePanelDirty = DIRTYLEVEL2;
+			AddTopMessage(COMPUTER_TURN_MESSAGE);
+		}
 	}
 
 	// freeze the user's interface
@@ -887,7 +896,10 @@ static void EndInterrupt(BOOLEAN fMarkInterruptOccurred)
 
 			}
 
-			AddTopMessage(COMPUTER_TURN_MESSAGE);
+			if (!(IS_CLIENT))
+			{
+				AddTopMessage(COMPUTER_TURN_MESSAGE);
+			}
 
 			// Signal UI done enemy's turn
 			guiPendingOverrideEvent = LU_BEGINUILOCK;

@@ -1856,13 +1856,17 @@ static void CreateTopMessage(void)
 
 	gfTopMessageDirty = TRUE;
 
-	// Broadcasting to all the clients
-	struct USER_PACKET_TOP_MESSAGE up;
-	up.id = ID_USER_PACKET_TOP_MESSAGE;
-	up.usTactialTurnLimitCounter = gTacticalStatus.usTactialTurnLimitCounter;
-	up.usTactialTurnLimitMax = gTacticalStatus.usTactialTurnLimitMax;
-	up.ubTopMessageType = gTacticalStatus.ubTopMessageType;
-	gNetworkOptions.peer->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+	if (!(IS_CLIENT))
+	{
+		// Broadcasting to all the clients
+		struct USER_PACKET_TOP_MESSAGE up;
+		up.id = ID_USER_PACKET_TOP_MESSAGE;
+		up.ubCurrentTeam = gTacticalStatus.ubCurrentTeam;
+		up.ubTopMessageType = gTacticalStatus.ubTopMessageType;
+		up.usTactialTurnLimitCounter = gTacticalStatus.usTactialTurnLimitCounter;
+		up.usTactialTurnLimitMax = gTacticalStatus.usTactialTurnLimitMax;
+		gNetworkOptions.peer->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+	}
 }
 
 
@@ -1880,8 +1884,11 @@ void HandleTopMessages(void)
 	// yet.  This is mostly for loading saved games.
 	if (!gTopMessage.fCreated)
 	{
-		gfTopMessageDirty = TRUE;
-		AddTopMessage((MESSAGE_TYPES)ts->ubTopMessageType);
+		if (!(IS_CLIENT))
+		{
+			gfTopMessageDirty = TRUE;
+			AddTopMessage((MESSAGE_TYPES)ts->ubTopMessageType);
+		}
 	}
 
 	switch (ts->ubTopMessageType)
@@ -1893,19 +1900,22 @@ void HandleTopMessages(void)
 			// OK, update timer.....
 			if (COUNTERDONE(TEAMTURNUPDATE))
 			{
-				// Update counter....
-				if (ts->usTactialTurnLimitCounter < ts->usTactialTurnLimitMax)
+				if (!(IS_CLIENT))
 				{
-					++ts->usTactialTurnLimitCounter;
-				}
+					// Update counter....
+					if (ts->usTactialTurnLimitCounter < ts->usTactialTurnLimitMax)
+					{
+						++ts->usTactialTurnLimitCounter;
+					}
 
-				// Check if we have reach limit...
-				if (ts->usTactialTurnLimitCounter > gubProgCurEnemy * PLAYER_TEAM_TIMER_TICKS_PER_ENEMY)
-				{
-					ts->usTactialTurnLimitCounter = gubProgCurEnemy * PLAYER_TEAM_TIMER_TICKS_PER_ENEMY;
-				}
+					// Check if we have reach limit...
+					if (ts->usTactialTurnLimitCounter > gubProgCurEnemy * PLAYER_TEAM_TIMER_TICKS_PER_ENEMY)
+					{
+						ts->usTactialTurnLimitCounter = gubProgCurEnemy * PLAYER_TEAM_TIMER_TICKS_PER_ENEMY;
+					}
 
-				CreateTopMessage();
+					CreateTopMessage();
+				}
 			}
 			break;
 
@@ -1944,7 +1954,10 @@ void HandleTopMessages(void)
 						++ts->usTactialTurnLimitCounter;
 					}
 
-					CreateTopMessage();
+					if (!(IS_CLIENT))
+					{
+						CreateTopMessage();
+					}
 
 					// Have we reached max?
 					if (ts->usTactialTurnLimitCounter == ts->usTactialTurnLimitMax - 1)
@@ -2010,7 +2023,10 @@ void UpdateEnemyUIBar( )
 		gTacticalStatus.ubTopMessageType == COMPUTER_TURN_MESSAGE)
 	{
 		// Update message!
-		CreateTopMessage();
+		if (!(IS_CLIENT))
+		{
+			CreateTopMessage();
+		}
 	}
 }
 
@@ -2021,7 +2037,10 @@ void InitPlayerUIBar( BOOLEAN fInterrupt )
 
 	if ( !gGameOptions.fTurnTimeLimit )
 	{
-		AddTopMessage(fInterrupt == TRUE ? PLAYER_INTERRUPT_MESSAGE : PLAYER_TURN_MESSAGE);
+		if (!(IS_CLIENT))
+		{
+			AddTopMessage(fInterrupt == TRUE ? PLAYER_INTERRUPT_MESSAGE : PLAYER_TURN_MESSAGE);
+		}
 		return;
 	}
 
@@ -2063,7 +2082,10 @@ void InitPlayerUIBar( BOOLEAN fInterrupt )
 	RESETCOUNTER(TEAMTURNUPDATE);
 
 	// OK, set value
-	AddTopMessage(fInterrupt != TRUE ? PLAYER_TURN_MESSAGE : PLAYER_INTERRUPT_MESSAGE);
+	if (!(IS_CLIENT))
+	{
+		AddTopMessage(fInterrupt != TRUE ? PLAYER_TURN_MESSAGE : PLAYER_INTERRUPT_MESSAGE);
+	}
 }
 
 

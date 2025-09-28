@@ -592,6 +592,7 @@ ScreenID HandleTacticalUI(void)
 				break;
 			default: // Other unimplemented event
 				SLOGI("uiNewEvent = {}", uiNewEvent);
+				break;
 			}
 		} else {
 			// Snap mouse back if it's that type
