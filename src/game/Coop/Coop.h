@@ -20,6 +20,7 @@ using namespace RakNet;
 #define ID_USER_PACKET_START            (ID_USER_PACKET_ENUM + 3)
 #define ID_USER_PACKET_TEAM_PANEL_DIRTY (ID_USER_PACKET_ENUM + 4)
 #define ID_USER_PACKET_TOP_MESSAGE      (ID_USER_PACKET_ENUM + 5)
+#define ID_USER_PACKET_END_COMBAT       (ID_USER_PACKET_ENUM + 6)
 
 #define MAX_NAME_LEN    16
 #define MAX_MESSAGE_LEN 128
@@ -62,11 +63,16 @@ struct USER_PACKET_READY {
 	BOOLEAN ready;
 };
 
+// TODO: Use a shared structure for the packets that have no data
 struct USER_PACKET_START {
 	unsigned char id;
 };
 
 struct USER_PACKET_TEAM_PANEL_DIRTY {
+	unsigned char id;
+};
+
+struct USER_PACKET_END_COMBAT {
 	unsigned char id;
 };
 

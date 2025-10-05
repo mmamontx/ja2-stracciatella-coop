@@ -2727,7 +2727,7 @@ void HandleNPCDoAction( UINT8 ubTargetNPC, UINT16 usActionCode, UINT8 ubQuoteNum
 				break;
 
 			case NPC_ACTION_END_COMBAT:
-				ExitCombatMode();
+				if (!(IS_CLIENT)) ExitCombatMode();
 				break;
 
 			case NPC_ACTION_BECOME_FRIENDLY_END_COMBAT:
@@ -2745,7 +2745,7 @@ void HandleNPCDoAction( UINT8 ubTargetNPC, UINT16 usActionCode, UINT8 ubQuoteNum
 					}
 					if ( !gTacticalStatus.fEnemyInSector )
 					{
-						ExitCombatMode();
+						if (!(IS_CLIENT)) ExitCombatMode();
 					}
 
 					CancelAIAction(pSoldier);

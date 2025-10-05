@@ -275,8 +275,6 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 	while (TRUE) {
 		p = gNetworkOptions.peer->Receive();
 
-		SuspendThread(gMainThread);
-
 		while (p) {
 			// We got a packet, get the identifier with our handy function
 			SpacketIdentifier = SGetPacketIdentifier(p);
@@ -390,7 +388,20 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 				gTacticalStatus.ubTopMessageType = (MESSAGE_TYPES)(up->ubTopMessageType);
 				gTacticalStatus.usTactialTurnLimitCounter = up->usTactialTurnLimitCounter;
 				gTacticalStatus.usTactialTurnLimitMax = up->usTactialTurnLimitMax;
+
+				SLOGI("SuspendThread()");
+				SuspendThread(gMainThread);
 				AddTopMessage((MESSAGE_TYPES)(up->ubTopMessageType));
+				ResumeThread(gMainThread);
+				SLOGI("!ResumeThread()");
+
+				break;
+			}
+			case ID_USER_PACKET_END_COMBAT:
+			{
+				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_END_COMBAT");
+
+				ExitCombatMode();
 
 				break;
 			}
@@ -405,8 +416,6 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 			gNetworkOptions.peer->DeallocatePacket(p);
 			p = gNetworkOptions.peer->Receive();
 		}
-
-		ResumeThread(gMainThread);
 
 		Sleep(33); // NOTE: ~30 FPS, can be improved if needed
 	}
