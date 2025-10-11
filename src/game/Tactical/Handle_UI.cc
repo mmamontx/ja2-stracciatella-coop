@@ -76,6 +76,8 @@
 #include "Soldier.h"
 #include "MercProfile.h"
 
+#include "Coop.h"
+
 #include <string_theory/format>
 #include <string_theory/string>
 
@@ -538,6 +540,7 @@ ScreenID HandleTacticalUI(void)
 				data.id = Soldier2ID(sel);
 				data.usMapPos = guiCurrentCursorGridNo;
 				data.tgt_id = Soldier2ID(gUIFullTarget);
+				data.bShownAimTime = sel->bShownAimTime;
 
 				bs.WriteCompressed(data);
 
@@ -1185,9 +1188,42 @@ static ScreenID UIHandleEnterEditMode(UI_EVENT* pUIEvent)
 ScreenID UIHandleEndTurn(UI_EVENT* pUIEvent)
 {
 	// Only the server can properly handle this logic
-	// TODO: Imitate individual player turns within a single global player turn
-	if (IS_CLIENT) {
+	if (IS_CLIENT)
+	{
+		struct USER_PACKET_END_TURN p;
+		p.id = ID_USER_PACKET_END_TURN;
+		gNetworkOptions.peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 		return GAME_SCREEN;
+	}
+	else
+	{
+		struct USER_PACKET_MESSAGE up_broadcast;
+		char str[256];
+
+		UINT8 NumFinished = 0;
+		FOR_EACH_PLAYER(i)
+			if (gPlayers[i].endturn)
+				NumFinished++;
+
+		if (!(gPlayers[0].endturn)) {
+			gPlayers[0].endturn = true;
+			NumFinished++;
+
+			// Broadcasting to the clients
+			sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[0].name.C_String(), NumFinished, gNumConnected);
+			up_broadcast.id = ID_USER_PACKET_MESSAGE;
+			strcpy(up_broadcast.message, str);
+			gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+
+			ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
+		}
+
+		// TODO: In the interrupt mode check only the players, whose mercs have received the interrupt
+		if (NumFinished < gNumConnected)
+			return GAME_SCREEN;
+
+		FOR_EACH_PLAYER(i)
+			gPlayers[i].endturn = false;
 	}
 
 	CancelItemPointer( );
@@ -2413,6 +2449,7 @@ static ScreenID UIHandleCAMercShoot(UI_EVENT* pUIEvent)
 	if (fRPC) {
 		data = gRPC_Events.front();
 		sel = ID2Soldier(data.id);
+		sel->bShownAimTime = data.bShownAimTime;
 		gRPC_Events.pop_front();
 	} else {
 		sel = GetSelectedMan();

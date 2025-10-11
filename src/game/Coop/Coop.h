@@ -21,6 +21,7 @@ using namespace RakNet;
 #define ID_USER_PACKET_TEAM_PANEL_DIRTY (ID_USER_PACKET_ENUM + 4)
 #define ID_USER_PACKET_TOP_MESSAGE      (ID_USER_PACKET_ENUM + 5)
 #define ID_USER_PACKET_END_COMBAT       (ID_USER_PACKET_ENUM + 6)
+#define ID_USER_PACKET_END_TURN         (ID_USER_PACKET_ENUM + 7)
 
 #define MAX_NAME_LEN    16
 #define MAX_MESSAGE_LEN 128
@@ -76,6 +77,10 @@ struct USER_PACKET_END_COMBAT {
 	unsigned char id;
 };
 
+struct USER_PACKET_END_TURN {
+	unsigned char id;
+};
+
 struct USER_PACKET_TOP_MESSAGE {
 	unsigned char id;
 	UINT8 ubCurrentTeam;
@@ -87,7 +92,8 @@ struct USER_PACKET_TOP_MESSAGE {
 struct PLAYER : public Replica3 {
 	RakNetGUID guid;
 	RakString name;
-	BOOLEAN ready;
+	BOOLEAN ready; // Used only on the strategic map in the very beginning
+	BOOLEAN endturn;
 
 	bool operator == (const PLAYER& s) const { return guid == s.guid; }
 
@@ -206,6 +212,7 @@ struct RPC_DATA {
 	GridNo usMapPos;
 	BOOLEAN fUIMovementFast; // For moving
 	INT8 bNewStance; // For changing the stance
+	INT8 bShownAimTime; // For aiming and shooting
 	// For operating with items
 	UINT8 ubHandPos;
 	UINT8 ubCtrl;
@@ -261,6 +268,7 @@ extern RPC4 gRPC;
 extern std::list<RPC_DATA> gRPC_Events;
 extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 extern HANDLE gMainThread;
+extern UINT8 gNumConnected;
 
 extern DWORD WINAPI client_packet(LPVOID lpParam);
 extern DWORD WINAPI replicamgr(LPVOID lpParam);

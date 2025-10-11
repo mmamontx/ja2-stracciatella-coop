@@ -1517,7 +1517,8 @@ struct SOLDIERTYPE : public Replica3
 		serializeParameters->outputBitstream[0].Write(ubPathIndex);
 		serializeParameters->outputBitstream[0].Write(sBlackList);
 		serializeParameters->outputBitstream[0].Write(bAimTime);
-		serializeParameters->outputBitstream[0].Write(bShownAimTime);
+		// Don't copy the aiming value (circle radius) - let clients keep it local
+		//serializeParameters->outputBitstream[0].Write(bShownAimTime);
 		serializeParameters->outputBitstream[0].Write(bPathStored);
 		serializeParameters->outputBitstream[0].Write(bHasKeys);
 
@@ -2008,7 +2009,7 @@ struct SOLDIERTYPE : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(ubPathIndex);
 		deserializeParameters->serializationBitstream[0].Read(sBlackList);
 		deserializeParameters->serializationBitstream[0].Read(bAimTime);
-		deserializeParameters->serializationBitstream[0].Read(bShownAimTime);
+		//deserializeParameters->serializationBitstream[0].Read(bShownAimTime);
 		deserializeParameters->serializationBitstream[0].Read(bPathStored);
 		deserializeParameters->serializationBitstream[0].Read(bHasKeys);
 

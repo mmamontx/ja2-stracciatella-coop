@@ -1,6 +1,7 @@
 #include "Animation_Control.h"
 #include "Faces.h"
 #include "Game_Clock.h"
+#include "GameScreen.h"
 #include "Interface_Items.h"
 #include "Interface_Panels.h"
 #include "Items.h"
@@ -36,6 +37,7 @@ RPC4 gRPC;
 std::list<RPC_DATA> gRPC_Events;
 struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 HANDLE gMainThread;
+UINT8 gNumConnected = 1; // This variable is only maintained by the server (the initial 1 is for the server)
 
 DWORD WINAPI replicamgr(LPVOID lpParam)
 {
@@ -192,6 +194,8 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 					struct USER_PACKET_MESSAGE up_broadcast;
 					up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
 					gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+
+					gNumConnected++;
 				} // Otherwise ignore the duplicated connection request
 
 				break;
@@ -239,6 +243,43 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 
 						break;
 					}
+
+				break;
+			}
+			case ID_USER_PACKET_END_TURN:
+			{
+				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_END_TURN");
+				struct USER_PACKET_END_TURN* up;
+				struct USER_PACKET_MESSAGE up_broadcast;
+				char str[256];
+				up = (struct USER_PACKET_END_TURN*)p->data;
+
+				UINT8 NumFinished = 0;
+				FOR_EACH_PLAYER(i)
+					if (gPlayers[i].endturn)
+						NumFinished++;
+
+				FOR_EACH_PLAYER(i)
+					if (gPlayers[i].guid == p->guid) {
+						if (!(gPlayers[i].endturn)) {
+							gPlayers[i].endturn = true;
+							NumFinished++;
+
+							// Broadcasting the name of the person that has finished its turn
+							sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[i].name.C_String(), NumFinished, gNumConnected);
+							up_broadcast.id = ID_USER_PACKET_MESSAGE;
+							strcpy(up_broadcast.message, str);
+							gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+
+							ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
+						}
+
+						break;
+					}
+
+				// TODO: In the interrupt mode check only the players, whose mercs have received the interrupt
+				if (NumFinished == gNumConnected)
+					gfBeginEndTurn = TRUE;
 
 				break;
 			}

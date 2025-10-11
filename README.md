@@ -29,18 +29,21 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
 ## Backlog
 
 - Bugs (by default it is implied that it happens on the side of the client):
-    - The hang on thread suspending in the networking logic.
+    - Stealth mode is not always synced and sometimes it also can't be disabled.
     - In the battle mode the mercs are centered in the end of their movement. This should be prevented for the mercs controlled by other players.
     - When Fatima is given the letter and starts leading to Miguel, her clone can be observed at her original position.
     - Mercs can't change stance when adjacent to roofs (the climbing remains enabled) and some obstacles.
-    - When putting more points into aiming it resets back to the server value.
     - On the interrupts all the mercs can do their turns no matter who is eligible.
     - The rectangle move cursor when it is hovered on the selected merc is shown on top instead of behind the soldier.
     - Some the original squares where mercs occur become unavailable for moving to (for the client).
-    - Sometimes a just connected client doesn't see himself in the player list until he clicks 'ready'.
     - Still, animation surfaces are not loaded for the client (it doesn't cause any crash).
+    - Non deterministic:
+        - Sometimes 'face' ptr gets a bad value and causes a crash on dereference.
+        - Same issue with 'pNode->pStructureData->pDBStructureRef' (occurred after the client has killed an enemy soldier).
+        - Sometimes there are messages evidencing the fact that AI logic is being executed on the client side - while it doesn't seem to affect what is visible on both sides (except for the messages) since it probably messes with the variables it may cause undefined behavior and should be prevented.
+        - The hang on thread suspending in the networking logic.
+        - Sometimes a just connected client doesn't see himself in the player list until he clicks 'ready'.
 - Regular priority:
-    - Imitate individual player turns within a single global player turn. The global turn gets finished once every player finish their individual turn.
     - Block the interface of clients during the enemies turn.
     - Implement the following RPC actions from the client:
         - Opening doors.
