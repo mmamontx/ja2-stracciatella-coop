@@ -87,6 +87,8 @@ BOOLEAN AddCharacterToSquad(SOLDIERTYPE* const s, INT8 const bSquadValue)
 	// add character to squad...return success or failure
 	// run through list of people in squad, find first free slo
 
+	if ((IS_CLIENT) && !(gRPC_Squad)) return TRUE;
+
 	if (fExitingVehicleToSquad) return FALSE;
 
 	// ATE: If any vehicle exists in this squad AND we're not set to
@@ -201,6 +203,20 @@ BOOLEAN AddCharacterToSquad(SOLDIERTYPE* const s, INT8 const bSquadValue)
 
 		if (s == GetSelectedMan()) SetCurrentSquad(bSquadValue, TRUE);
 
+		if (!(IS_CLIENT))
+		{
+			// Broadcast this call to clients
+			RakNet::BitStream bs;
+			RPC_DATA data;
+
+			data.id = Soldier2ID(s);
+			data.bSquadValue = bSquadValue;
+
+			bs.WriteCompressed(data);
+
+			gRPC.Signal("AddCharacterToSquadRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gNetworkOptions.peer->GetMyGUID(), true, false);
+		}
+
 		return TRUE;
 	}
 
@@ -215,6 +231,7 @@ void AddCharacterToAnySquad(SOLDIERTYPE* const pCharacter)
 	INT8 bCounter = 0;
 	INT8 bFirstEmptySquad = -1;
 
+	if (IS_CLIENT) return;
 
 	// remove them from current squad
 	RemoveCharacterFromSquads( pCharacter ); // REDUNDANT AddCharacterToSquad()
@@ -224,10 +241,11 @@ void AddCharacterToAnySquad(SOLDIERTYPE* const pCharacter)
 	{
 		if (!SquadIsEmpty(bCounter))
 		{
-			if (AddCharacterToSquad(pCharacter, bCounter))
+			// FIXME: A temporary workaround for MP arranging 1 merc per squad
+			/*if (AddCharacterToSquad(pCharacter, bCounter))
 			{
 				return;
-			}
+			}*/
 		}
 		else
 		{

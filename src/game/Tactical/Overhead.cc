@@ -4084,12 +4084,15 @@ void EnterCombatMode( UINT8 ubStartingTeam )
 		const SOLDIERTYPE* const sel = GetSelectedMan();
 		if (sel == NULL || sel->bOppCnt == 0)
 		{
+			INT8 player_squad = PlayerIndex(gNetworkOptions.peer->GetMyGUID());
 			// OK, look through and find one....
 			FOR_EACH_IN_TEAM(s, OUR_TEAM)
 			{
 				if (OkControllableMerc(s) && s->bOppCnt > 0)
 				{
-					SelectSoldier(s, SELSOLDIER_FORCE_RESELECT);
+					if (s->bAssignment == player_squad) { // Disallow selecting mercs owned by other players
+						SelectSoldier(s, SELSOLDIER_FORCE_RESELECT);
+					}
 				}
 			}
 		}

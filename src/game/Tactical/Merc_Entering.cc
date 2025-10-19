@@ -494,7 +494,12 @@ void HandleHeliDrop( )
 			UnPauseGame();
 
 			// Select our first guy
-			SelectSoldier(gHeliSeats[0], SELSOLDIER_FORCE_RESELECT);
+			//SelectSoldier(gHeliSeats[0], SELSOLDIER_FORCE_RESELECT);
+			INT8 i = PlayerIndex(gNetworkOptions.peer->GetMyGUID());
+			if (i != -1) {
+				// TODO: Properly find the first seat owned by the player
+				SelectSoldier(gHeliSeats[i], SELSOLDIER_FORCE_RESELECT);
+			}
 
 			//guiCurrentEvent = LU_ENDUILOCK;
 			//gCurrentUIMode  = LOCKUI_MODE;

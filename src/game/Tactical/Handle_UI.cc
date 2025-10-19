@@ -1335,6 +1335,13 @@ static ScreenID UIHandleSelectMerc(UI_EVENT* pUIEvent)
 	// Get merc index at mouse and set current selection
 	if (gUIFullTarget != NULL)
 	{
+		// Disallow selecting mercs owned by other players
+		INT8 player_squad = PlayerIndex(gNetworkOptions.peer->GetMyGUID());
+		if (gUIFullTarget->bAssignment != player_squad)
+		{
+			return(GAME_SCREEN);
+		}
+
 		iCurrentSquad = CurrentSquad( );
 
 		SelectSoldier(gUIFullTarget, SELSOLDIER_ACKNOWLEDGE | SELSOLDIER_FROM_UI);

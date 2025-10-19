@@ -150,6 +150,7 @@ struct PLAYER : public Replica3 {
 		serializeParameters->outputBitstream[0].Write(name);
 
 		serializeParameters->outputBitstream[0].Write(ready);
+		serializeParameters->outputBitstream[0].Write(endturn);
 
 		return RM3SR_BROADCAST_IDENTICALLY;
 	}
@@ -162,6 +163,7 @@ struct PLAYER : public Replica3 {
 		deserializeParameters->serializationBitstream[0].Read(name);
 
 		deserializeParameters->serializationBitstream[0].Read(ready);
+		deserializeParameters->serializationBitstream[0].Read(endturn);
 	}
 
 	virtual void SerializeConstructionRequestAccepted(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* requestingConnection) {
@@ -213,6 +215,7 @@ struct RPC_DATA {
 	BOOLEAN fUIMovementFast; // For moving
 	INT8 bNewStance; // For changing the stance
 	INT8 bShownAimTime; // For aiming and shooting
+	INT8 bSquadValue; // For changing the squad
 	// For operating with items
 	UINT8 ubHandPos;
 	UINT8 ubCtrl;
@@ -251,39 +254,57 @@ class ReplicaManager3Sample : public ReplicaManager3
 	}
 };
 
+
+// Networking
 extern BOOLEAN gConnected;
-extern BOOLEAN gEnemyEnabled;
 extern BOOLEAN gNetworkCreated;
-extern BOOLEAN gReady;
-extern BOOLEAN gRPC_Enable;
-extern BOOLEAN gStarted;
-extern DataStructures::List<Replica3*> gReplicaList;
 extern NETWORK_OPTIONS gNetworkOptions;
 extern NetworkIDManager gNetworkIdManager;
-extern OBJECTTYPE* gpItemPointerRPC;
-extern SOLDIERTYPE* gpItemPointerSoldierRPC;
-extern ReplicaManager3Sample gReplicaManager;
-extern RPC_DATA* gRPC_Inv;
-extern RPC4 gRPC;
-extern std::list<RPC_DATA> gRPC_Events;
 extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
-extern HANDLE gMainThread;
 extern UINT8 gNumConnected;
 
-extern DWORD WINAPI client_packet(LPVOID lpParam);
-extern DWORD WINAPI replicamgr(LPVOID lpParam);
-extern DWORD WINAPI server_packet(LPVOID lpParam);
-extern unsigned char SGetPacketIdentifier(Packet* p);
-extern void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void HireRandomMercs(unsigned int n);
-extern void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-extern void UpdateTeamPanel();
+// Replication
+extern DataStructures::List<Replica3*> gReplicaList;
+extern ReplicaManager3Sample gReplicaManager;
+
+// RPCs
+extern BOOLEAN gRPC_Enable;
+extern BOOLEAN gRPC_Squad;
+extern OBJECTTYPE* gpItemPointerRPC;
+extern RPC_DATA* gRPC_Inv;
+extern RPC4 gRPC;
+extern SOLDIERTYPE* gpItemPointerSoldierRPC;
+extern std::list<RPC_DATA> gRPC_Events;
+
+// Etc.
+extern HANDLE gMainThread;
+extern BOOLEAN gStarted;
+extern BOOLEAN gReady;
+extern BOOLEAN gEnemyEnabled;
+
+
+// Networking
+DWORD WINAPI client_packet(LPVOID lpParam);
+DWORD WINAPI replicamgr(LPVOID lpParam);
+DWORD WINAPI server_packet(LPVOID lpParam);
+unsigned char SGetPacketIdentifier(Packet* p);
+
+// RPCs
+void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+
+void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+
+// Etc.
+void HireRandomMercs(unsigned int n);
+void UpdateTeamPanel();
+INT8 PlayerIndex(RakNetGUID guid);
 
 #endif

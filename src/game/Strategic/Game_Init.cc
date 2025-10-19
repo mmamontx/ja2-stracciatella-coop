@@ -279,6 +279,7 @@ void InitNewGame()
 
 		gRPC.RegisterSlot("HandleEventRPC", HandleEventRPC, 0);
 
+		gRPC.RegisterSlot("AddCharacterToSquadRPC", AddCharacterToSquadRPC, 0);
 		gRPC.RegisterSlot("BeginSoldierClimbDownRoofRPC", BeginSoldierClimbDownRoofRPC, 0);
 		gRPC.RegisterSlot("BeginSoldierClimbFenceRPC", BeginSoldierClimbFenceRPC, 0);
 		gRPC.RegisterSlot("BeginSoldierClimbUpRoofRPC", BeginSoldierClimbUpRoofRPC, 0);
@@ -302,6 +303,7 @@ void InitNewGame()
 			gPlayers[0].guid = gNetworkOptions.peer->GetMyGUID();
 			gPlayers[0].name = gNetworkOptions.name.c_str();
 			gPlayers[0].ready = gReady;
+			gPlayers[0].endturn = false;
 
 			for (int i = 1; i < MAX_NUM_PLAYERS; i++)
 				gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;

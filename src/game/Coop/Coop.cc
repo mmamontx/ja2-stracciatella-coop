@@ -1,4 +1,5 @@
 #include "Animation_Control.h"
+#include "Assignments.h"
 #include "Faces.h"
 #include "Game_Clock.h"
 #include "GameScreen.h"
@@ -15,35 +16,57 @@
 #include "RakNet/RPC4Plugin.h"
 #undef GROUP
 #include "Soldier_Profile.h"
+#include "Squads.h"
 #include "Strategic.h"
 #include "Weapons.h"
 
 #include <Game_Event_Hook.h>
 
+
+// Networking
 BOOLEAN gConnected = FALSE;
-BOOLEAN gEnemyEnabled = TRUE;
 BOOLEAN gNetworkCreated = FALSE;
-BOOLEAN gReady = FALSE;
-BOOLEAN gRPC_Enable = TRUE; // Enables remote events so that they don't overlap with local events
-BOOLEAN gStarted = FALSE;
-DataStructures::List<Replica3*> gReplicaList;
 NETWORK_OPTIONS gNetworkOptions;
 NetworkIDManager gNetworkIdManager;
-OBJECTTYPE* gpItemPointerRPC = NULL; // If RPCs can be executed in parallel (to be checked) a single shared variable would cause conflicts
-SOLDIERTYPE* gpItemPointerSoldierRPC = NULL;
+struct PLAYER gPlayers[MAX_NUM_PLAYERS];
+UINT8 gNumConnected = 1; // This variable is only maintained by the server (the initial 1 is for the server)
+
+// Replication
+DataStructures::List<Replica3*> gReplicaList;
 ReplicaManager3Sample gReplicaManager;
+
+// RPCs
+BOOLEAN gRPC_Enable = TRUE; // Enables remote events so that they don't overlap with local events
+BOOLEAN gRPC_Squad = FALSE;
+OBJECTTYPE* gpItemPointerRPC = NULL; // If RPCs can be executed in parallel (to be checked) a single shared variable would cause conflicts
 RPC_DATA* gRPC_Inv = NULL; // Currently executed inventory RPC
 RPC4 gRPC;
+SOLDIERTYPE* gpItemPointerSoldierRPC = NULL;
 std::list<RPC_DATA> gRPC_Events;
-struct PLAYER gPlayers[MAX_NUM_PLAYERS];
+
+// Etc.
 HANDLE gMainThread;
-UINT8 gNumConnected = 1; // This variable is only maintained by the server (the initial 1 is for the server)
+BOOLEAN gStarted = FALSE;
+BOOLEAN gReady = FALSE;
+BOOLEAN gEnemyEnabled = TRUE;
+
 
 DWORD WINAPI replicamgr(LPVOID lpParam)
 {
 	while (1)
 		Sleep(1000); // NOTE: It doesn't affect object replication sync delay, but it may have some other effect - keep this in mind
 	return 0;
+}
+
+INT8 PlayerIndex(RakNetGUID guid)
+{
+	FOR_EACH_PLAYER(i) {
+		if ((IS_VALID_CLIENT ? ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->guid : gPlayers[i].guid) == guid) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 
 void UpdateTeamPanel()
@@ -430,11 +453,12 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 				gTacticalStatus.usTactialTurnLimitCounter = up->usTactialTurnLimitCounter;
 				gTacticalStatus.usTactialTurnLimitMax = up->usTactialTurnLimitMax;
 
-				SLOGI("SuspendThread()");
+				// Sometimes causes hanging?
+				//SLOGI("SuspendThread()");
 				SuspendThread(gMainThread);
 				AddTopMessage((MESSAGE_TYPES)(up->ubTopMessageType));
 				ResumeThread(gMainThread);
-				SLOGI("!ResumeThread()");
+				//SLOGI("!ResumeThread()");
 
 				break;
 			}
@@ -555,6 +579,20 @@ void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 	HandleItemPointerClick(data.usMapPos);
 
 	gRPC_Inv = NULL;
+}
+
+void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	gRPC_Squad = TRUE;
+
+	AddCharacterToSquad(ID2Soldier(data.id), data.bSquadValue);
+
+	gRPC_Squad = FALSE;
 }
 
 void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)

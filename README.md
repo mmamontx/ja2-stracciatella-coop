@@ -38,11 +38,12 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
     - Some the original squares where mercs occur become unavailable for moving to (for the client).
     - Still, animation surfaces are not loaded for the client (it doesn't cause any crash).
     - Non deterministic:
+        - Sometimes (often!) a just connected client doesn't see himself in the player list until he clicks 'ready'.
         - Sometimes 'face' ptr gets a bad value and causes a crash on dereference.
         - Same issue with 'pNode->pStructureData->pDBStructureRef' (occurred after the client has killed an enemy soldier).
         - Sometimes there are messages evidencing the fact that AI logic is being executed on the client side - while it doesn't seem to affect what is visible on both sides (except for the messages) since it probably messes with the variables it may cause undefined behavior and should be prevented.
         - The hang on thread suspending in the networking logic.
-        - Sometimes a just connected client doesn't see himself in the player list until he clicks 'ready'.
+        - Clock cursor at the end of the battle (when all the enemies in the sector are killed) restrains the client from performing any action.
 - Regular priority:
     - Block the interface of clients during the enemies turn.
     - Implement the following RPC actions from the client:
@@ -52,7 +53,7 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
         - Healing.
         - Unloading ammo.
     - Replicate ground items - from the server to client and from the client to server (replicate LEVELNODEs with pItemPool?).
-    - Multi-selection actions.
+    - Multi-selection actions. When selecting, filter out mercs owned by other players.
     - Propagate time (including time compressions) from the server to clients.
     - Hiring by clients.
 - Low priority:
@@ -65,19 +66,16 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
         - Merging items (should work - verify).
         - Shopping.
         - Etc.
-    - Keep players in separate squads. Let players create squads, but first ensure that they aren't already used by others. Prevent selecting and controlling mercs from squads of other players.
-    - Verify repetitive starts and connections/disconnections within a single run.
-    - Testing: manual and automated. Enable GitHub CI.
-    - Remove RakNet from source code and use it as a binary.
+    - Let players create squads, but first ensure that they aren't already used by others.
+    - Verify repetitive starts and connections/disconnections within a single run - if we started the game as the server, then exited to the main menu and attempted to join as a client (or vice versa).
     - Handle connections/disconnections after the game gets started (after the first time compression button click).
-    - Add binary release(s).
-    - Pass merc top left corner speech to the client.
-    - Investigate how come ST::string direct assignment (see Soldier_Control.h) causes crashes at random locations (buffer overflow?).
     - Check if the same RPC call from multiple clients gets executed in parallel. If so, find a way to disable it, or implement respective item pointers on the server side for multiple clients: replace gpItemPointerRPC.
-    - Ensure that the buttons selected in the game init options screen won't affect client experience - obtain and use these values from the server.
+    - Ensure that the buttons selected in the game init options screen won't affect client experience - obtain and use these values from the server (e.g. starting cash depending on the difficulty setting).
     - Adapt for all resolutions (including the widescreens).
     - Verify correctness of the IP address stored in the corresponding field of the game init option screen - and don't let the player to the strategic map screen until it is fixed.
-    - Prevent players from having identical names (don't allow to connect or modify the name).
+- Infrastructure:
+    - Remove RakNet from source code and use it as a binary.
+    - Add binary release(s).
 - For fun (remove it from the release or make it optional):
     - It seems that originally developers considered enabling jumps over the windows and left the corresponding code in place. Try to extend climbing with this ability.
     - Remove the lines that disable women enemies below elite level (see Soldier_Create.cc).
