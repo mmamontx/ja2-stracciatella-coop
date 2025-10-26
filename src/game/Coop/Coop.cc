@@ -24,16 +24,14 @@
 
 
 // Networking
-BOOLEAN gConnected = FALSE;
-BOOLEAN gNetworkCreated = FALSE;
 NETWORK_OPTIONS gNetworkOptions;
 NetworkIDManager gNetworkIdManager;
-struct PLAYER gPlayers[MAX_NUM_PLAYERS];
-UINT8 gNumConnected = 1; // This variable is only maintained by the server (the initial 1 is for the server)
 
 // Replication
 DataStructures::List<Replica3*> gReplicaList;
 ReplicaManager3Sample gReplicaManager;
+// gPlayers is located in gReplicaList starting from REPLICA_PLAYER_INDEX
+struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 
 // RPCs
 BOOLEAN gRPC_Enable = TRUE; // Enables remote events so that they don't overlap with local events
@@ -46,9 +44,10 @@ std::list<RPC_DATA> gRPC_Events;
 
 // Etc.
 HANDLE gMainThread;
+// For clients: whether the server hit the time compression button
 BOOLEAN gStarted = FALSE;
-BOOLEAN gReady = FALSE;
-BOOLEAN gEnemyEnabled = TRUE;
+BOOLEAN MPReadyButtonValue = FALSE;
+BOOLEAN gEnemyEnabled;
 
 
 DWORD WINAPI replicamgr(LPVOID lpParam)
@@ -61,12 +60,25 @@ DWORD WINAPI replicamgr(LPVOID lpParam)
 INT8 PlayerIndex(RakNetGUID guid)
 {
 	FOR_EACH_PLAYER(i) {
-		if ((IS_VALID_CLIENT ? ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->guid : gPlayers[i].guid) == guid) {
+		if (PLAYER_GUID(i) == guid) {
 			return i;
 		}
 	}
 
 	return -1;
+}
+
+UINT8 NumberOfPlayers()
+{
+	UINT8 n = 0;
+
+	FOR_EACH_PLAYER(i) {
+		if (PLAYER_GUID(i) != UNASSIGNED_RAKNET_GUID) {
+			n++;
+		}
+	}
+
+	return n;
 }
 
 void UpdateTeamPanel()
@@ -137,36 +149,20 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 
 			// Check if this is a network message packet
 			switch (SpacketIdentifier) {
+			case ID_NEW_INCOMING_CONNECTION:
+				// This tells the server that a client has connected
+				// NB: The player is not yet registered in gPlayers structure at this point
+				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_NEW_INCOMING_CONNECTION");
+				break;
 			case ID_DISCONNECTION_NOTIFICATION:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_DISCONNECTION_NOTIFICATION");
-				break;
-			case ID_ALREADY_CONNECTED:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_ALREADY_CONNECTED");
-				break;
-			case ID_REMOTE_DISCONNECTION_NOTIFICATION: // Server telling the clients of another client disconnecting gracefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOTE_DISCONNECTION_NOTIFICATION");
-				break;
-			case ID_REMOTE_CONNECTION_LOST: // Server telling the clients of another client disconnecting forcefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOTE_CONNECTION_LOST");
-				break;
-			case ID_REMOTE_NEW_INCOMING_CONNECTION: // Server telling the clients of another client connecting.  You can manually broadcast this in a peer to peer enviroment if you want.
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOT/MING_CONNECTION");
-				break;
-			case ID_CONNECTION_ATTEMPT_FAILED:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_ATTEMPT_FAILED");
-				break;
-			case ID_NO_FREE_INCOMING_CONNECTIONS:
-				// Sorry, the server is full
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_NO_FREE_INCOMING_CONNECTIONS");
-				break;
 			case ID_CONNECTION_LOST:
 				// Couldn't deliver a reliable packet - i.e. the other system was abnormally
 				// terminated
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_LOST");
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_DISCONNECTION_NOTIFICATION/ID_CONNECTION_LOST");
 
 				FOR_EACH_CLIENT(i)
 					if (gPlayers[i].guid == p->guid) {
-						ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)(gPlayers[i].name) + " got disconnected (connection lost).");
+						ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)(gPlayers[i].name) + " disconnected.");
 						gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;
 						break;
 					}
@@ -179,15 +175,16 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 				gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 				break;
-			case ID_CONNECTION_REQUEST_ACCEPTED:
-				// This tells the client that it has connected
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_REQUEST_ACCEPTED");
+			// Replication
+			case ID_REPLICA_MANAGER_SCOPE_CHANGE:
+				// Changed scope of an object
+				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_SCOPE_CHANGE");
 				break;
-			case ID_NEW_INCOMING_CONNECTION:
-				// This tells the server that a client has connected
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_NEW_INCOMING_CONNECTION");
+			case ID_RPC_PLUGIN:
+				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_RPC_PLUGIN");
 				break;
-			case ID_USER_PACKET_CONNECT: // This message and below are custom messages of JA2S Coop
+			// Custom
+			case ID_USER_PACKET_CONNECT:
 			{
 				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_CONNECT");
 				struct USER_PACKET_CONNECT* up;
@@ -196,29 +193,30 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 				// Registering the new player in the global struct
 				bool present = false;
 				INT8 first_free = -1;
-				FOR_EACH_CLIENT(i)
+				FOR_EACH_CLIENT(i) {
 					if (gPlayers[i].guid == p->guid) {
 						present = true;
 						break;
-					} else if (first_free == -1) {
+					} else if ((gPlayers[i].guid == UNASSIGNED_RAKNET_GUID) &&
+						       (first_free == -1)) {
 						first_free = i;
 					}
+				}
 
 				if ((!present) && (first_free != -1)) {
 					gPlayers[first_free].guid = p->guid;
 					gPlayers[first_free].name = up->name;
 					gPlayers[first_free].ready = up->ready;
 
-					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)up->name + " has connected.");
+					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)up->name + " connected.");
 
+					// FIXME: Remove?
 					UpdateTeamPanel(); // With the connected player
 
 					// Tell others
 					struct USER_PACKET_MESSAGE up_broadcast;
 					up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
 					gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-
-					gNumConnected++;
 				} // Otherwise ignore the duplicated connection request
 
 				break;
@@ -277,19 +275,21 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 				char str[256];
 				up = (struct USER_PACKET_END_TURN*)p->data;
 
-				UINT8 NumFinished = 0;
+				UINT8 finished = 0;
 				FOR_EACH_PLAYER(i)
 					if (gPlayers[i].endturn)
-						NumFinished++;
+						finished++;
+
+				UINT8 n = NumberOfPlayers();
 
 				FOR_EACH_PLAYER(i)
 					if (gPlayers[i].guid == p->guid) {
 						if (!(gPlayers[i].endturn)) {
 							gPlayers[i].endturn = true;
-							NumFinished++;
+							finished++;
 
 							// Broadcasting the name of the person that has finished its turn
-							sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[i].name.C_String(), NumFinished, gNumConnected);
+							sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[i].name.C_String(), finished, n);
 							up_broadcast.id = ID_USER_PACKET_MESSAGE;
 							strcpy(up_broadcast.message, str);
 							gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
@@ -301,18 +301,11 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 					}
 
 				// TODO: In the interrupt mode check only the players, whose mercs have received the interrupt
-				if (NumFinished == gNumConnected)
+				if (finished == n)
 					gfBeginEndTurn = TRUE;
 
 				break;
 			}
-			case ID_REPLICA_MANAGER_SCOPE_CHANGE:
-				// Changed scope of an object
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_SCOPE_CHANGE");
-				break;
-			case ID_RPC_PLUGIN:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_RPC_PLUGIN");
-				break;
 			default:
 				char unknown_id[3];
 				itoa(SpacketIdentifier, unknown_id, 10);
@@ -345,21 +338,19 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 
 			// Check if this is a network message packet
 			switch (SpacketIdentifier) {
+			case ID_CONNECTION_REQUEST_ACCEPTED: // This message and below are custom messages of JA2S Coop
+				// This tells the client that it has connected
+				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_REQUEST_ACCEPTED");
+
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Connected.");
+
+				gNetworkOptions.connected = TRUE;
+				break;
 			case ID_DISCONNECTION_NOTIFICATION:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_DISCONNECTION_NOTIFICATION");
+			case ID_CONNECTION_LOST:
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_DISCONNECTION_NOTIFICATION/ID_CONNECTION_LOST");
 				break;
-			case ID_ALREADY_CONNECTED:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_ALREADY_CONNECTED");
-				break;
-			case ID_REMOTE_DISCONNECTION_NOTIFICATION: // Server telling the clients of another client disconnecting gracefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOTE_DISCONNECTION_NOTIFICATION");
-				break;
-			case ID_REMOTE_CONNECTION_LOST: // Server telling the clients of another client disconnecting forcefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOTE_CONNECTION_LOST");
-				break;
-			case ID_REMOTE_NEW_INCOMING_CONNECTION: // Server telling the clients of another client connecting.  You can manually broadcast this in a peer to peer enviroment if you want.
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOT/MING_CONNECTION");
-				break;
+			// Can't connect for various reasons:
 			case ID_CONNECTION_ATTEMPT_FAILED:
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_ATTEMPT_FAILED");
 				break;
@@ -367,23 +358,18 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 				// Sorry, the server is full
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_NO_FREE_INCOMING_CONNECTIONS");
 				break;
-			case ID_CONNECTION_LOST:
-				// Couldn't deliver a reliable packet - i.e. the other system was abnormally
-				// terminated
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_LOST");
+			case ID_ALREADY_CONNECTED:
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_ALREADY_CONNECTED");
 				break;
-			case ID_CONNECTION_REQUEST_ACCEPTED:
-				// This tells the client that it has connected
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_REQUEST_ACCEPTED");
-
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Connected to the server.");
-
-				gConnected = TRUE;
+			// Notifications about other clients:
+			case ID_REMOTE_DISCONNECTION_NOTIFICATION: // Server telling the clients of another client disconnecting gracefully.  You can manually broadcast this in a peer to peer enviroment if you want.
+			case ID_REMOTE_CONNECTION_LOST: // Server telling the clients of another client disconnecting forcefully.  You can manually broadcast this in a peer to peer enviroment if you want.
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOTE_DISCONNECTION_NOTIFICATION/ID_REMOTE_CONNECTION_LOST");
 				break;
-			case ID_NEW_INCOMING_CONNECTION:
-				// This tells the server that a client has connected
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_NEW_INCOMING_CONNECTION");
+			case ID_REMOTE_NEW_INCOMING_CONNECTION: // Server telling the clients of another client connecting.  You can manually broadcast this in a peer to peer enviroment if you want.
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOT/MING_CONNECTION");
 				break;
+			// Replication
 			case ID_REPLICA_MANAGER_CONSTRUCTION:
 				// Create an object
 				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_CONSTRUCTION");
@@ -404,7 +390,7 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 				// Finished downloading all serialized objects
 				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_DOWNLOAD_COMPLETE");
 
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Replication is completed.");
+				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Replication is completed.");
 
 				gReplicaManager.GetReferencedReplicaList(gReplicaList);
 
@@ -417,6 +403,7 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 				UpdateTeamPanel();
 
 				break;
+			// Custom
 			case ID_USER_PACKET_MESSAGE:
 			{
 				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_MESSAGE");
@@ -453,12 +440,9 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 				gTacticalStatus.usTactialTurnLimitCounter = up->usTactialTurnLimitCounter;
 				gTacticalStatus.usTactialTurnLimitMax = up->usTactialTurnLimitMax;
 
-				// Sometimes causes hanging?
-				//SLOGI("SuspendThread()");
 				SuspendThread(gMainThread);
 				AddTopMessage((MESSAGE_TYPES)(up->ubTopMessageType));
 				ResumeThread(gMainThread);
-				//SLOGI("!ResumeThread()");
 
 				break;
 			}

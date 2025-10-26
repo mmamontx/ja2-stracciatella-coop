@@ -1238,17 +1238,11 @@ static void EnableDisableTeamListRegionsAndHelpText(void);
 static void DisplayPlayerList()
 {
 	int i;
-	static BOOLEAN prev_ready[MAX_NUM_PLAYERS] = { 0 };
+	// All TRUE can't happen at the connection since at least our status is FALSE.
+	// This will always trigger the initial drawing.
+	static BOOLEAN prev_ready[MAX_NUM_PLAYERS] = { TRUE };
 
-	if ((IS_CLIENT) && (!IS_VALID_CLIENT)) // If we are client and not yet connected - skip this to prevent messing with uninitialized gReplicaList
-		return;
-
-	// Redraw ready text if it has been updated (fixes background artifacts)
-	FOR_EACH_PLAYER(i)
-		if (prev_ready[i] != (IS_VALID_CLIENT ? ((PLAYER*)gReplicaList[TOTAL_SOLDIERS + i])->ready : gPlayers[i].ready)) {
-			UpdateTeamPanel();
-			break;
-		}
+	if (IS_INVALID_CLIENT) return;
 
 	SetFontDestBuffer(guiSAVEBUFFER);
 
@@ -1257,17 +1251,30 @@ static void DisplayPlayerList()
 
 	UINT16 x = NAME_X + 1;
 
+	UINT8 n = NumberOfPlayers();
+	if (IS_CLIENT && (n < 2)) {
+		SLOGI("NumberOfPlayers() = {} < 2", n);
+	}
+
 	UINT8 line = 0;
 	FOR_EACH_PLAYER(i) {
-		prev_ready[i] = IS_VALID_CLIENT ? ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->ready : gPlayers[i].ready;
-
-		if ((IS_VALID_CLIENT ? ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->guid : gPlayers[i].guid) == UNASSIGNED_RAKNET_GUID)
+		if (PLAYER_GUID(i) == UNASSIGNED_RAKNET_GUID) {
 			continue;
+		} else if (prev_ready[i] != PLAYER_READY(i)) {
+			prev_ready[i] = PLAYER_READY(i);
+			fTeamPanelDirty = TRUE;
+		}
 
+		// Display player name
 		SetFontForeground(FONT_YELLOW);
-		DrawStringCentered((IS_VALID_CLIENT ? ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->name.C_String() : gPlayers[i].name.C_String()), x, MP_TEXT_Y + line * (Y_SIZE + Y_OFFSET), MP_BTN_PLAYER_WIDTH, Y_SIZE, MAP_SCREEN_FONT);
-		SetFontForeground((IS_VALID_CLIENT ? ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->ready : gPlayers[i].ready) ? FONT_GREEN : FONT_RED);
-		DrawStringCentered((IS_VALID_CLIENT ? ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->ready : gPlayers[i].ready) ? "READY" : "NOT READY", x + MP_BTN_PLAYER_WIDTH + 6, MP_TEXT_Y + line * (Y_SIZE + Y_OFFSET), MP_BTN_READY_WIDTH, Y_SIZE, MAP_SCREEN_FONT);
+		DrawStringCentered(PLAYER_NAME(i), x, MP_TEXT_Y + line * (Y_SIZE + Y_OFFSET),
+			MP_BTN_PLAYER_WIDTH, Y_SIZE, MAP_SCREEN_FONT);
+
+		// Display ready status
+		SetFontForeground(PLAYER_READY(i) ? FONT_GREEN : FONT_RED);
+		DrawStringCentered(PLAYER_READY(i) ? "YES" : "NO",
+			x + MP_BTN_PLAYER_WIDTH + 6, MP_TEXT_Y + line * (Y_SIZE + Y_OFFSET),
+			MP_BTN_READY_WIDTH, Y_SIZE, MAP_SCREEN_FONT);
 
 		line++;
 	}
@@ -1437,7 +1444,7 @@ ScreenID MapScreenHandle(void)
 	INT32 iCounter = 0;
 	static const SGPSector startSector(gamepolicy(start_sector));
 
-	if (gStarted)
+	if (gStarted) // Trigger time compression for clients
 		RequestIncreaseInTimeCompression();
 
 	//DO NOT MOVE THIS FUNCTION CALL!!!
@@ -1722,18 +1729,12 @@ ScreenID MapScreenHandle(void)
 			if (!(IS_CLIENT)) // Create new objects for server only - they are supposed to be replicated
 				HireRandomMercs(2); // FIXME: For debugging purposes only - to be removed
 
-		if ((IS_CLIENT) && (!gConnected)) { // If we are client - send connection request to the server
+		if ((IS_CLIENT) && (!(gNetworkOptions.connected))) { // If we are client - send connection request to the server
 			struct USER_PACKET_CONNECT p;
 			p.id = ID_USER_PACKET_CONNECT;
-			p.ready = gReady;
+			p.ready = MPReadyButtonValue;
 			strcpy(p.name, gNetworkOptions.name.c_str());
 			gNetworkOptions.peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-		}
-
-		if (!gNetworkCreated) {
-			CreateThread(NULL, 0, IS_CLIENT ? client_packet : server_packet, NULL, 0, NULL);
-
-			gNetworkCreated = TRUE;
 		}
 
 		// Handle Interface
@@ -3119,6 +3120,7 @@ static void GetMapKeyboardInput()
 		{
 			if (InputEvent.usParam == KEY_RETURN) {
 				ST::string str = GetStringFromField(0);
+				if (str.empty()) return;
 
 				if (!(IS_CLIENT)) // If we are server show it for ourselves
 					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gNetworkOptions.name + "> " + str);
@@ -6453,21 +6455,21 @@ void MPReadyButtonCallback(GUI_BUTTON* btn, INT32 reason)
 		btn->uiFlags |= (BUTTON_CLICKED_ON);
 	} else if (reason & MSYS_CALLBACK_REASON_LBUTTON_UP) {
 		if (iIndex == 1) {
-			gReady = !gReady;
+			MPReadyButtonValue = !MPReadyButtonValue;
 
 			if (IS_VALID_CLIENT) { // We are client - sending ready status message to the server
 				struct USER_PACKET_READY p;
 				p.id = ID_USER_PACKET_READY;
-				p.ready = gReady;
+				p.ready = MPReadyButtonValue;
 				gNetworkOptions.peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 			} else if (!(IS_CLIENT)) { // We are server
 				struct USER_PACKET_MESSAGE up_broadcast;
 				char str[256];
 
-				gPlayers[0].ready = gReady;
+				gPlayers[0].ready = MPReadyButtonValue;
 
 				// Broadcasting that the server (name) is ready (or not ready)
-				sprintf(str, "%s is %s.", gNetworkOptions.name.c_str(), gReady ? "ready" : "not ready");
+				sprintf(str, "%s is %s.", gNetworkOptions.name.c_str(), MPReadyButtonValue ? "ready" : "not ready");
 				up_broadcast.id = ID_USER_PACKET_MESSAGE;
 				strcpy(up_broadcast.message, str);
 				gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);

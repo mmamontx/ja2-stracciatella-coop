@@ -1200,17 +1200,19 @@ ScreenID UIHandleEndTurn(UI_EVENT* pUIEvent)
 		struct USER_PACKET_MESSAGE up_broadcast;
 		char str[256];
 
-		UINT8 NumFinished = 0;
+		UINT8 finished = 0;
 		FOR_EACH_PLAYER(i)
 			if (gPlayers[i].endturn)
-				NumFinished++;
+				finished++;
+
+		UINT8 n = NumberOfPlayers();
 
 		if (!(gPlayers[0].endturn)) {
 			gPlayers[0].endturn = true;
-			NumFinished++;
+			finished++;
 
 			// Broadcasting to the clients
-			sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[0].name.C_String(), NumFinished, gNumConnected);
+			sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[0].name.C_String(), finished, n);
 			up_broadcast.id = ID_USER_PACKET_MESSAGE;
 			strcpy(up_broadcast.message, str);
 			gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
@@ -1219,7 +1221,7 @@ ScreenID UIHandleEndTurn(UI_EVENT* pUIEvent)
 		}
 
 		// TODO: In the interrupt mode check only the players, whose mercs have received the interrupt
-		if (NumFinished < gNumConnected)
+		if (finished < n)
 			return GAME_SCREEN;
 
 		FOR_EACH_PLAYER(i)

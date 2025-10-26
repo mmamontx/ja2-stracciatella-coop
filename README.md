@@ -45,6 +45,7 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
         - The hang on thread suspending in the networking logic.
         - Clock cursor at the end of the battle (when all the enemies in the sector are killed) restrains the client from performing any action.
 - Regular priority:
+    - Disable AI for the clients.
     - Block the interface of clients during the enemies turn.
     - Implement the following RPC actions from the client:
         - Opening doors.
@@ -66,6 +67,7 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
         - Merging items (should work - verify).
         - Shopping.
         - Etc.
+    - Replicate squads.
     - Let players create squads, but first ensure that they aren't already used by others.
     - Verify repetitive starts and connections/disconnections within a single run - if we started the game as the server, then exited to the main menu and attempted to join as a client (or vice versa).
     - Handle connections/disconnections after the game gets started (after the first time compression button click).

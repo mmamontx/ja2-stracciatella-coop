@@ -547,6 +547,7 @@ static BOOLEAN HandleAtNewGridNo(SOLDIERTYPE* pSoldier, BOOLEAN* pfKeepMoving);
 static void HandleCreatureTenseQuote(void);
 
 
+// TODO: Disable AI for the clients
 void ExecuteOverhead(void)
 {
 	BOOLEAN fKeepMoving;

@@ -30,8 +30,12 @@ using namespace RakNet;
 
 #define KEY_RETURN 13
 
-#define IS_CLIENT       (gGameOptions.fNetwork)
-#define IS_VALID_CLIENT ((gGameOptions.fNetwork) && (gConnected) && (gReplicaList.Size() != 0))
+#define IS_SERVER         (gGameOptions.fNetwork == 0)
+#define IS_CLIENT         (gGameOptions.fNetwork != 0)
+#define IS_VALID_CLIENT   (IS_CLIENT && (gNetworkOptions.connected) && \
+                           (gReplicaList.Size() != 0))
+#define IS_INVALID_CLIENT (IS_CLIENT && ((!(gNetworkOptions.connected)) || \
+                            (gReplicaList.Size() == 0)))
 
 #define RPC_READY ((gRPC_Events.empty() == FALSE) && gRPC_Enable)
 
@@ -41,11 +45,26 @@ using namespace RakNet;
 
 #define REPLICA_PLAYER_INDEX TOTAL_SOLDIERS
 
+// For the host return local values from the original objects that are
+// replicated to the clients.
+// For the valid clients return replicated values.
+// For the invalid clients return local values, which are just garbage.
+#define PLAYER_READY(i) (IS_VALID_CLIENT ? \
+    ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->ready : \
+    gPlayers[i].ready)
+#define PLAYER_NAME(i) (IS_VALID_CLIENT ? \
+    ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->name.C_String() : \
+    gPlayers[i].name.C_String())
+#define PLAYER_GUID(i) (IS_VALID_CLIENT ? \
+    ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->guid \
+    : gPlayers[i].guid)
+
 struct NETWORK_OPTIONS {
 	ST::string name;
 	ST::string ip;
 	UINT16 port;
 	RakPeerInterface *peer;
+	BOOLEAN connected;
 };
 
 struct USER_PACKET_CONNECT {
@@ -144,11 +163,7 @@ struct PLAYER : public Replica3 {
 
 	virtual RM3SerializationResult Serialize(RakNet::SerializeParameters* serializeParameters) {
 		serializeParameters->outputBitstream[0].Write(guid);
-
-		//rname = RakString(name);
-		//serializeParameters->outputBitstream[0].Write(rname);
 		serializeParameters->outputBitstream[0].Write(name);
-
 		serializeParameters->outputBitstream[0].Write(ready);
 		serializeParameters->outputBitstream[0].Write(endturn);
 
@@ -157,11 +172,7 @@ struct PLAYER : public Replica3 {
 
 	virtual void Deserialize(RakNet::DeserializeParameters* deserializeParameters) {
 		deserializeParameters->serializationBitstream[0].Read(guid);
-
-		//deserializeParameters->serializationBitstream[0].Read(rname);
-		//strcpy(name, rname.C_String());
 		deserializeParameters->serializationBitstream[0].Read(name);
-
 		deserializeParameters->serializationBitstream[0].Read(ready);
 		deserializeParameters->serializationBitstream[0].Read(endturn);
 	}
@@ -191,15 +202,15 @@ struct PLAYER : public Replica3 {
 	}
 
 	virtual RM3ConstructionState QueryConstruction(RakNet::Connection_RM3* destinationConnection, ReplicaManager3* replicaManager3) {
-		return QueryConstruction_ServerConstruction(destinationConnection, gGameOptions.fNetwork != TRUE);
+		return QueryConstruction_ServerConstruction(destinationConnection, IS_SERVER);
 	}
 
 	virtual bool QueryRemoteConstruction(RakNet::Connection_RM3* sourceConnection) {
-		return QueryRemoteConstruction_ServerConstruction(sourceConnection, gGameOptions.fNetwork != TRUE);
+		return QueryRemoteConstruction_ServerConstruction(sourceConnection, IS_SERVER);
 	}
 
 	virtual RM3QuerySerializationResult QuerySerialization(RakNet::Connection_RM3* destinationConnection) {
-		return QuerySerialization_ServerSerializable(destinationConnection, gGameOptions.fNetwork != TRUE);
+		return QuerySerialization_ServerSerializable(destinationConnection, IS_SERVER);
 	}
 
 	virtual RM3ActionOnPopConnection QueryActionOnPopConnection(RakNet::Connection_RM3* droppedConnection) const {
@@ -256,16 +267,13 @@ class ReplicaManager3Sample : public ReplicaManager3
 
 
 // Networking
-extern BOOLEAN gConnected;
-extern BOOLEAN gNetworkCreated;
 extern NETWORK_OPTIONS gNetworkOptions;
 extern NetworkIDManager gNetworkIdManager;
-extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
-extern UINT8 gNumConnected;
 
 // Replication
 extern DataStructures::List<Replica3*> gReplicaList;
 extern ReplicaManager3Sample gReplicaManager;
+extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 
 // RPCs
 extern BOOLEAN gRPC_Enable;
@@ -279,7 +287,7 @@ extern std::list<RPC_DATA> gRPC_Events;
 // Etc.
 extern HANDLE gMainThread;
 extern BOOLEAN gStarted;
-extern BOOLEAN gReady;
+extern BOOLEAN MPReadyButtonValue;
 extern BOOLEAN gEnemyEnabled;
 
 
@@ -306,5 +314,6 @@ void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet
 void HireRandomMercs(unsigned int n);
 void UpdateTeamPanel();
 INT8 PlayerIndex(RakNetGUID guid);
+UINT8 NumberOfPlayers();
 
 #endif

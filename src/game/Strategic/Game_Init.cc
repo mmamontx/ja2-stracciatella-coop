@@ -271,6 +271,8 @@ void InitNewGame()
 
 		if (IS_CLIENT) {
 			gEnemyEnabled = FALSE; // Disabling creating enemies for the client (he receives the 'replicants')
+		} else {
+			gEnemyEnabled = TRUE;
 		}
 		gNetworkOptions.peer = RakPeerInterface::GetInstance();
 
@@ -289,9 +291,17 @@ void InitNewGame()
 		gRPC.RegisterSlot("SMInvClickCallbackPrimaryRPC", SMInvClickCallbackPrimaryRPC, 0);
 		gRPC.RegisterSlot("UIHandleSoldierStanceChangeRPC", UIHandleSoldierStanceChangeRPC, 0);
 
-		if (!(IS_CLIENT))
+		// Init gPlayers
+		for (int i = 0; i < MAX_NUM_PLAYERS; i++) {
+			gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;
+			gPlayers[i].name = "";
+			gPlayers[i].ready = FALSE;
+			gPlayers[i].endturn = FALSE;
+		}
+
+		if (IS_SERVER)
 		{
-			ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, "We are server.");
+			//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, "We are server.");
 
 			CreateThread(NULL, 0, replicamgr, NULL, 0, NULL);
 
@@ -302,26 +312,31 @@ void InitNewGame()
 
 			gPlayers[0].guid = gNetworkOptions.peer->GetMyGUID();
 			gPlayers[0].name = gNetworkOptions.name.c_str();
-			gPlayers[0].ready = gReady;
-			gPlayers[0].endturn = false;
-
-			for (int i = 1; i < MAX_NUM_PLAYERS; i++)
-				gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;
+			gPlayers[0].ready = MPReadyButtonValue;
+			gPlayers[0].endturn = FALSE;
 
 			for (int i = 0; i < TOTAL_SOLDIERS; i++)
 				gReplicaManager.Reference(&(Menptr[i]));
 
 			for (int i = 0; i < MAX_NUM_PLAYERS; i++)
 				gReplicaManager.Reference(&(gPlayers[i]));
+
+			gNetworkOptions.connected = TRUE; // Always TRUE for server
+
+			CreateThread(NULL, 0, server_packet, NULL, 0, NULL);
 		}
 		else
 		{
-			ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, "We are client.");
+			//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, "We are client.");
 
 			gNetworkOptions.peer->Startup(1, &SocketDescriptor(), 1);
 			gNetworkOptions.peer->AttachPlugin(&gReplicaManager);
 			gReplicaManager.SetNetworkIDManager(&gNetworkIdManager);
 			gNetworkOptions.peer->Connect(gNetworkOptions.ip.c_str(), gNetworkOptions.port, 0, 0);
+
+			gNetworkOptions.connected = FALSE;
+
+			CreateThread(NULL, 0, client_packet, NULL, 0, NULL);
 		}
 	}
 	else if (gubScreenCount == 1)
