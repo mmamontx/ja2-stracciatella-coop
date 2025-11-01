@@ -29,6 +29,7 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
 ## Backlog
 
 - Bugs (by default it is implied that it happens on the side of the client):
+    - On the side of the server (!), when the client moves a merc the cursor has a visual reaction as well (the square turns red or orange).
     - Stealth mode is not always synced and sometimes it also can't be disabled.
     - In the battle mode the mercs are centered in the end of their movement. This should be prevented for the mercs controlled by other players.
     - When Fatima is given the letter and starts leading to Miguel, her clone can be observed at her original position.
@@ -37,13 +38,6 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
     - The rectangle move cursor when it is hovered on the selected merc is shown on top instead of behind the soldier.
     - Some the original squares where mercs occur become unavailable for moving to (for the client).
     - Still, animation surfaces are not loaded for the client (it doesn't cause any crash).
-    - Non deterministic:
-        - Sometimes (often!) a just connected client doesn't see himself in the player list until he clicks 'ready'.
-        - Sometimes 'face' ptr gets a bad value and causes a crash on dereference.
-        - Same issue with 'pNode->pStructureData->pDBStructureRef' (occurred after the client has killed an enemy soldier).
-        - Sometimes there are messages evidencing the fact that AI logic is being executed on the client side - while it doesn't seem to affect what is visible on both sides (except for the messages) since it probably messes with the variables it may cause undefined behavior and should be prevented.
-        - The hang on thread suspending in the networking logic.
-        - Clock cursor at the end of the battle (when all the enemies in the sector are killed) restrains the client from performing any action.
 - Regular priority:
     - Disable AI for the clients.
     - Block the interface of clients during the enemies turn.
@@ -76,7 +70,6 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
     - Adapt for all resolutions (including the widescreens).
     - Verify correctness of the IP address stored in the corresponding field of the game init option screen - and don't let the player to the strategic map screen until it is fixed.
 - Infrastructure:
-    - Remove RakNet from source code and use it as a binary.
     - Add binary release(s).
 - For fun (remove it from the release or make it optional):
     - It seems that originally developers considered enabling jumps over the windows and left the corresponding code in place. Try to extend climbing with this ability.
@@ -86,7 +79,7 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
 
 1. Get the original JA2 and install it. I would suggest to also install the latest patch, however probably this is not required (it is only the data files that JA2 Stracciatella uses - not sure if they are affected by the patches).
 2. Get the custom images and put them into the original game directory (see the details below).
-3. So far there are no releases, so one has to build it on his own to generate the binaries. Clone this repo and build it according to the original JA2S COMPILATION.md file (I use Visual Studio).
+3. So far there are no releases, so one has to build it on his own to generate the binaries. Clone this repo and build it according to the original JA2S COMPILATION.md file (I use Visual Studio) - the only difference is that you would also need to place the RakNet dll and lib files along with the executable and point the lib file to the linker.
 4. First run the original JA2 Stacciatella Laucher to setup the directories pointing to the original game (it somehow creates a local config or setups environment that would also be automatically used by "our" JA2S).
 5. Now you can run your binary directly. I would suggest using windowed mode so you can observe and handle the server and the client at the same time.
 
@@ -101,14 +94,13 @@ Things worth mentioning and "dark knowledge":
 
 Changes compared to the vanilla game (from the player perspective):
 
-- Starting screen is the strategic map (lobby) instead of the laptop.
 - The intro videos at the beginning of the game are disabled.
-- Helicopter drop-off animation is disabled (see the FIXME in Merc_Entering.cc) - it accelerates debugging, and it's overall questionable whether for multiplayer it makes sense to keep it enabled.
-- The additional table on the strategic map (re-consider later).
+- Starting screen is the strategic map (lobby) instead of the laptop.
+- There is an additional table on the strategic map screen (in the left below the team panel) with the list of connected players and their readiness status, and also with 'Ready' button. The message box below is now also used to show chat messages sent using the text field in the bottom.
+- The helicopter drop-off animation at Omerta is disabled.
 
 For debugging purposes:
 
 - There is a custom function - HireRandomMercs() - that is automatically called in the beginning (accelerates debugging so one doesn't have to always visit AIM). This code is only executed for the server, the client receives replicated mercs.
-- The enemies are disabled (see gEnemyEnabled var) - until implementation of the battle/turn-based mode is started.
 
 Contact: mmamontx@gmail.com
