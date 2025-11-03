@@ -1725,9 +1725,11 @@ ScreenID MapScreenHandle(void)
 	// don't process any input until we've been through here once
 	if (!gfFirstMapscreenFrame)
 	{
+#ifdef JA2S_MP_DEBUG
 		if (!gfAtLeastOneMercWasHired)
 			if (!(IS_CLIENT)) // Create new objects for server only - they are supposed to be replicated
 				HireRandomMercs(2); // FIXME: For debugging purposes only - to be removed
+#endif
 
 		if ((IS_CLIENT) && (!(gNetworkOptions.connected))) { // If we are client - send connection request to the server
 			struct USER_PACKET_CONNECT p;

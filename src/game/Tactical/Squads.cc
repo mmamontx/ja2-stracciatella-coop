@@ -241,11 +241,24 @@ void AddCharacterToAnySquad(SOLDIERTYPE* const pCharacter)
 	{
 		if (!SquadIsEmpty(bCounter))
 		{
-			// FIXME: A temporary workaround for MP arranging 1 merc per squad
-			/*if (AddCharacterToSquad(pCharacter, bCounter))
+			// Don't mix mercs of different players in a same squad
+			BOOLEAN occupied = FALSE;
+			FOR_EACH_IN_SQUAD(i, bCounter)
 			{
-				return;
-			}*/
+				SOLDIERTYPE& s = **i;
+				if (s.ubPlayer != pCharacter->ubPlayer)
+				{
+					occupied = TRUE;
+					break;
+				}
+			}
+			if (!occupied)
+			{
+				if (AddCharacterToSquad(pCharacter, bCounter))
+				{
+					return;
+				}
+			}
 		}
 		else
 		{

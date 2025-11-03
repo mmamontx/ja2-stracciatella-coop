@@ -1,8 +1,10 @@
 #include "Animation_Control.h"
 #include "Assignments.h"
 #include "Faces.h"
+#include "Finances.h"
 #include "Game_Clock.h"
 #include "GameScreen.h"
+#include "History.h"
 #include "Interface_Items.h"
 #include "Interface_Panels.h"
 #include "Items.h"
@@ -34,6 +36,7 @@ ReplicaManager3Sample gReplicaManager;
 struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 
 // RPCs
+// FIXME: Use a common entity for all the sorts of RPCs below
 BOOLEAN gRPC_Enable = TRUE; // Enables remote events so that they don't overlap with local events
 BOOLEAN gRPC_Squad = FALSE;
 OBJECTTYPE* gpItemPointerRPC = NULL; // If RPCs can be executed in parallel (to be checked) a single shared variable would cause conflicts
@@ -394,10 +397,18 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 
 				gReplicaManager.GetReferencedReplicaList(gReplicaList);
 
-				FOR_EACH_IN_TEAM(s, OUR_TEAM) { // FIXME: Below are actions that were supposed to be done when hiring mercs through AIM - this should only go in pair with HireRandomMercs()
-					gfAtLeastOneMercWasHired = true; // Ugly, but should handle the case when the server doesn't have any characters yet on client connection
-					AddStrategicEvent(EVENT_DELAYED_HIRING_OF_MERC, (STARTING_TIME + FIRST_ARRIVAL_DELAY) / NUM_SEC_IN_MIN, s->ubID); // Place to the helicopter
+#ifdef JA2S_MP_DEBUG
+
+				FOR_EACH_IN_TEAM(s, OUR_TEAM)
+				{
+					// Create a callback for placing the merc(s) to the helicopter
+					AddStrategicEvent(EVENT_DELAYED_HIRING_OF_MERC,
+						(STARTING_TIME + FIRST_ARRIVAL_DELAY) / NUM_SEC_IN_MIN, s->ubID);
+					// Ugly, but should handle the case when the server doesn't have any
+					// characters yet on client connection.
+					gfAtLeastOneMercWasHired = true;
 				}
+#endif
 
 				// Update merc list in the left panel to show replicated characters
 				UpdateTeamPanel();
@@ -563,6 +574,77 @@ void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 	HandleItemPointerClick(data.usMapPos);
 
 	gRPC_Inv = NULL;
+}
+
+void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	INT8 const ret = HireMerc(data.h);
+	if (ret == MERC_HIRE_OK)
+	{
+		// Set the type of contract the merc is on
+		SOLDIERTYPE* const s = FindSoldierByProfileIDOnPlayerTeam(data.h.ubProfileID);
+		if (!s) return;
+		s->bTypeOfLastContract = data.contract_type;
+
+		MERCPROFILESTRUCT& p = GetProfile(data.h.ubProfileID);
+		if (data.fBuyEquipment) p.ubMiscFlags |= PROFILE_MISC_FLAG_ALREADY_USED_ITEMS;
+
+		// Add an entry in the finacial page for the hiring of the merc
+		AddTransactionToPlayersBook(HIRED_MERC, data.h.ubProfileID,
+			GetWorldTotalMin(), -(data.iContractAmount) +
+			p.sMedicalDepositAmount);
+
+		if (p.bMedicalDeposit)
+		{ // Add an entry in the finacial page for the medical deposit
+			AddTransactionToPlayersBook(MEDICAL_DEPOSIT, data.h.ubProfileID,
+				GetWorldTotalMin(), -p.sMedicalDepositAmount);
+		}
+
+		// Add an entry in the history page for the hiring of the merc
+		AddHistoryToPlayersLog(HISTORY_HIRED_MERC_FROM_AIM, data.h.ubProfileID,
+			GetWorldTotalMin(), SGPSector(-1, -1));
+
+		INT8 i = PlayerIndex(packet->guid);
+		s->ubPlayer = i;
+
+		// Broadcast
+		struct USER_PACKET_MESSAGE up_broadcast;
+		char str[256];
+		sprintf(str, "%s hired %s.", gPlayers[i].name.C_String(), s->name.c_str());
+
+		up_broadcast.id = ID_USER_PACKET_MESSAGE;
+		strcpy(up_broadcast.message, str);
+		gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
+			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+
+		// FIXME: The line below doesn't (always?) show the message in the host chat
+		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str);
+	}
+	else if (ret == MERC_HIRE_OVER_20_MERCS_HIRED)
+	{
+		// Display a warning saying you can't hire more then 20 mercs
+		// TODO: Display to the client
+		//DoLapTopMessageBox(MSG_BOX_LAPTOP_DEFAULT,
+		// AimPopUpText[AIM_MEMBER_ALREADY_HAVE_20_MERCS], LAPTOP_SCREEN,
+		// MSG_BOX_FLAG_OK, NULL);
+	}
+
+	UpdateTeamPanel();
+}
+
+void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	AddStrategicEvent(data.Kind, data.uiMinStamp, data.uiParam);
 }
 
 void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)

@@ -802,6 +802,8 @@ struct SOLDIERTYPE : public Replica3
 		fComplainedThatTired = 0;
 		memset(sLastTwoLocations, 0, sizeof(sLastTwoLocations)); // Nullifying ints
 		uiTimeSinceLastBleedGrunt = 0;
+
+		ubPlayer = 0;
 	}
 
 	SOLDIERTYPE& SOLDIERTYPE::operator =(const SOLDIERTYPE& other)
@@ -1287,6 +1289,8 @@ struct SOLDIERTYPE : public Replica3
 		for (int i = 0; i < 2; i++)
 			sLastTwoLocations[i] = other.sLastTwoLocations[i];
 		uiTimeSinceLastBleedGrunt = other.uiTimeSinceLastBleedGrunt;
+
+		ubPlayer = other.ubPlayer;
 
 		return *this;
 	}
@@ -1829,6 +1833,8 @@ struct SOLDIERTYPE : public Replica3
 		serializeParameters->outputBitstream[0].Write(sLastTwoLocations);
 		serializeParameters->outputBitstream[0].Write(uiTimeSinceLastBleedGrunt);
 
+		serializeParameters->outputBitstream[0].Write(ubPlayer);
+
 		return RM3SR_BROADCAST_IDENTICALLY;
 	}
 
@@ -2319,6 +2325,8 @@ struct SOLDIERTYPE : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(fComplainedThatTired);
 		deserializeParameters->serializationBitstream[0].Read(sLastTwoLocations);
 		deserializeParameters->serializationBitstream[0].Read(uiTimeSinceLastBleedGrunt);
+
+		deserializeParameters->serializationBitstream[0].Read(ubPlayer);
 
 		PostDeserialize();
 	}
@@ -2982,6 +2990,8 @@ struct SOLDIERTYPE : public Replica3
 	BOOLEAN fComplainedThatTired;
 	INT16 sLastTwoLocations[2];
 	INT32 uiTimeSinceLastBleedGrunt;
+
+	INT8 ubPlayer;
 };
 
 #define BASE_FOR_EACH_SOLDIER_INV_SLOT(type, iter, soldier) \

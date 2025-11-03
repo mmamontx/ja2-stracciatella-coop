@@ -1,6 +1,7 @@
 #ifndef COOP_H
 #define COOP_H
 
+#include "Game_Event_Hook.h"
 #include "Handle_UI.h"
 #define GROUP GROUP_JA2
 #include "NetworkIDManager.h"
@@ -9,10 +10,14 @@
 #include "ReplicaManager3.h"
 #undef GROUP
 #include "MessageIdentifiers.h"
+#include "Merc_Hiring.h"
 #include "MouseSystem.h"
 #include "Soldier_Control.h"
 
 using namespace RakNet;
+
+// Comment out for releases
+//#define JA2S_MP_DEBUG
 
 #define ID_USER_PACKET_CONNECT          ID_USER_PACKET_ENUM
 #define ID_USER_PACKET_MESSAGE          (ID_USER_PACKET_ENUM + 1)
@@ -227,11 +232,20 @@ struct RPC_DATA {
 	INT8 bNewStance; // For changing the stance
 	INT8 bShownAimTime; // For aiming and shooting
 	INT8 bSquadValue; // For changing the squad
+	// For hiring mercs
+	MERC_HIRE_STRUCT h;
+	INT8 contract_type;
+	BOOLEAN fBuyEquipment;
+	INT32 iContractAmount;
 	// For operating with items
 	UINT8 ubHandPos;
 	UINT8 ubCtrl;
 	UINT8 ubShift;
 	INT16 sCurrentActionPoints;
+	// For strategic events
+	StrategicEventKind Kind;
+	UINT32 uiMinStamp;
+	UINT32 uiParam;
 };
 
 class SampleConnection : public Connection_RM3
@@ -301,12 +315,14 @@ unsigned char SGetPacketIdentifier(Packet* p);
 void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 
 void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 

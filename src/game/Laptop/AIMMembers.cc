@@ -32,6 +32,7 @@
 #include "Render_Dirty.h"
 #include "Soldier_Add.h"
 #include "Merc_Hiring.h"
+#include "Message.h"
 #include "Strategic.h"
 #include "AIMFacialIndex.h"
 #include "LaptopSave.h"
@@ -1225,6 +1226,25 @@ static INT8 AimMemberHireMerc(void)
 	}
 	h.iTotalContractLength = contract_length;
 
+	if (IS_CLIENT) // Tell the host to hire the merc for us
+	{
+		// FIXME: Handle the case when HireMerc() returns FALSE
+		RPC_DATA data;
+		RakNet::BitStream bs;
+
+		data.h = h;
+		data.contract_type = contract_type;
+		data.fBuyEquipment = gfBuyEquipment;
+		data.iContractAmount = giContractAmount;
+
+		bs.WriteCompressed(data);
+
+		gRPC.Signal("HireMercRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+			gNetworkOptions.peer->GetSystemAddressFromIndex(0), false, false);
+
+		return TRUE;
+	}
+
 	INT8 const ret = HireMerc(h);
 	if (ret == MERC_HIRE_OK)
 	{
@@ -1246,6 +1266,21 @@ static INT8 AimMemberHireMerc(void)
 
 		// Add an entry in the history page for the hiring of the merc
 		AddHistoryToPlayersLog(HISTORY_HIRED_MERC_FROM_AIM, pid, GetWorldTotalMin(), SGPSector(-1, -1));
+
+		// Broadcast
+		struct USER_PACKET_MESSAGE up_broadcast;
+		char str[256];
+
+		up_broadcast.id = ID_USER_PACKET_MESSAGE;
+		sprintf(str, "%s hired %s.", gNetworkOptions.name.c_str(), s->name.c_str());
+		strcpy(up_broadcast.message, str);
+
+		gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
+			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+
+		// FIXME: The line below doesn't (always?) show the message in the host chat
+		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str);
+
 		return TRUE;
 	}
 	else if (ret == MERC_HIRE_OVER_20_MERCS_HIRED)

@@ -38,7 +38,9 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
     - The rectangle move cursor when it is hovered on the selected merc is shown on top instead of behind the soldier.
     - Some the original squares where mercs occur become unavailable for moving to (for the client).
     - Still, animation surfaces are not loaded for the client (it doesn't cause any crash).
+    - Sometimes (approximately in 1 out of 10 times) gPlayers is not replicated to the clients.
 - Regular priority:
+    - Sync the initial assignment statuses of AIM mercs to the clients.
     - Disable AI for the clients.
     - Block the interface of clients during the enemies turn.
     - Implement the following RPC actions from the client:
@@ -50,8 +52,11 @@ Basically, JA2 Stracciatella multiplayer is the same thing as the singleplayer, 
     - Replicate ground items - from the server to client and from the client to server (replicate LEVELNODEs with pItemPool?).
     - Multi-selection actions. When selecting, filter out mercs owned by other players.
     - Propagate time (including time compressions) from the server to clients.
-    - Hiring by clients.
 - Low priority:
+    - Handle hire failures for clients.
+    - The hiring chat notification is not (always?) shown for the host.
+    - Change funds of the clients on hiring.
+    - Share the initial funds equally among the players.
     - Implement the following RPC actions from the client:
         - Throwing grenades.
         - Placing charges.

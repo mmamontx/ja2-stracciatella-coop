@@ -495,10 +495,20 @@ void HandleHeliDrop( )
 
 			// Select our first guy
 			//SelectSoldier(gHeliSeats[0], SELSOLDIER_FORCE_RESELECT);
-			INT8 i = PlayerIndex(gNetworkOptions.peer->GetMyGUID());
-			if (i != -1) {
-				// TODO: Properly find the first seat owned by the player
-				SelectSoldier(gHeliSeats[i], SELSOLDIER_FORCE_RESELECT);
+			INT8 ubPlayer = PlayerIndex(gNetworkOptions.peer->GetMyGUID());
+			if (ubPlayer != -1)
+			{
+				for (int i = 0; i < MAX_MERC_IN_HELI; i++)
+				{
+					if (gHeliSeats[i] != NULL)
+					{
+						if (gHeliSeats[i]->ubPlayer == ubPlayer)
+						{
+							SelectSoldier(gHeliSeats[i], SELSOLDIER_FORCE_RESELECT);
+							break;
+						}
+					}
+				}
 			}
 
 			//guiCurrentEvent = LU_ENDUILOCK;
