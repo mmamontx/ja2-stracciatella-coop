@@ -356,7 +356,8 @@ namespace {
 cache_key_t const guiSleepIcon { INTERFACEDIR "/sleepicon.sti" };
 cache_key_t const guiCHARINFO { INTERFACEDIR "/charinfo.sti" };
 //cache_key_t const guiCHARLIST { INTERFACEDIR "/newgoldpiece3.sti" };
-cache_key_t const guiCHARLIST{ INTERFACEDIR "/newgoldpiece3mp.sti" }; // A custom panel that includes the list of players
+// A custom panel that includes the list of players
+cache_key_t const guiCHARLIST{ INTERFACEDIR "/newgoldpiece3coop.sti" };
 cache_key_t const guiMAPINV { INTERFACEDIR "/mapinv.sti" };
 cache_key_t const guiULICONS { INTERFACEDIR "/top_left_corner_icons.sti" };
 cache_key_t const guiNewMailIcons{ INTERFACEDIR "/newemail.sti" };

@@ -12,7 +12,7 @@ At the moment I am developing this alone. To get in touch with me you can use th
 
 2. [Download JA2-Stracciatella](http://ja2-stracciatella.github.io/download/) or [compile](COMPILATION.md) it from the cloned git repository. Follow instructions to point JA2S to the directory where the original game was installed during step 1.
 
-3. Download and run the latest release of this project.
+3. Download the latest release of this project. Move sti files to Data/Interface subdirectory of the original game. Run ja2.exe.
 
 ## Development
 
@@ -27,4 +27,4 @@ All the original JA2S [ideas](https://github.com/ja2-stracciatella/ja2-stracciat
 
 ## License
 
-All the changes of this particular project are released to the public domain. It uses and ships with [RakNet](https://github.com/facebookarchive/RakNet) (the license can be found under the link). For the rest, please refer to JA2-Stracciatella [license](https://github.com/ja2-stracciatella/ja2-stracciatella?tab=readme-ov-file#license).
+All the changes of this particular project are released to the public domain. It uses and ships with [RakNet](https://github.com/facebookarchive/RakNet) (the license can be found under the link), and a button [image](https://github.com/1dot13/gamedir/blob/master/Data/Interface/MPGOLDPIECEBUTTONS.sti) from 1.13. For the rest, please refer to JA2-Stracciatella [license](https://github.com/ja2-stracciatella/ja2-stracciatella?tab=readme-ov-file#license).
