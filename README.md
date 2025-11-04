@@ -27,4 +27,4 @@ All the original JA2S [ideas](https://github.com/ja2-stracciatella/ja2-stracciat
 
 ## License
 
-All the changes of this particular project are released to the public domain. For the rest, please refer to JA2-Stracciatella [license](https://github.com/ja2-stracciatella/ja2-stracciatella?tab=readme-ov-file#license).
+All the changes of this particular project are released to the public domain. It uses and ships with [RakNet](https://github.com/facebookarchive/RakNet) (the license can be found under the link). For the rest, please refer to JA2-Stracciatella [license](https://github.com/ja2-stracciatella/ja2-stracciatella?tab=readme-ov-file#license).
