@@ -17,7 +17,7 @@
 using namespace RakNet;
 
 // Comment out for releases
-//#define JA2S_MP_DEBUG
+#define JA2S_MP_DEBUG
 
 #define ID_USER_PACKET_CONNECT          ID_USER_PACKET_ENUM
 #define ID_USER_PACKET_MESSAGE          (ID_USER_PACKET_ENUM + 1)
@@ -39,8 +39,8 @@ using namespace RakNet;
 #define IS_CLIENT         (gGameOptions.fNetwork != 0)
 #define IS_VALID_CLIENT   (IS_CLIENT && (gNetworkOptions.connected) && \
                            (gReplicaList.Size() != 0))
-#define IS_INVALID_CLIENT (IS_CLIENT && ((!(gNetworkOptions.connected)) || \
-                            (gReplicaList.Size() == 0)))
+
+#define CONNECT_TIMEOUT_MS 1000
 
 #define RPC_READY ((gRPC_Events.empty() == FALSE) && gRPC_Enable)
 
@@ -69,7 +69,7 @@ struct NETWORK_OPTIONS {
 	ST::string ip;
 	UINT16 port;
 	RakPeerInterface *peer;
-	BOOLEAN connected;
+	BOOLEAN connected; // FIXME: Remove this variable and obtain the status using GetConnectionState()?
 };
 
 struct USER_PACKET_CONNECT {

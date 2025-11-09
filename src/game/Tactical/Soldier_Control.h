@@ -472,7 +472,7 @@ struct SOLDIERTYPE : public Replica3
 		bLifeMax = 0;
 
 		face = NULL;
-		face_initialized_once = FALSE;
+		face_initialized = FALSE;
 
 		// Nullifying uint pointers
 		memset(pShades, 0, sizeof(pShades));
@@ -2434,9 +2434,9 @@ struct SOLDIERTYPE : public Replica3
 			AnimCache_initialized = TRUE;
 		}
 
-		if ((face == NULL) && bActive && (bTeam == OUR_TEAM) && !face_initialized_once) {
+		if ((face == NULL) && bActive && (bTeam == OUR_TEAM) && !face_initialized) {
 			InitSoldierFace(*this);
-			face_initialized_once = TRUE;
+			face_initialized = TRUE;
 		}
 
 		// The corresponding hVideoObject for the pair of usAnimState and usAnimSurface must be initialized locally, otherwise it would trigger an error in GetSoldierAnimationSurface()
@@ -2633,7 +2633,7 @@ struct SOLDIERTYPE : public Replica3
 	INT8 bLifeMax; // maximum life for this merc
 
 	FACETYPE* face;
-	BOOLEAN face_initialized_once;
+	BOOLEAN face_initialized;
 
 
 	// PALETTE MANAGEMENT STUFF

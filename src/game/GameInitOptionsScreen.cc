@@ -18,6 +18,7 @@
 #include "Music_Control.h"
 #include "ContentMusic.h"
 #include "Options_Screen.h"
+#include "Overhead.h"
 #include "Render_Dirty.h"
 #include "ScreenIDs.h"
 #include "SysUtil.h"
@@ -455,6 +456,91 @@ static void DisplayMessageToUserAboutDeadIsDeadSaveScreen(const ST::string& zStr
 	DoMessageBox(MSG_BOX_BASIC_STYLE, zString, GAME_INIT_OPTIONS_SCREEN, MSG_BOX_FLAG_OK, ReturnCallback, NULL);
 }
 
+static BOOLEAN bNetworkInitialized = FALSE;
+static BOOLEAN bClientThreadCreated = FALSE;
+
+static void NetworkInit()
+{
+	if (bNetworkInitialized) return;
+
+	gNetworkOptions.peer = RakPeerInterface::GetInstance();
+
+	// Register RPC
+	gNetworkOptions.peer->AttachPlugin(&gRPC);
+
+	gRPC.RegisterSlot("HandleEventRPC", HandleEventRPC, 0);
+
+	gRPC.RegisterSlot("AddCharacterToSquadRPC", AddCharacterToSquadRPC, 0);
+	gRPC.RegisterSlot("AddStrategicEventRPC", AddStrategicEventRPC, 0);
+	gRPC.RegisterSlot("BeginSoldierClimbDownRoofRPC", BeginSoldierClimbDownRoofRPC, 0);
+	gRPC.RegisterSlot("BeginSoldierClimbFenceRPC", BeginSoldierClimbFenceRPC, 0);
+	gRPC.RegisterSlot("BeginSoldierClimbUpRoofRPC", BeginSoldierClimbUpRoofRPC, 0);
+	gRPC.RegisterSlot("BtnStealthModeCallbackRPC", BtnStealthModeCallbackRPC, 0);
+	gRPC.RegisterSlot("ChangeWeaponModeRPC", ChangeWeaponModeRPC, 0);
+	gRPC.RegisterSlot("HandleItemPointerClickRPC", HandleItemPointerClickRPC, 0);
+	gRPC.RegisterSlot("HireMercRPC", HireMercRPC, 0);
+	gRPC.RegisterSlot("SMInvClickCallbackPrimaryRPC", SMInvClickCallbackPrimaryRPC, 0);
+	gRPC.RegisterSlot("UIHandleSoldierStanceChangeRPC", UIHandleSoldierStanceChangeRPC, 0);
+
+	// Init gPlayers
+	for (int i = 0; i < MAX_NUM_PLAYERS; i++) {
+		gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;
+		gPlayers[i].name = "";
+		gPlayers[i].ready = FALSE;
+		gPlayers[i].endturn = FALSE;
+	}
+
+	if (IS_SERVER)
+	{
+		CreateThread(NULL, 0, replicamgr, NULL, 0, NULL);
+
+		gNetworkOptions.peer->Startup(MAX_NUM_PLAYERS - 1, &SocketDescriptor(gNetworkOptions.port, 0), 1);
+		gNetworkOptions.peer->AttachPlugin(&gReplicaManager);
+		gReplicaManager.SetNetworkIDManager(&gNetworkIdManager);
+		gNetworkOptions.peer->SetMaximumIncomingConnections(MAX_NUM_PLAYERS - 1);
+
+		gPlayers[0].guid = gNetworkOptions.peer->GetMyGUID();
+		gPlayers[0].name = gNetworkOptions.name.c_str();
+		gPlayers[0].ready = 0;
+		gPlayers[0].endturn = FALSE;
+
+		for (int i = 0; i < TOTAL_SOLDIERS; i++)
+			gReplicaManager.Reference(&(Menptr[i]));
+
+		for (int i = 0; i < MAX_NUM_PLAYERS; i++)
+			gReplicaManager.Reference(&(gPlayers[i]));
+
+		gNetworkOptions.connected = TRUE; // Always TRUE for server
+
+		CreateThread(NULL, 0, server_packet, NULL, 0, NULL);
+	}
+	else
+	{
+		gNetworkOptions.peer->Startup(1, &SocketDescriptor(), 1);
+		gNetworkOptions.peer->AttachPlugin(&gReplicaManager);
+		gReplicaManager.SetNetworkIDManager(&gNetworkIdManager);
+
+		gNetworkOptions.connected = FALSE;
+	}
+
+	bNetworkInitialized = TRUE;
+}
+
+static void ConnectToHost(void)
+{
+	if (gNetworkOptions.connected) return;
+
+	if (!bNetworkInitialized) NetworkInit();
+
+	gNetworkOptions.peer->Connect(gNetworkOptions.ip.c_str(), gNetworkOptions.port, 0, 0);
+
+	if (!(bClientThreadCreated))
+	{
+		CreateThread(NULL, 0, client_packet, NULL, 0, NULL);
+		bClientThreadCreated = TRUE;
+	}
+}
+
 static void HandleGIOScreen(void)
 {
 	if (gubGameOptionScreenHandler != GIO_NOTHING)
@@ -467,6 +553,61 @@ static void HandleGIOScreen(void)
 				break;
 
 			case GIO_EXIT:
+				gGameOptions.fNetwork = GetCurrentNetworkButtonSetting();
+				gNetworkOptions.name = GetStringFromField(0);
+				gNetworkOptions.ip = GetStringFromField(1);
+				gNetworkOptions.port = atoi(GetStringFromField(2).c_str());
+
+				if (!bNetworkInitialized) NetworkInit();
+
+				if (IS_CLIENT)
+				{
+					ConnectToHost();
+
+					// Wait until connection
+					UINT32 t = 0, period = 33;
+					do {
+						Sleep(period);
+						t += period;
+					} while ((!(gNetworkOptions.connected)) && (t < CONNECT_TIMEOUT_MS));
+					if (!(gNetworkOptions.connected))
+					{
+						SLOGI("gNetworkOptions.connected == 0");
+						break; // TODO: Display a message?
+					}
+					SLOGI("guid = {}", gNetworkOptions.peer->GetMyGUID().ToUint32(gNetworkOptions.peer->GetMyGUID()));
+
+					struct USER_PACKET_CONNECT p;
+					p.id = ID_USER_PACKET_CONNECT;
+					p.ready = 0;
+					strcpy(p.name, gNetworkOptions.name.c_str());
+					gNetworkOptions.peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+
+					// Wait until the objects are replicated
+					t = 0;
+					do {
+						Sleep(period);
+						t += period;
+					} while ((gReplicaList.Size() == 0) && (t < CONNECT_TIMEOUT_MS));
+					if (gReplicaList.Size() == 0)
+					{
+						SLOGI("gReplicaList.Size() == 0");
+						break; // TODO: Display a message?
+					}
+
+					// Wait until the player is registered
+					t = 0;
+					do {
+						Sleep(period);
+						t += period;
+					} while ((PlayerIndex(gNetworkOptions.peer->GetMyGUID()) == -1) && (t < CONNECT_TIMEOUT_MS));
+					if (PlayerIndex(gNetworkOptions.peer->GetMyGUID()) == -1)
+					{
+						SLOGI("PlayerIndex() == -1");
+						break; // TODO: Display a message?
+					}
+				}
+
 				//if we are already fading out, get out of here
 				if (gFadeOutDoneCallback != DoneFadeOutForExitGameInitOptionScreen)
 				{
@@ -866,7 +1007,6 @@ static void DoneFadeOutForExitGameInitOptionScreen(void)
 	gGameOptions.fGunNut = GetCurrentGunButtonSetting();
 	gGameOptions.fSciFi = GetCurrentGameStyleButtonSetting();
 	gGameOptions.ubDifficultyLevel = GetCurrentDifficultyButtonSetting() + 1;
-	gGameOptions.fNetwork = GetCurrentNetworkButtonSetting();
 #if 0 // JA2Gold: no more timed turns setting
 	gGameOptions.fTurnTimeLimit = GetCurrentTimedTurnsButtonSetting();
 #endif
@@ -880,13 +1020,6 @@ static void DoneFadeOutForExitGameInitOptionScreen(void)
 	{
 		gubGIOExitScreen = INTRO_SCREEN;
 	}
-
-	ST::string name = GetStringFromField(0);
-	ST::string ip = GetStringFromField(1);
-	ST::string port = GetStringFromField(2);
-	gNetworkOptions.name = name;
-	gNetworkOptions.ip = ip;
-	gNetworkOptions.port = atoi(port.c_str());
 
 	//set the fact that we should do the intro videos
 	SetIntroType(INTRO_BEGINING);

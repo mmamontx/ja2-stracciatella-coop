@@ -1243,8 +1243,6 @@ static void DisplayPlayerList()
 	// This will always trigger the initial drawing.
 	static BOOLEAN prev_ready[MAX_NUM_PLAYERS] = { TRUE };
 
-	if (IS_INVALID_CLIENT) return;
-
 	SetFontDestBuffer(guiSAVEBUFFER);
 
 	SetFont(MAP_SCREEN_FONT);
@@ -1731,14 +1729,6 @@ ScreenID MapScreenHandle(void)
 			if (!(IS_CLIENT)) // Create new objects for server only - they are supposed to be replicated
 				HireRandomMercs(2); // FIXME: For debugging purposes only - to be removed
 #endif
-
-		if ((IS_CLIENT) && (!(gNetworkOptions.connected))) { // If we are client - send connection request to the server
-			struct USER_PACKET_CONNECT p;
-			p.id = ID_USER_PACKET_CONNECT;
-			p.ready = MPReadyButtonValue;
-			strcpy(p.name, gNetworkOptions.name.c_str());
-			gNetworkOptions.peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-		}
 
 		// Handle Interface
 		uiNewScreen = HandleMapUI( );
@@ -6460,7 +6450,7 @@ void MPReadyButtonCallback(GUI_BUTTON* btn, INT32 reason)
 		if (iIndex == 1) {
 			MPReadyButtonValue = !MPReadyButtonValue;
 
-			if (IS_VALID_CLIENT) { // We are client - sending ready status message to the server
+			if (IS_CLIENT) { // We are client - sending ready status message to the server
 				struct USER_PACKET_READY p;
 				p.id = ID_USER_PACKET_READY;
 				p.ready = MPReadyButtonValue;

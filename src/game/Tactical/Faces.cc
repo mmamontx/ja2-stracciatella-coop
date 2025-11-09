@@ -5,6 +5,7 @@
 #include "Dialogue_Control.h"
 #include "Directories.h"
 #include "Drugs_And_Alcohol.h"
+#include "EditScreen.h"
 #include "Font.h"
 #include "Font_Control.h"
 #include "GameInstance.h"
@@ -108,6 +109,7 @@ void InitSoldierFace(SOLDIERTYPE& s)
 FACETYPE& InitFace(const ProfileID id, SOLDIERTYPE* const s, const UINT32 uiInitFlags)
 {
 	if (id == NO_PROFILE) throw std::logic_error("Tried to load face for invalid profile");
+	if (!gfProfileDataLoaded) LoadMercProfiles();
 	MERCPROFILESTRUCT const& p = GetProfile(id);
 
 	FACETYPE& f = GetFreeFace();

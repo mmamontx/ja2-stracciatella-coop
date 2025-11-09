@@ -40,6 +40,7 @@ void ShowEntryPoints(void);
 
 extern BOOLEAN			gfConfirmExitFirst;
 extern BOOLEAN			gfIntendOnEnteringEditor;
+extern BOOLEAN			gfProfileDataLoaded;
 
 void     EditScreenInit(void);
 ScreenID EditScreenHandle(void);

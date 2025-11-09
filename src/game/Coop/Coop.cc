@@ -62,7 +62,10 @@ DWORD WINAPI replicamgr(LPVOID lpParam)
 
 INT8 PlayerIndex(RakNetGUID guid)
 {
+	printf("IS_VALID_CLIENT = %s\n", IS_VALID_CLIENT ? "TRUE" : "FALSE");
+
 	FOR_EACH_PLAYER(i) {
+		SLOGI("PLAYER_GUID({}) = {}", i, (PLAYER_GUID(i)).ToUint32(PLAYER_GUID(i)));
 		if (PLAYER_GUID(i) == guid) {
 			return i;
 		}
@@ -95,6 +98,7 @@ void UpdateTeamPanel()
 void HireRandomMercs(unsigned int n)
 {
 	struct MERC_HIRE_STRUCT h;
+	SOLDIERTYPE* s;
 	int id_random;
 	srand((unsigned)time(NULL));
 
@@ -118,6 +122,9 @@ void HireRandomMercs(unsigned int n)
 		gMercProfiles[id_random].ubMiscFlags |= PROFILE_MISC_FLAG_ALREADY_USED_ITEMS;
 
 		HireMerc(h);
+
+		s = FindSoldierByProfileID(id_random);
+		s->ubPlayer = i % 2; // NB: Considering that 2 players would be used for debugging
 	}
 
 	fDrawCharacterList = true;
@@ -162,6 +169,8 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 				// Couldn't deliver a reliable packet - i.e. the other system was abnormally
 				// terminated
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_DISCONNECTION_NOTIFICATION/ID_CONNECTION_LOST");
+
+				SLOGI("A player disconnected, guid = {}", p->guid.ToUint32(p->guid));
 
 				FOR_EACH_CLIENT(i)
 					if (gPlayers[i].guid == p->guid) {
@@ -210,6 +219,8 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 					gPlayers[first_free].guid = p->guid;
 					gPlayers[first_free].name = up->name;
 					gPlayers[first_free].ready = up->ready;
+
+					SLOGI("A new player connected, guid = {}", p->guid.ToUint32(p->guid));
 
 					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)up->name + " connected.");
 
@@ -394,6 +405,7 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_DOWNLOAD_COMPLETE");
 
 				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Replication is completed.");
+				SLOGI("ID_REPLICA_MANAGER_DOWNLOAD_COMPLETE");
 
 				gReplicaManager.GetReferencedReplicaList(gReplicaList);
 
@@ -401,7 +413,8 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 
 				FOR_EACH_IN_TEAM(s, OUR_TEAM)
 				{
-					// Create a callback for placing the merc(s) to the helicopter
+					// Create a callback for placing the merc(s) hired using HireRandomMercs()
+					// to the helicopter.
 					AddStrategicEvent(EVENT_DELAYED_HIRING_OF_MERC,
 						(STARTING_TIME + FIRST_ARRIVAL_DELAY) / NUM_SEC_IN_MIN, s->ubID);
 					// Ugly, but should handle the case when the server doesn't have any
