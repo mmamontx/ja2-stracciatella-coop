@@ -111,7 +111,7 @@ SGPFont LoadFontFile(const char* filename);
 UINT16  GetFontHeight(SGPFont);
 void    InitializeFontManager(void);
 
-UINT32 GetCharWidth(SGPFont SGPFont, char32_t c);
+UINT32 GetCharWidth_JA2(SGPFont SGPFont, char32_t c);
 
 INT16 StringPixLength(const ST::utf32_buffer& codepoints, SGPFont font);
 inline INT16 StringPixLength(const ST::string& str, SGPFont font)

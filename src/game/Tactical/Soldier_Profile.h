@@ -1,6 +1,7 @@
 #ifndef __SOLDER_PROFILE_H
 #define __SOLDER_PROFILE_H
 
+#include "Coop.h"
 #include "Debug.h"
 #include "JA2Types.h"
 #include "Soldier_Profile_Type.h"
@@ -14,7 +15,7 @@ extern MERCPROFILESTRUCT gMercProfiles[NUM_PROFILES];
 static inline MERCPROFILESTRUCT& GetProfile(ProfileID const id)
 {
 	if (id < lengthof(gMercProfiles))
-		return gMercProfiles[id];
+		return IS_VALID_CLIENT ? *((MERCPROFILESTRUCT*)gReplicaList[REPLICA_PROFILE_INDEX + id]) : gMercProfiles[id];
 	SLOGA("invalid profile id {}", id);
 	abort();
 }

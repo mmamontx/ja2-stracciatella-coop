@@ -51,7 +51,7 @@ WrappedString LineWrap(SGPFont font, UINT16 usLineWidthPixels, const ST::utf32_b
 			line_end = i;
 			for (; *i == U' '; ++i)
 			{
-				line_w += GetCharWidth(font, *i);
+				line_w += GetCharWidth_JA2(font, *i);
 			}
 			word_start = i;
 			word_w     = 0;
@@ -64,7 +64,7 @@ WrappedString LineWrap(SGPFont font, UINT16 usLineWidthPixels, const ST::utf32_b
 			}
 			return result;
 		}
-		size_t const w = GetCharWidth(font, *i);
+		size_t const w = GetCharWidth_JA2(font, *i);
 		word_w += w;
 		line_w += w;
 		if (line_w > max_w)
@@ -309,7 +309,7 @@ UINT16 IanDisplayWrappedString(UINT16 sx, UINT16 sy, UINT16 max_w, UINT8 gap, SG
 
 				do
 				{
-					word_w += GetCharWidth(cur_font, *i);
+					word_w += GetCharWidth_JA2(cur_font, *i);
 					i++;
 				}
 				while (*i != TEXT_SPACE
@@ -348,7 +348,7 @@ UINT16 IanDisplayWrappedString(UINT16 sx, UINT16 sy, UINT16 max_w, UINT8 gap, SG
 				else if (*i != U'\0')
 				{
 					line_buf += u' ';
-					line_w += GetCharWidth(cur_font, u' ');
+					line_w += GetCharWidth_JA2(cur_font, u' ');
 				}
 
 				break;
@@ -486,7 +486,7 @@ UINT16 IanWrappedStringHeight(UINT16 max_w, UINT8 gap, SGPFont font, const ST::u
 				// each character goes towards building a new word
 				do
 				{
-					word_w += GetCharWidth(cur_font, *i);
+					word_w += GetCharWidth_JA2(cur_font, *i);
 					i++;
 				} while (*i != TEXT_SPACE
 						&& !IsChineseCharacter(*i)
@@ -513,7 +513,7 @@ UINT16 IanWrappedStringHeight(UINT16 max_w, UINT8 gap, SGPFont font, const ST::u
 				}
 				else if (*i != U'\0')
 				{
-					line_w += GetCharWidth(cur_font, u' ');
+					line_w += GetCharWidth_JA2(cur_font, u' ');
 				}
 		}
 	}
@@ -529,7 +529,7 @@ ST::string ReduceStringLength(const ST::utf32_buffer& codepoints, UINT32 widthTo
 	if (static_cast<UINT32>(StringPixLength(codepoints, font)) <= widthToFitIn) return codepoints;
 
 	const char32_t dot = U'.';
-	const UINT32 dotWidth = GetCharWidth(font, dot);
+	const UINT32 dotWidth = GetCharWidth_JA2(font, dot);
 	const size_t numDots = 3;
 	const UINT32 dotsWidth = dotWidth * numDots;
 
@@ -537,7 +537,7 @@ ST::string ReduceStringLength(const ST::utf32_buffer& codepoints, UINT32 widthTo
 	UINT32 width = 0;
 	for (char32_t c: codepoints)
 	{
-		UINT32 charWidth = GetCharWidth(font, c);
+		UINT32 charWidth = GetCharWidth_JA2(font, c);
 		if (width + charWidth + dotsWidth > widthToFitIn) break;
 		buf += c;
 		width += charWidth;

@@ -896,7 +896,7 @@ static size_t CalculateCursorPos(INT32 const click_x)
 	size_t               i;
 	for (i = 0; codepoints[i] != U'\0'; ++i)
 	{
-		char_pos += GetCharWidth(font, codepoints[i]);
+		char_pos += GetCharWidth_JA2(font, codepoints[i]);
 		if (char_pos >= click_x) break;
 	}
 	return i;
@@ -1019,7 +1019,7 @@ static void RenderActiveTextField(void)
 		for (size_t i = 0; i < gubCursorPos; ++i)
 		{
 			Assert(codepoints[i] != U'\0');
-			x += GetCharWidth(font, codepoints[i]);
+			x += GetCharWidth_JA2(font, codepoints[i]);
 		}
 		ColorFillVideoSurfaceArea(FRAME_BUFFER, x, y, x + 1, y + h, clrs.usCursorColor);
 	}

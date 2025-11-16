@@ -21,6 +21,7 @@
 #include "Overhead.h"
 #include "Render_Dirty.h"
 #include "ScreenIDs.h"
+#include "Soldier_Profile.h"
 #include "SysUtil.h"
 #include "Text.h"
 #include "Types.h"
@@ -506,6 +507,9 @@ static void NetworkInit()
 
 		for (int i = 0; i < TOTAL_SOLDIERS; i++)
 			gReplicaManager.Reference(&(Menptr[i]));
+
+		for (int i = 0; i < NUM_PROFILES; i++)
+			gReplicaManager.Reference(&(gMercProfiles[i]));
 
 		for (int i = 0; i < MAX_NUM_PLAYERS; i++)
 			gReplicaManager.Reference(&(gPlayers[i]));

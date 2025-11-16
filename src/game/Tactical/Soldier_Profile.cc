@@ -218,6 +218,8 @@ void LoadMercProfiles()
 // more.
 static void DecideActiveTerrorists()
 {
+	if (IS_CLIENT) return; // Terrorist creation is handled by the host
+
 	// Using this stochastic process(!), the chances for terrorists are:
 	// EASY:    3,  9%    4, 42%    5, 49%
 	// MEDIUM:  3, 25%    4, 50%    5, 25%
@@ -458,6 +460,8 @@ void MakeRemainingAssassinsTougher()
 static void StartSomeMercsOnAssignment(void)
 {
 	UINT32 uiChance;
+
+	if (IS_CLIENT) return; // Use the replicated assignment statuses
 
 	// some randomly picked A.I.M. mercs will start off "on assignment" at the beginning of each new game
 	for (auto profile : GCM->listMercProfiles())

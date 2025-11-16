@@ -13,6 +13,7 @@
 #include "Merc_Hiring.h"
 #include "MouseSystem.h"
 #include "Soldier_Control.h"
+#include "Soldier_Profile_Type.h"
 
 using namespace RakNet;
 
@@ -48,7 +49,8 @@ using namespace RakNet;
 #define FOR_EACH_PLAYER(i) for (int i = 0; i < MAX_NUM_PLAYERS; i++)
 #define FOR_EACH_CLIENT(i) for (int i = 1; i < MAX_NUM_PLAYERS; i++)
 
-#define REPLICA_PLAYER_INDEX TOTAL_SOLDIERS
+#define REPLICA_PROFILE_INDEX TOTAL_SOLDIERS
+#define REPLICA_PLAYER_INDEX  (TOTAL_SOLDIERS + NUM_PROFILES)
 
 // For the host return local values from the original objects that are
 // replicated to the clients.
@@ -261,6 +263,7 @@ public:
 		RakString typeName;
 		allocationId->Read(typeName);
 		if (typeName == "SOLDIERTYPE") return new SOLDIERTYPE;
+		if (typeName == "MERCPROFILESTRUCT") return new MERCPROFILESTRUCT;
 		if (typeName == "PLAYER") return new PLAYER;
 		return 0;
 	}

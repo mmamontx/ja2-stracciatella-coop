@@ -56,7 +56,7 @@ BOOLEAN gEnemyEnabled;
 DWORD WINAPI replicamgr(LPVOID lpParam)
 {
 	while (1)
-		Sleep(1000); // NOTE: It doesn't affect object replication sync delay, but it may have some other effect - keep this in mind
+		Sleep(33); // NOTE: ~30 FPS, can be improved if needed
 	return 0;
 }
 
