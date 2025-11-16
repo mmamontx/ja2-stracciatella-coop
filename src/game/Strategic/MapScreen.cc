@@ -88,7 +88,7 @@ using namespace RakNet;
 
 #define NUM_MP_BUTTONS 2
 
-#define MP_BTN_Y            (162 + 106 - 2)
+#define MP_BTN_Y            (STD_SCREEN_Y + 162 + 106 - 2)
 #define MP_TEXT_Y           (MP_BTN_Y + 18)
 
 #define MP_BTN_PLAYER_X     12
@@ -6486,7 +6486,7 @@ void AddMPButtonsForMapScreen(void)
 		giMapMPButtonImage[iCounter] = LoadButtonImage("INTERFACE\\MPGOLDPIECEBUTTONS.sti",
 			-1, iImageIndex[iCounter], -1, iPressedIndex[iCounter], -1);
 
-		giMapMPButton[iCounter] = QuickCreateButton(giMapMPButtonImage[iCounter], gMapMPButtonsX[iCounter],
+		giMapMPButton[iCounter] = QuickCreateButton(giMapMPButtonImage[iCounter], STD_SCREEN_X + gMapMPButtonsX[iCounter],
 			(INT16)(MP_BTN_Y), MSYS_PRIORITY_HIGHEST - 5, (GUI_CALLBACK)MPReadyButtonCallback);
 
 		giMapMPButton[iCounter]->SetUserData(iCounter);
