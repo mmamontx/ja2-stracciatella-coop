@@ -4,8 +4,6 @@ This is the fork of venerable JA2-Stracciatella project introducing cooperative 
 
 The goal of the project is to enable the original JA2 campaign walkthrough with multiple players.
 
-At the moment I am developing this alone. To get in touch with me you can use the [mail](mailto:mmamontx@gmail.com).
-
 ## How to start the game
 
 1. Install original Jagged Alliance 2 game on your computer.  Data files from the original game will be used by JA2-Stracciatella.
@@ -14,9 +12,9 @@ At the moment I am developing this alone. To get in touch with me you can use th
 
 3. Download the latest release of this project. Move sti files to Data/Interface subdirectory of the original game. Run ja2.exe.
 
-## Development
+## Changes to the original gameplay
 
-All the original JA2S [ideas](https://github.com/ja2-stracciatella/ja2-stracciatella/blob/master/CONTRIBUTING.md) remain valid. The scope of this particular project is limited to cooperative multiplayer on top of JA2-Stracciatella - all the rest goes to the original repository. The changes leverage JA2S design and are implemented on top of its ideas. They strive to be lean by continuously reviewing and progressively minimizing the code. Note that the multiplayer specifics dictated the following changes to the original gameplay:
+The following alterations are dictated by the multiplayer specifics and convenience. If possible, their number should be minimized. Some of the items below remain to be subjects for reconsideration.
 
 1. The intro videos at the beginning of the game are disabled.
 2. The starting screen is the strategic map (lobby) instead of the laptop.
