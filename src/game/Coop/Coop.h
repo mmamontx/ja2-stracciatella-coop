@@ -28,6 +28,7 @@ using namespace RakNet;
 #define ID_USER_PACKET_TOP_MESSAGE      (ID_USER_PACKET_ENUM + 5)
 #define ID_USER_PACKET_END_COMBAT       (ID_USER_PACKET_ENUM + 6)
 #define ID_USER_PACKET_END_TURN         (ID_USER_PACKET_ENUM + 7)
+#define ID_USER_PACKET_GAME_OPTIONS     (ID_USER_PACKET_ENUM + 8)
 
 #define MAX_NAME_LEN    16
 #define MAX_MESSAGE_LEN 128
@@ -113,6 +114,15 @@ struct USER_PACKET_TOP_MESSAGE {
 	UINT8 ubTopMessageType;
 	UINT16 usTactialTurnLimitCounter;
 	UINT16 usTactialTurnLimitMax;
+};
+
+struct USER_PACKET_GAME_OPTIONS {
+	unsigned char id;
+	BOOLEAN fGunNut;
+	BOOLEAN	fSciFi;
+	UINT8	ubDifficultyLevel;
+	BOOLEAN	fTurnTimeLimit;
+	UINT8	ubGameSaveMode;
 };
 
 struct PLAYER : public Replica3 {
@@ -225,6 +235,7 @@ struct PLAYER : public Replica3 {
 	}
 };
 
+// FIXME: Separate data from different packets in unions
 struct RPC_DATA {
 	UIEventKind puiNewEvent;
 	SoldierID id;
@@ -248,6 +259,11 @@ struct RPC_DATA {
 	StrategicEventKind Kind;
 	UINT32 uiMinStamp;
 	UINT32 uiParam;
+	// For $ transactions
+	UINT8 ubCode;
+	UINT8 ubSecondCode;
+	UINT32 uiDate;
+	INT32 iAmount;
 };
 
 class SampleConnection : public Connection_RM3
@@ -306,6 +322,7 @@ extern HANDLE gMainThread;
 extern BOOLEAN gStarted;
 extern BOOLEAN MPReadyButtonValue;
 extern BOOLEAN gEnemyEnabled;
+extern BOOLEAN gGameOptionsReceived;
 
 
 // Networking
@@ -319,6 +336,7 @@ void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 
 void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);

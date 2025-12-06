@@ -473,6 +473,7 @@ static void NetworkInit()
 
 	gRPC.RegisterSlot("AddCharacterToSquadRPC", AddCharacterToSquadRPC, 0);
 	gRPC.RegisterSlot("AddStrategicEventRPC", AddStrategicEventRPC, 0);
+	gRPC.RegisterSlot("AddTransactionToPlayersBookRPC", AddTransactionToPlayersBookRPC, 0);
 	gRPC.RegisterSlot("BeginSoldierClimbDownRoofRPC", BeginSoldierClimbDownRoofRPC, 0);
 	gRPC.RegisterSlot("BeginSoldierClimbFenceRPC", BeginSoldierClimbFenceRPC, 0);
 	gRPC.RegisterSlot("BeginSoldierClimbUpRoofRPC", BeginSoldierClimbUpRoofRPC, 0);
@@ -608,6 +609,18 @@ static void HandleGIOScreen(void)
 					if (PlayerIndex(gNetworkOptions.peer->GetMyGUID()) == -1)
 					{
 						SLOGI("PlayerIndex() == -1");
+						break; // TODO: Display a message?
+					}
+
+					// Wait until the game options are received
+					t = 0;
+					do {
+						Sleep(period);
+						t += period;
+					} while ((!gGameOptionsReceived) && (t < CONNECT_TIMEOUT_MS));
+					if (!gGameOptionsReceived)
+					{
+						SLOGI("!gGameOptionsReceived");
 						break; // TODO: Display a message?
 					}
 				}
@@ -1007,15 +1020,18 @@ static void RestoreGIOButtonBackGrounds(void)
 
 static void DoneFadeOutForExitGameInitOptionScreen(void)
 {
-	// loop through and get the status of all the buttons
-	gGameOptions.fGunNut = GetCurrentGunButtonSetting();
-	gGameOptions.fSciFi = GetCurrentGameStyleButtonSetting();
-	gGameOptions.ubDifficultyLevel = GetCurrentDifficultyButtonSetting() + 1;
+	if (IS_SERVER) // The client receives the game options from the server
+	{
+		// loop through and get the status of all the buttons
+		gGameOptions.fGunNut = GetCurrentGunButtonSetting();
+		gGameOptions.fSciFi = GetCurrentGameStyleButtonSetting();
+		gGameOptions.ubDifficultyLevel = GetCurrentDifficultyButtonSetting() + 1;
 #if 0 // JA2Gold: no more timed turns setting
-	gGameOptions.fTurnTimeLimit = GetCurrentTimedTurnsButtonSetting();
+		gGameOptions.fTurnTimeLimit = GetCurrentTimedTurnsButtonSetting();
 #endif
-	// JA2Gold: iron man
-	gGameOptions.ubGameSaveMode = GetCurrentGameSaveButtonSetting();
+		// JA2Gold: iron man
+		gGameOptions.ubGameSaveMode = GetCurrentGameSaveButtonSetting();
+	}
 
 	if (gGameOptions.ubGameSaveMode == GIO_DEAD_IS_DEAD)
 	{

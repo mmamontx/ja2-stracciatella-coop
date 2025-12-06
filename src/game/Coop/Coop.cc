@@ -51,6 +51,7 @@ HANDLE gMainThread;
 BOOLEAN gStarted = FALSE;
 BOOLEAN MPReadyButtonValue = FALSE;
 BOOLEAN gEnemyEnabled;
+BOOLEAN gGameOptionsReceived = FALSE;
 
 
 DWORD WINAPI replicamgr(LPVOID lpParam)
@@ -145,6 +146,7 @@ unsigned char SGetPacketIdentifier(Packet* p)
 	}
 }
 
+// We are the server and process packets from clients here
 DWORD WINAPI server_packet(LPVOID lpParam)
 {
 	RakNet::Packet* p;
@@ -230,7 +232,21 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 					// Tell others
 					struct USER_PACKET_MESSAGE up_broadcast;
 					up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
-					gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+					gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
+						MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+
+					// Share the game options with the connected player
+					struct USER_PACKET_GAME_OPTIONS up_gops;
+					up_gops.id = ID_USER_PACKET_GAME_OPTIONS;
+
+					up_gops.fGunNut = gGameOptions.fGunNut;
+					up_gops.fSciFi = gGameOptions.fSciFi;
+					up_gops.ubDifficultyLevel = gGameOptions.ubDifficultyLevel;
+					up_gops.fTurnTimeLimit = gGameOptions.fTurnTimeLimit;
+					up_gops.ubGameSaveMode = gGameOptions.ubGameSaveMode;
+
+					gNetworkOptions.peer->Send((char*)&up_gops, sizeof(up_gops),
+						MEDIUM_PRIORITY, RELIABLE, 0, p->guid, false);
 				} // Otherwise ignore the duplicated connection request
 
 				break;
@@ -338,6 +354,7 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 	return 0;
 }
 
+// We are a client and process packets from the server here
 DWORD WINAPI client_packet(LPVOID lpParam)
 {
 	RakNet::Packet* p;
@@ -409,20 +426,6 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 
 				gReplicaManager.GetReferencedReplicaList(gReplicaList);
 
-#ifdef JA2S_MP_DEBUG
-
-				FOR_EACH_IN_TEAM(s, OUR_TEAM)
-				{
-					// Create a callback for placing the merc(s) hired using HireRandomMercs()
-					// to the helicopter.
-					AddStrategicEvent(EVENT_DELAYED_HIRING_OF_MERC,
-						(STARTING_TIME + FIRST_ARRIVAL_DELAY) / NUM_SEC_IN_MIN, s->ubID);
-					// Ugly, but should handle the case when the server doesn't have any
-					// characters yet on client connection.
-					gfAtLeastOneMercWasHired = true;
-				}
-#endif
-
 				// Update merc list in the left panel to show replicated characters
 				UpdateTeamPanel();
 
@@ -475,6 +478,21 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_END_COMBAT");
 
 				ExitCombatMode();
+
+				break;
+			}
+			case ID_USER_PACKET_GAME_OPTIONS:
+			{
+				struct USER_PACKET_GAME_OPTIONS* up;
+				up = (struct USER_PACKET_GAME_OPTIONS*)p->data;
+
+				gGameOptions.fGunNut = up->fGunNut;
+				gGameOptions.fSciFi = up->fSciFi;
+				gGameOptions.ubDifficultyLevel = up->ubDifficultyLevel;
+				gGameOptions.fTurnTimeLimit = up->fTurnTimeLimit;
+				gGameOptions.ubGameSaveMode = up->ubGameSaveMode;
+
+				gGameOptionsReceived = TRUE;
 
 				break;
 			}
@@ -591,11 +609,12 @@ void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 
 void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA data, data_broadcast;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
+	RakNet::BitStream bs;
 	INT8 const ret = HireMerc(data.h);
 	if (ret == MERC_HIRE_OK)
 	{
@@ -612,10 +631,33 @@ void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 			GetWorldTotalMin(), -(data.iContractAmount) +
 			p.sMedicalDepositAmount);
 
+		data_broadcast.ubCode = HIRED_MERC;
+		data_broadcast.ubSecondCode = data.h.ubProfileID;
+		data_broadcast.uiDate = GetWorldTotalMin();
+		data_broadcast.iAmount = -(data.iContractAmount) + p.sMedicalDepositAmount;
+
+		bs.WriteCompressed(data_broadcast);
+
+		// Broadcast this transaction to the clients
+		gRPC.Signal("AddTransactionToPlayersBookRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+			gNetworkOptions.peer->GetMyGUID(), true, false);
+
 		if (p.bMedicalDeposit)
 		{ // Add an entry in the finacial page for the medical deposit
 			AddTransactionToPlayersBook(MEDICAL_DEPOSIT, data.h.ubProfileID,
 				GetWorldTotalMin(), -p.sMedicalDepositAmount);
+
+			data_broadcast.ubCode = MEDICAL_DEPOSIT;
+			data_broadcast.ubSecondCode = data.h.ubProfileID;
+			data_broadcast.uiDate = GetWorldTotalMin();
+			data_broadcast.iAmount = -p.sMedicalDepositAmount;
+
+			bs.Reset();
+			bs.WriteCompressed(data_broadcast);
+
+			// Broadcast this transaction to the clients
+			gRPC.Signal("AddTransactionToPlayersBookRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+				gNetworkOptions.peer->GetMyGUID(), true, false);
 		}
 
 		// Add an entry in the history page for the hiring of the merc
@@ -672,6 +714,16 @@ void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet
 	AddCharacterToSquad(ID2Soldier(data.id), data.bSquadValue);
 
 	gRPC_Squad = FALSE;
+}
+
+void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	AddTransactionToPlayersBook(data.ubCode, data.ubSecondCode, data.uiDate, data.iAmount);
 }
 
 void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)

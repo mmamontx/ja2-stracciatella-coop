@@ -1724,18 +1724,24 @@ ScreenID MapScreenHandle(void)
 	// don't process any input until we've been through here once
 	if (!gfFirstMapscreenFrame)
 	{
-#ifdef JA2S_MP_DEBUG
-		if (!gfAtLeastOneMercWasHired)
-			if (!(IS_CLIENT)) // Create new objects for server only - they are supposed to be replicated
-				HireRandomMercs(2); // FIXME: For debugging purposes only - to be removed
-#endif
-
 		// Handle Interface
 		uiNewScreen = HandleMapUI( );
 		if ( uiNewScreen != MAP_SCREEN )
 		{
 			return( MAP_SCREEN );
 		}
+	}
+	else
+	{
+#ifdef JA2S_MP_DEBUG
+		if (IS_SERVER) // Create new objects for server only - for clients they are replicated
+		{
+			if (!gfAtLeastOneMercWasHired)
+			{
+				HireRandomMercs(2);
+			}
+		}
+#endif
 	}
 
 

@@ -1226,11 +1226,11 @@ static INT8 AimMemberHireMerc(void)
 	}
 	h.iTotalContractLength = contract_length;
 
+	RPC_DATA data;
+	RakNet::BitStream bs;
 	if (IS_CLIENT) // Tell the host to hire the merc for us
 	{
 		// FIXME: Handle the case when HireMerc() returns FALSE
-		RPC_DATA data;
-		RakNet::BitStream bs;
 
 		data.h = h;
 		data.contract_type = contract_type;
@@ -1259,9 +1259,32 @@ static INT8 AimMemberHireMerc(void)
 		// Add an entry in the finacial page for the hiring of the merc
 		AddTransactionToPlayersBook(HIRED_MERC, pid, GetWorldTotalMin(), -giContractAmount + p.sMedicalDepositAmount);
 
+		data.ubCode = HIRED_MERC;
+		data.ubSecondCode = pid;
+		data.uiDate = GetWorldTotalMin();
+		data.iAmount = -giContractAmount + p.sMedicalDepositAmount;
+
+		bs.WriteCompressed(data);
+
+		// Broadcast this transaction to the clients
+		gRPC.Signal("AddTransactionToPlayersBookRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+			gNetworkOptions.peer->GetMyGUID(), true, false);
+
 		if (p.bMedicalDeposit)
 		{ // Add an entry in the finacial page for the medical deposit
 			AddTransactionToPlayersBook(MEDICAL_DEPOSIT, pid, GetWorldTotalMin(), -p.sMedicalDepositAmount);
+
+			data.ubCode = MEDICAL_DEPOSIT;
+			data.ubSecondCode = pid;
+			data.uiDate = GetWorldTotalMin();
+			data.iAmount = -p.sMedicalDepositAmount;
+
+			bs.Reset();
+			bs.WriteCompressed(data);
+
+			// Broadcast this transaction to the clients
+			gRPC.Signal("AddTransactionToPlayersBookRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+				gNetworkOptions.peer->GetMyGUID(), true, false);
 		}
 
 		// Add an entry in the history page for the hiring of the merc

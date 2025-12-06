@@ -404,6 +404,14 @@ void StartHelicopterRun( INT16 sGridNoSweetSpot )
 
 	gsGridNoSweetSpot = sGridNoSweetSpot;
 
+#ifdef JA2S_MP_DEBUG
+	if (IS_CLIENT) {
+		FOR_EACH_IN_TEAM(s, OUR_TEAM) {
+			AddMercToHeli(s);
+		}
+	}
+#endif
+
 	if ( gbNumHeliSeatsOccupied == 0 )
 	{
 		return;
