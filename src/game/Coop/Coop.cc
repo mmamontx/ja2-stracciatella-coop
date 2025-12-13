@@ -609,12 +609,11 @@ void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 
 void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data, data_broadcast;
+	RPC_DATA data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	RakNet::BitStream bs;
 	INT8 const ret = HireMerc(data.h);
 	if (ret == MERC_HIRE_OK)
 	{
@@ -631,33 +630,10 @@ void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 			GetWorldTotalMin(), -(data.iContractAmount) +
 			p.sMedicalDepositAmount);
 
-		data_broadcast.ubCode = HIRED_MERC;
-		data_broadcast.ubSecondCode = data.h.ubProfileID;
-		data_broadcast.uiDate = GetWorldTotalMin();
-		data_broadcast.iAmount = -(data.iContractAmount) + p.sMedicalDepositAmount;
-
-		bs.WriteCompressed(data_broadcast);
-
-		// Broadcast this transaction to the clients
-		gRPC.Signal("AddTransactionToPlayersBookRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
-			gNetworkOptions.peer->GetMyGUID(), true, false);
-
 		if (p.bMedicalDeposit)
 		{ // Add an entry in the finacial page for the medical deposit
 			AddTransactionToPlayersBook(MEDICAL_DEPOSIT, data.h.ubProfileID,
 				GetWorldTotalMin(), -p.sMedicalDepositAmount);
-
-			data_broadcast.ubCode = MEDICAL_DEPOSIT;
-			data_broadcast.ubSecondCode = data.h.ubProfileID;
-			data_broadcast.uiDate = GetWorldTotalMin();
-			data_broadcast.iAmount = -p.sMedicalDepositAmount;
-
-			bs.Reset();
-			bs.WriteCompressed(data_broadcast);
-
-			// Broadcast this transaction to the clients
-			gRPC.Signal("AddTransactionToPlayersBookRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
-				gNetworkOptions.peer->GetMyGUID(), true, false);
 		}
 
 		// Add an entry in the history page for the hiring of the merc
@@ -714,6 +690,16 @@ void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet
 	AddCharacterToSquad(ID2Soldier(data.id), data.bSquadValue);
 
 	gRPC_Squad = FALSE;
+}
+
+void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	AddHistoryToPlayersLog(data.ubCode, data.ubSecondCode, data.uiDate, SGPSector(-1, -1));
 }
 
 void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)

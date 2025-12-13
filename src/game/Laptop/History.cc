@@ -118,6 +118,23 @@ void AddHistoryToPlayersLog(const UINT8 ubCode, const UINT8 ubSecondCode, const 
 
 	// if in history mode, reload current page
 	if (fInHistoryMode) LoadInHistoryRecords(iCurrentHistoryPage);
+
+	if (IS_SERVER)
+	{
+		RPC_DATA data_broadcast;
+		RakNet::BitStream bs;
+
+		data_broadcast.ubCode = ubCode;
+		data_broadcast.ubSecondCode = ubSecondCode;
+		data_broadcast.uiDate = uiDate;
+		// sSector is not passed (created by the server)
+
+		bs.WriteCompressed(data_broadcast);
+
+		// Broadcast this transaction to the clients
+		gRPC.Signal("AddHistoryToPlayersLogRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+			gNetworkOptions.peer->GetMyGUID(), true, false);
+	}
 }
 
 

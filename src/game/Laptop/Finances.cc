@@ -211,6 +211,23 @@ void AddTransactionToPlayersBook(UINT8 ubCode, UINT8 ubSecondCode, UINT32 uiDate
 	}
 
 	fMapScreenBottomDirty = TRUE;
+
+	if (IS_SERVER)
+	{
+		RPC_DATA data_broadcast;
+		RakNet::BitStream bs;
+
+		data_broadcast.ubCode = ubCode;
+		data_broadcast.ubSecondCode = ubSecondCode;
+		data_broadcast.uiDate = uiDate;
+		data_broadcast.iAmount = iAmount;
+
+		bs.WriteCompressed(data_broadcast);
+
+		// Broadcast this transaction to the clients
+		gRPC.Signal("AddTransactionToPlayersBookRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+			gNetworkOptions.peer->GetMyGUID(), true, false);
+	}
 }
 
 

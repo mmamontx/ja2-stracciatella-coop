@@ -473,6 +473,7 @@ static void NetworkInit()
 
 	gRPC.RegisterSlot("AddCharacterToSquadRPC", AddCharacterToSquadRPC, 0);
 	gRPC.RegisterSlot("AddStrategicEventRPC", AddStrategicEventRPC, 0);
+	gRPC.RegisterSlot("AddHistoryToPlayersLogRPC", AddHistoryToPlayersLogRPC, 0);
 	gRPC.RegisterSlot("AddTransactionToPlayersBookRPC", AddTransactionToPlayersBookRPC, 0);
 	gRPC.RegisterSlot("BeginSoldierClimbDownRoofRPC", BeginSoldierClimbDownRoofRPC, 0);
 	gRPC.RegisterSlot("BeginSoldierClimbFenceRPC", BeginSoldierClimbFenceRPC, 0);

@@ -336,6 +336,7 @@ void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 
 void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
