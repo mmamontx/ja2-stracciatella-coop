@@ -82,6 +82,8 @@ if (WITH_UNITTESTS)
     set(LOCAL_JA2_SOURCES
         ${LOCAL_JA2_SOURCES}
         ${CMAKE_CURRENT_SOURCE_DIR}/LoadSaveMercProfile_unittest.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/LoadSaveSoldierType_unittest.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/Weapons_unittest.cc
     )
 endif()
 
@@ -120,11 +122,5 @@ set(JA2_SOURCES
     ${JA2_SOURCES}
     ${LOCAL_JA2_SOURCES}
     ${LOCAL_JA2_HEADERS}
-    PARENT_SCOPE
-)
-
-set(JA2_INCLUDES
-    ${JA2_INCLUDES}
-    ${CMAKE_CURRENT_SOURCE_DIR}
     PARENT_SCOPE
 )

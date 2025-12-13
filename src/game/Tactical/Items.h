@@ -9,8 +9,6 @@ struct WeaponModel;
 
 void DamageObj(OBJECTTYPE* pObj, INT8 bAmount);
 
-extern UINT8 SlotToPocket[7];
-
 BOOLEAN WeaponInHand(const SOLDIERTYPE* pSoldier);
 
 INT8 FindObj(const SOLDIERTYPE* pSoldier, UINT16 usItem);
@@ -80,8 +78,6 @@ void SwapKeysToSlot(SOLDIERTYPE&, INT8 key_ring_pos, OBJECTTYPE&);
 
 // create a keyobject
 void CreateKeyObject(OBJECTTYPE*, UINT8 ubNumberOfKeys, UINT8 ubKeyIdValue);
-BOOLEAN DeleteKeyObject( OBJECTTYPE * pObj );
-void    AllocateObject(OBJECTTYPE** pObj);
 
 // remove one or more keys from a *KEYRING* slot
 BOOLEAN RemoveKeysFromSlot( SOLDIERTYPE * pSoldier, INT8 bKeyRingPosition, UINT8 ubNumberOfKeys ,OBJECTTYPE * pObj );
@@ -125,6 +121,7 @@ INT8 FindAmmoToReload( const SOLDIERTYPE * pSoldier, INT8 bWeaponIn, INT8 bExclu
 void SwapHandItems( SOLDIERTYPE * pSoldier );
 
 INT8 FindAttachmentByClass(OBJECTTYPE const*, UINT32 uiItemClass);
+INT8 FindPlatesAttachment(OBJECTTYPE const*);
 void RemoveObjs( OBJECTTYPE * pObj, UINT8 ubNumberToRemove );
 
 void WaterDamage(SOLDIERTYPE&);

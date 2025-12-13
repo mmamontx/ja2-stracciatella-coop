@@ -998,7 +998,7 @@ zlevel_topmost:
 								{
 									// Special effect - draw ghost if is seen by a guy in player's team but not current guy
 									// ATE: Todo: setup flag for 'bad-guy' - can releive some checks in renderer
-									if (!s.bNeutral && s.bSide != OUR_TEAM)
+									if (!s.bNeutral && s.bSide != Side::FRIENDLY)
 									{
 										INT8 bGlowShadeOffset = 0;
 
@@ -1025,7 +1025,7 @@ zlevel_topmost:
 
 										// Set shade
 										// If a bad guy is highlighted
-										if (gSelectedGuy != NULL && gSelectedGuy->bSide != OUR_TEAM)
+										if (gSelectedGuy != NULL && gSelectedGuy->bSide != Side::FRIENDLY)
 										{
 											if (gSelectedGuy == &s)
 											{
@@ -1905,6 +1905,9 @@ static void RenderDynamicWorld(void)
 	}
 
 	SaveBackgroundRects();
+
+	// Fixes obscured item highlight issues. Omitting RENDER_STATIC_ONROOF for now as it seems redundant ?
+	RenderTiles( TILES_OBSCURED, RENDER_STATIC_STRUCTS );
 
 	RenderTiles(TILES_NONE,
 		RENDER_DYNAMIC_OBJECTS,

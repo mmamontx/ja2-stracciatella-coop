@@ -2310,7 +2310,7 @@ static void UIHandleMercAttack(SOLDIERTYPE* pSoldier, SOLDIERTYPE* pTargetSoldie
 			// go into turnbased for that person
 			CancelAIAction(pTargetSoldier);
 			AddToShouldBecomeHostileOrSayQuoteList(pTargetSoldier);
-			//MakeCivHostile( pTargetSoldier, 2 );
+			//MakeCivHostile( pTargetSoldier );
 			//TriggerNPCWithIHateYouQuote( pTargetSoldier->ubProfile );
 			return;
 		}
@@ -2916,7 +2916,7 @@ BOOLEAN UIHandleOnMerc( BOOLEAN fMovementMode )
 				{
 
 					// Check if this guy is on the enemy team....
-					if ( !pSoldier->bNeutral && (pSoldier->bSide != OUR_TEAM ) )
+					if ( !pSoldier->bNeutral && (pSoldier->bSide != Side::FRIENDLY ) )
 					{
 						gUIActionModeChangeDueToMouseOver = TRUE;
 
@@ -3337,6 +3337,7 @@ static INT8 DrawUIMovementPath(SOLDIERTYPE* const pSoldier, UINT16 usMapPos, Mov
 	LEVELNODE *pIntTile;
 	INT8 bReturnCode = 0;
 	BOOLEAN fPlot;
+	int8_t preservedDoorHandleCode;
 
 	if ((gTacticalStatus.uiFlags & INCOMBAT) || _KeyDown( SHIFT ))
 	{
@@ -3363,8 +3364,10 @@ static INT8 DrawUIMovementPath(SOLDIERTYPE* const pSoldier, UINT16 usMapPos, Mov
 		{
 			if (pStructure->fFlags & (STRUCTURE_ANYDOOR | STRUCTURE_SWITCH))
 			{
+				preservedDoorHandleCode = pSoldier->ubDoorHandleCode;
 				sActionGridNo = FindAdjacentGridExAdvanced(pSoldier, *pStructure, sIntTileGridNo, nullptr);
 				sAPCost = doorAPs[pSoldier->ubDoorHandleCode];
+				pSoldier->ubDoorHandleCode = preservedDoorHandleCode;
 			}
 			else
 			{
@@ -5446,9 +5449,8 @@ BOOLEAN ValidQuickExchangePosition(void)
 	if (pOverSoldier != NULL)
 	{
 		//KM: Replaced this older if statement for the new one which allows exchanging with militia
-		//if ((pOverSoldier->bSide != OUR_TEAM) && pOverSoldier->bNeutral)
 		if ((pOverSoldier->bTeam != OUR_TEAM && pOverSoldier->bNeutral) ||
-			(pOverSoldier->bTeam == MILITIA_TEAM && pOverSoldier->bSide == 0))
+			(pOverSoldier->bTeam == MILITIA_TEAM && pOverSoldier->bSide == Side::FRIENDLY))
 		{
 			// hehe - don't allow animals to exchange places
 			if ( !( pOverSoldier->uiStatusFlags & ( SOLDIER_ANIMAL ) ) )

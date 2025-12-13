@@ -978,8 +978,7 @@ void SoldierHandleDropItem( SOLDIERTYPE *pSoldier )
 		AddItemToPool(pSoldier->sGridNo, pSoldier->pTempObject, VISIBLE, pSoldier->bLevel, 0 , -1);
 		NotifySoldiersToLookforItems( );
 
-		delete pSoldier->pTempObject;
-		pSoldier->pTempObject = NULL;
+		ClearTempObject(pSoldier);
 	}
 }
 
@@ -1036,9 +1035,7 @@ void HandleSoldierThrowItem( SOLDIERTYPE *pSoldier, INT16 sGridNo )
 				{
 					AddItemToPool(sGridNo, pSoldier->pTempObject, VISIBLE, pSoldier->bLevel, 0, -1);
 					NotifySoldiersToLookforItems( );
-
-					delete pSoldier->pTempObject;
-					pSoldier->pTempObject = NULL;
+					ClearTempObject(pSoldier);
 				}
 			}
 			else
@@ -1067,9 +1064,7 @@ void SoldierGiveItem( SOLDIERTYPE *pSoldier, SOLDIERTYPE *pTargetSoldier, OBJECT
 
 		pSoldier->bPendingActionData5 = bInvPos;
 		// Copy temp object
-		pSoldier->pTempObject	= new OBJECTTYPE{};
-		*pSoldier->pTempObject = *pObject;
-
+		SetTempObject(pSoldier, *pObject);
 
 		pSoldier->sPendingActionData2  = pTargetSoldier->sGridNo;
 		pSoldier->bPendingActionData3  = ubDirection;
@@ -1099,8 +1094,7 @@ void SoldierGiveItem( SOLDIERTYPE *pSoldier, SOLDIERTYPE *pTargetSoldier, OBJECT
 
 void SoldierDropItem(SOLDIERTYPE* const pSoldier, OBJECTTYPE* const pObj)
 {
-	pSoldier->pTempObject = new OBJECTTYPE{};
-	*pSoldier->pTempObject = *pObj;
+	SetTempObject(pSoldier, *pObj);
 	PickDropItemAnimation( pSoldier );
 }
 
@@ -2293,10 +2287,9 @@ SOLDIERTYPE* VerifyGiveItem(SOLDIERTYPE* const pSoldier)
 				GetMan(ubTargetMercID).uiStatusFlags &= ~SOLDIER_ENGAGEDINACTION;
 			}
 
-			delete pSoldier->pTempObject;
-			pSoldier->pTempObject = NULL;
-
+			ClearTempObject(pSoldier);
 		}
+		TriggerNPCWithGivenApproach(pSoldier->ubProfile, APPROACH_DONE_GIVING_ITEM);
 	}
 
 	return NULL;
@@ -2306,7 +2299,6 @@ SOLDIERTYPE* VerifyGiveItem(SOLDIERTYPE* const pSoldier)
 void SoldierGiveItemFromAnimation( SOLDIERTYPE *pSoldier )
 {
 	INT8 bInvPos;
-	OBJECTTYPE TempObject;
 
 	UINT16 usItemNum;
 	BOOLEAN fToTargetPlayer = FALSE;
@@ -2318,9 +2310,8 @@ void SoldierGiveItemFromAnimation( SOLDIERTYPE *pSoldier )
 		SLOGD("Attempted to give nonexisting item.");
 		return;
 	}
-	TempObject = *pSoldier->pTempObject;
-	delete pSoldier->pTempObject;
-	pSoldier->pTempObject = NULL;
+	OBJECTTYPE TempObject{ *pSoldier->pTempObject };
+	ClearTempObject(pSoldier);
 
 
 	bInvPos = pSoldier->bPendingActionData5;
@@ -3065,7 +3056,7 @@ BOOLEAN NearbyGroundSeemsWrong(SOLDIERTYPE* const s, const INT16 sGridNo, const 
 		ubDetectLevel = CalcTrapDetectLevel(s, FALSE);
 	}
 
-	const UINT32 fCheckFlag = (s->bSide == 0 ? MAPELEMENT_PLAYER_MINE_PRESENT : MAPELEMENT_ENEMY_MINE_PRESENT);
+	const UINT32 fCheckFlag = (s->bSide == Side::FRIENDLY ? MAPELEMENT_PLAYER_MINE_PRESENT : MAPELEMENT_ENEMY_MINE_PRESENT);
 
 	// check every tile around gridno for the presence of "nasty stuff"
 	for (UINT8 ubDirection = 0; ubDirection < 8; ++ubDirection)

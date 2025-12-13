@@ -1,6 +1,7 @@
 #include "DefaultContentManager.h"
 
 #include "Exceptions.h"
+#include "ItemModel.h"
 #include "ItemStrings.h"
 #include "Directories.h"
 
@@ -10,9 +11,11 @@
 #include "FileMan.h"
 
 #include "AmmoTypeModel.h"
+#include "ArmourModel.h"
 #include "CacheSectorsModel.h"
 #include "CalibreModel.h"
 #include "ContentMusic.h"
+#include "Item_Types.h"
 #include "SmokeEffectModel.h"
 #include "ExplosionAnimationModel.h"
 #include "ExplosiveModel.h"
@@ -26,8 +29,10 @@
 #include "RustInterface.h"
 #include "ShippingDestinationModel.h"
 #include "Soldier_Profile_Type.h"
+#include "Types.h"
 #include "VehicleModel.h"
 #include "WeaponModels.h"
+#include "Weapons.h"
 #include "army/ArmyCompositionModel.h"
 #include "army/GarrisonGroupModel.h"
 #include "army/PatrolGroupModel.h"
@@ -62,6 +67,7 @@
 #include "Strategic_AI.h"
 #include "Strategic_Status.h"
 
+#include <cstdint>
 #include <string_theory/format>
 #include <string_theory/string>
 
@@ -454,6 +460,15 @@ const WeaponModel* DefaultContentManager::getWeapon(uint16_t itemIndex)
 	return getItem(itemIndex)->asWeapon();
 }
 
+/** Get the armour with the given index.
+ * Returns nullptr if the item is not an armour
+ * Throws if the armour does not exist
+*/
+const ArmourModel* DefaultContentManager::getArmour(uint16_t itemIndex)
+{
+	return getItem(itemIndex)->asArmour();
+}
+
 /** Get the weapon with the given name.
  * Throws if the weapon does not exist
  */
@@ -466,6 +481,20 @@ const WeaponModel* DefaultContentManager::getWeaponByName(const ST::string &inte
 		throw std::runtime_error(ST::format("weapon '{}' was not found", internalName).to_std_string());
 	}
 	return it->second;//m_weaponMap[internalName];
+}
+
+/** Get the armour with the given name.
+ * Throws if the armour does not exist
+ */
+const ArmourModel* DefaultContentManager::getArmourByName(const ST::string &internalName)
+{
+	std::map<ST::string, const ArmourModel*>::const_iterator it = m_armourMap.find(internalName);
+	if(it == m_armourMap.end())
+	{
+		SLOGE("armour '{}' was not found", internalName);
+		throw std::runtime_error(ST::format("armour '{}' was not found", internalName).to_std_string());
+	}
+	return it->second;
 }
 
 const MagazineModel* DefaultContentManager::getMagazineByName(const ST::string &internalName)
@@ -549,6 +578,68 @@ bool DefaultContentManager::loadWeapons(const BinaryData& vanillaItemStrings)
 	return true;
 }
 
+bool DefaultContentManager::loadArmours(const BinaryData& vanillaItemStrings)
+{
+	auto json = readJsonDataFileWithSchema("armours.json");
+	for (auto& element : json.toVec()) {
+		ArmourModel *a = ArmourModel::deserialize(element, vanillaItemStrings);
+		SLOGD("Loaded armour {} {}", a->getItemIndex(), a->getInternalName());
+
+		if (a->getItemIndex() >= m_items.size())
+		{
+			SLOGE("Armour index must be in the interval 0 - {}", m_items.size() - 1);
+			return false;
+		}
+
+		m_items[a->getItemIndex()] = a;
+		m_armourMap.try_emplace(a->getInternalName(), a);
+	}
+
+	return true;
+}
+
+void DefaultContentManager::loadMaxArmourPerClass() {
+	std::vector<const ArmourModel*> plates;
+	for (auto item : m_items) {
+		auto armour = item->asArmour();
+		if (armour && armour->getArmourClass() == ARMOURCLASS_PLATE) {
+			if (armour->isIgnoredForMaxProtection()) {
+				continue;
+			}
+			plates.push_back(armour);
+		}
+	}
+
+	for (auto item : m_items) {
+		auto armour = item->asArmour();
+		if (armour) {
+			if (armour->isIgnoredForMaxProtection()) {
+				continue;
+			}
+			auto armourClass = armour->getArmourClass();
+			INT32 max = 0;
+			if (m_maxArmourPerClass.find(armourClass) != m_maxArmourPerClass.end()) {
+				max = m_maxArmourPerClass[armourClass];
+			}
+			max = std::max(max, static_cast<INT32>(armour->getProtection()));
+			for (auto plate : plates) {
+				if (!armour->canBeAttached(m_gamePolicy.get(), plate)) {
+					continue;
+				}
+				max = std::max(max, static_cast<INT32>(armour->getProtection()) + static_cast<INT32>(plate->getProtection()));
+			}
+			m_maxArmourPerClass[armourClass] = max;
+		}
+	}
+}
+
+INT32 DefaultContentManager::getMaxArmourPerClass(uint16_t armourClass) const {
+	if (m_maxArmourPerClass.find(armourClass) == m_maxArmourPerClass.end()) {
+		return 0;
+	}
+	return m_maxArmourPerClass.at(armourClass);
+}
+
 bool DefaultContentManager::loadSmokeEffects()
 {
 	auto json = readJsonDataFileWithSchema("smoke-effects.json");
@@ -615,6 +706,10 @@ bool DefaultContentManager::loadItems(const BinaryData& vanillaItemStrings)
 		}
 		if (item->getItemClass() == IC_GRENADE || item->getItemClass() == IC_BOMB) {
 			SLOGW("Ignoring grenade or bomb '{}' in 'items.json', should be in 'explosives.json'", item->getInternalName());
+			continue;
+		}
+		if (item->getItemClass() == IC_ARMOUR) {
+			SLOGW("Ignoring armour '{}' in 'items.json', should be in 'armours.json'", item->getInternalName());
 			continue;
 		}
 
@@ -838,6 +933,9 @@ bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
 {
 	loadPrioritizedData();
 
+	auto game_json = readJsonDataFileWithSchema("game.json");
+	m_gamePolicy = std::make_unique<DefaultGamePolicy>(game_json);
+
 	m_items.resize(MAXITEMS);
 	bool result = loadItems(binaryData)
 		&& loadCalibres()
@@ -848,6 +946,7 @@ bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
 		&& loadSmokeEffects()
 		&& loadExplosionAnimations()
 		&& loadExplosives(binaryData, m_explosionAnimations)
+		&& loadArmours(binaryData)
 		&& loadArmyData()
 		&& loadMusic();
 
@@ -862,10 +961,6 @@ bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
 
 	loadMercsData(binaryData);
 	loadAllDealersAndInventory();
-
-	auto game_json = readJsonDataFileWithSchema("game.json");
-
-	m_gamePolicy = std::make_unique<DefaultGamePolicy>(game_json);
 
 	auto imp_json = readJsonDataFileWithSchema("imp.json");
 	m_impPolicy = std::make_unique<DefaultIMPPolicy>(imp_json, this);
@@ -903,9 +998,19 @@ bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
 	m_scriptRecords.resize(NUM_PROFILES);
 	loadAllScriptRecords();
 
+	auto langSuffix = L10n::GetSuffix(m_gameVersion, false);
 	std::unique_ptr<SGPFile> const translation { openGameResForReading(ST::format(
-		"strings/translation{}.json", L10n::GetSuffix(m_gameVersion, false)))};
+		"strings/translation{}.json", langSuffix))};
 	g_langRes = std::make_unique<L10n::L10n_t>(translation.get());
+
+	if (this->getGamePolicy()->informative_tooltips)
+	{
+		std::unique_ptr<SGPFile> const tooltipsTranslation{ openGameResForReading(ST::format(
+			"strings/tooltips{}.json", langSuffix)) };
+		g_tooltipsRes = std::make_unique<L10n::L10n_tooltips>(tooltipsTranslation.get());
+	}
+
+	loadMaxArmourPerClass();
 
 	return result;
 }
@@ -1106,13 +1211,14 @@ bool DefaultContentManager::loadStrategicLayerData()
 		m_factParams[params->fact] = params;
 	}
 
+	bool jsonIsOnModLayer = (openGameResForReadingOnAllLayers("script-records-NPCs.json").size() > 1);
 	json = readJsonDataFileWithSchema("strategic-mines.json");
 
 	uint8_t i = 0;
 	for (auto& element : json.toVec())
 	{
 		m_mines.push_back(
-			MineModel::deserialize(i, element, this)
+			MineModel::deserialize(i, element, this, jsonIsOnModLayer)
 		);
 		i++;
 	}
@@ -1291,7 +1397,7 @@ void DefaultContentManager::loadTranslationTable()
 
 void DefaultContentManager::loadAllScriptRecords()
 {
-	// hack for failures during unit-testing
+	// hack for avoiding failures during unit-testing
 	if (!doesGameResExists(BINARYDATADIR "/prof.dat")) return;
 
 	auto ctrl = readJsonDataFileWithSchema("script-records-control.json").toObject();
@@ -1303,16 +1409,18 @@ void DefaultContentManager::loadAllScriptRecords()
 		for (auto& subElement : meanwhile.GetValue("chars").toVec()) {
 			auto charToFileInfo = subElement.toObject();
 			auto jsonProfileId = (this->getMercProfileInfoByName(charToFileInfo.GetString("name")))->profileID;
-			auto fullPath = NPCDATADIR "/" + charToFileInfo.GetString("fileName");
+			std::unique_ptr<SGPFile> file{ openGameResForReading(NPCDATADIR "/" + charToFileInfo.GetString("fileName")) };
 			m_scriptRecordsMeanwhiles.insert_or_assign(
 				{ jsonMeanwhileId, jsonProfileId },
-				ExtractNPCQuoteInfoArrayFromFile(openGameResForReading(fullPath)) );
+				ExtractNPCQuoteInfoArrayFromFile(file.get()));
 		}
 	}
 
 	auto scriptsControllingPCsFileName = ctrl.GetString("fileNameForScriptControlledPCs");
-	m_scriptRecordsRecruited = ExtractNPCQuoteInfoArrayFromFile(openGameResForReading(NPCDATADIR "/" + scriptsControllingPCsFileName));
+	std::unique_ptr<SGPFile> file{ openGameResForReading(NPCDATADIR "/" + scriptsControllingPCsFileName) };
+	m_scriptRecordsRecruited = ExtractNPCQuoteInfoArrayFromFile(file.get());
 
+	bool jsonIsOnStraccLayer = (openGameResForReadingOnAllLayers("script-records-NPCs.json").size() == 1);
 	auto json = readJsonDataFileWithSchema("script-records-NPCs.json");
 	for (auto& element : json.toVec()) {
 		auto reader = element.toObject();
@@ -1323,13 +1431,17 @@ void DefaultContentManager::loadAllScriptRecords()
 
 	auto npcFiles = getAllScriptRecords();
 	for (auto& path : npcFiles) {
-		auto splitPath = path.split('\\');
+		auto splitPath = path.split(PATH_SEPARATOR);
 		ST::string fileName = splitPath[1];
 		if (fileName == scriptsControllingPCsFileName) continue;
 		if (std::isdigit(fileName[0])) {
 			auto binProfileId = fileName.left(3).trim_left("0").to_int();
-			if (binProfileId < NUM_PROFILES && m_scriptRecords[binProfileId] == nullptr) {
-				m_scriptRecords[binProfileId] = ExtractNPCQuoteInfoArrayFromFile(openGameResForReading(path));
+			if (binProfileId < NUM_PROFILES) {
+				auto binVersions = openGameResForReadingOnAllLayers(path);
+				bool binIsOnModLayer = (binVersions.size() > 1);
+				if (m_scriptRecords[binProfileId] == nullptr || (binIsOnModLayer && jsonIsOnStraccLayer)) {
+					m_scriptRecords[binProfileId] = ExtractNPCQuoteInfoArrayFromFile(binVersions[0].get());
+				}
 			}
 		}
 	}

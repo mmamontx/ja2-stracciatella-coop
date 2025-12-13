@@ -3,6 +3,9 @@
 cmake_minimum_required (VERSION 3.18.1)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+## Enable generation of compile_commands.json for better IDE integration
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 ## Some macros
 
 macro(add_custom_templated_target NAME)
@@ -99,7 +102,7 @@ set(WITH_CUSTOM_LOCALE "" CACHE STRING "Set a custom locale at the start, leave 
 
 if(MSVC)
     # set the source and execution charset
-    add_compile_options("/utf-8")
+    add_compile_options(/utf-8 /bigobj)
     # suppress the min and max macro definitions
     add_compile_definitions(NOMINMAX)
 
@@ -164,9 +167,7 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/dependencies/lib-smacker")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/dependencies/lib-stracciatella")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/dependencies/lib-string_theory")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/dependencies/lib-miniaudio")
-if (MINGW)
-    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/dependencies/lib-mingw-std-threads")
-endif()
+
 
 # Prepare compilation of our own C++ source files.
 add_subdirectory(src)
@@ -195,7 +196,7 @@ target_link_libraries(${JA2_BINARY} PRIVATE
     lua
 )
 if (MINGW)
-    target_link_libraries(${JA2_BINARY} PRIVATE mingw_stdthreads ntdll)
+    target_link_libraries(${JA2_BINARY} PRIVATE ntdll)
 endif()
 if (ANDROID)
     target_link_libraries(${JA2_BINARY} PRIVATE android log)
@@ -337,11 +338,7 @@ if (UNIX AND NOT MINGW AND NOT APPLE AND NOT ANDROID)
         FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/logo.svg
         RENAME ja2-stracciatella.svg
         DESTINATION share/icons/hicolor/scalable/apps)
-    if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD|DragonFly|OpenBSD")
-        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/distr-files-linux/ja2_manpage DESTINATION man/man6 RENAME ja2.6)
-    else()
-        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/distr-files-linux/ja2_manpage DESTINATION share/man/man6 RENAME ja2.6)
-    endif()
+    install(DIRECTORY "assets/distr-files-linux/man6" TYPE MAN)
 elseif(ANDROID)
     install(TARGETS ${JA2_BINARY} LIBRARY DESTINATION .)
 else()

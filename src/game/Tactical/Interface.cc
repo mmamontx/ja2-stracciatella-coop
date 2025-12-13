@@ -1,61 +1,59 @@
-#include "Directories.h"
-#include "Font.h"
-#include "Isometric_Utils.h"
-#include "ItemModel.h"
-#include "Local.h"
-#include "HImage.h"
-#include "MapScreen.h"
-#include "Soldier_Find.h"
-#include "TileDef.h"
-#include "Timer_Control.h"
-#include "VObject.h"
-#include "SysUtil.h"
-#include "Overhead.h"
-#include "MouseSystem.h"
-#include "Button_System.h"
-#include "Interface.h"
-#include "VSurface.h"
-#include "Input.h"
-#include "Handle_UI.h"
 #include "Animation_Control.h"
 #include "Animation_Data.h"
-#include "RenderWorld.h"
-#include "Cursors.h"
-#include "Radar_Screen.h"
-#include "Video.h"
-#include "WorldMan.h"
-#include "Font_Control.h"
-#include "Render_Dirty.h"
-#include "Interface_Cursors.h"
-#include "Sound_Control.h"
-#include "Interface_Panels.h"
-#include "PathAI.h"
-#include "Faces.h"
-#include "Interface_Control.h"
-#include "Interface_Items.h"
-#include "MercTextBox.h"
-#include "Soldier_Functions.h"
-#include "Cursor_Control.h"
-#include "Handle_Doors.h"
-#include "Keys.h"
-#include "Text.h"
-#include "Points.h"
-#include "Soldier_Macros.h"
-#include "Game_Clock.h"
-#include "Map_Screen_Interface_Map.h"
-#include "Line.h"
-#include "Vehicles.h"
-#include "GameSettings.h"
-#include "Squads.h"
-#include "Items.h"
-#include "GameScreen.h"
-#include "MercProfile.h"
-
-#include "UILayout.h"
-
+#include "Button_System.h"
 #include "ContentManager.h"
+#include "Cursor_Control.h"
+#include "Cursors.h"
+#include "Directories.h"
+#include "Faces.h"
+#include "Font.h"
+#include "Font_Control.h"
+#include "Game_Clock.h"
 #include "GameInstance.h"
+#include "GameScreen.h"
+#include "GameSettings.h"
+#include "Handle_Doors.h"
+#include "Handle_UI.h"
+#include "HImage.h"
+#include "Input.h"
+#include "Interface.h"
+#include "Interface_Control.h"
+#include "Interface_Cursors.h"
+#include "Interface_Items.h"
+#include "Interface_Panels.h"
+#include "Isometric_Utils.h"
+#include "ItemModel.h"
+#include "Items.h"
+#include "Keys.h"
+#include "Line.h"
+#include "Local.h"
+#include "Map_Screen_Interface_Map.h"
+#include "MapScreen.h"
+#include "MercProfile.h"
+#include "MercTextBox.h"
+#include "MouseSystem.h"
 #include "NewStrings.h"
+#include "Overhead.h"
+#include "PathAI.h"
+#include "Points.h"
+#include "Radar_Screen.h"
+#include "Render_Dirty.h"
+#include "RenderWorld.h"
+#include "Soldier_Find.h"
+#include "Soldier_Functions.h"
+#include "Soldier_Macros.h"
+#include "Sound_Control.h"
+#include "Squads.h"
+#include "SysUtil.h"
+#include "Text.h"
+#include "TileDef.h"
+#include "Timer_Control.h"
+#include "UILayout.h"
+#include "Vehicles.h"
+#include "Video.h"
+#include "VObject.h"
+#include "VSurface.h"
+#include "WorldMan.h"
 
 #include <string_theory/format>
 #include <string_theory/string>
@@ -1025,7 +1023,7 @@ void DrawSelectedUIAboveGuy(SOLDIERTYPE& s)
 			// Add bars
 			RegisterBackgroundRectSingleFilled(sXPos, sYPos, 40, 40);
 
-			SGPVObject const* const gfx = s.bNeutral || s.bSide == OUR_TEAM ?
+			SGPVObject const* const gfx = s.bNeutral || s.bSide == Side::FRIENDLY ?
 							guiRADIO : guiRADIO2;
 			BltVideoObject(FRAME_BUFFER, gfx, s.sLocatorFrame, sXPos, sYPos);
 		}
@@ -1313,6 +1311,7 @@ void DirtyMercPanelInterface(SOLDIERTYPE const* const pSoldier, DirtyLevel const
 struct OPENDOOR_MENU
 {
 	SOLDIERTYPE *pSoldier;
+	DOOR        *pDoor;
 	INT16   sX;
 	INT16   sY;
 	BOOLEAN fMenuHandled;
@@ -1326,7 +1325,7 @@ BOOLEAN gfInOpenDoorMenu = FALSE;
 static void PopupDoorOpenMenu(BOOLEAN fClosingDoor);
 
 
-void InitDoorOpenMenu(SOLDIERTYPE* const pSoldier, BOOLEAN const fClosingDoor)
+void InitDoorOpenMenu(SOLDIERTYPE* const pSoldier, DOOR* const d, BOOLEAN const fClosingDoor)
 {
 	INT16 sScreenX, sScreenY;
 
@@ -1341,6 +1340,7 @@ void InitDoorOpenMenu(SOLDIERTYPE* const pSoldier, BOOLEAN const fClosingDoor)
 
 
 	gOpenDoorMenu.pSoldier     = pSoldier;
+	gOpenDoorMenu.pDoor        = d;
 	gOpenDoorMenu.fClosingDoor = fClosingDoor;
 
 	// OK, Determine position...
@@ -1390,23 +1390,54 @@ static void MakeButtonDoor(UINT idx, UINT gfx, INT16 x, INT16 y, INT16 ap, INT16
 {
 	GUIButtonRef const btn = QuickCreateButton(iIconImages[gfx], x, y, MSYS_PRIORITY_HIGHEST - 1, BtnDoorMenuCallback);
 	iActionIcons[idx] = btn;
-	ST::string diagWarning = "";
-	if (gOpenDoorMenu.pSoldier->bDesiredDirection & 1 && idx != OPEN_DOOR_ICON && idx != CANCEL_ICON)
-	{
-		diagWarning = *(GCM->getNewString(NS_DIAGONALITY_WARNING));
+	ST::string warnings{}, revealedMods{};
+	SOLDIERTYPE* const soldier = gOpenDoorMenu.pSoldier;
+	DOOR* const          pDoor = gOpenDoorMenu.pDoor;
+
+	if (!gOpenDoorMenu.fClosingDoor && gamepolicy(informative_tooltips)) {
+		switch (idx) {
+			case LOCKPICK_DOOR_ICON:
+				revealedMods = GetModifiersForLockPicking(soldier, pDoor);
+				break;
+			case EXAMINE_DOOR_ICON:
+				revealedMods = GetModifiersForLockExam(soldier, pDoor);
+				break;
+			case UNTRAP_DOOR_ICON:
+				revealedMods = GetModifiersForLockUntrap(soldier, pDoor);
+				break;
+			case BOOT_DOOR_ICON:
+			case USE_CROWBAR_ICON:
+				revealedMods = GetModifiersForLockForceOpen(soldier, pDoor, idx == USE_CROWBAR_ICON);
+				break;
+			case EXPLOSIVE_DOOR_ICON:
+				revealedMods = GetModifiersForLockBlowUp(soldier);
+				break;
+		}
+	}
+	
+	if (idx == EXAMINE_DOOR_ICON) {
+		if (pDoor->bPerceivedTrapped == DOOR_PROVED_TRAPPED) {
+			warnings += st_format_printf("\n" + TacticalStr[DOOR_LOCK_DESCRIPTION_STR], GetTrapName(*pDoor));
+			disable = true;
+		} else if (pDoor->bPerceivedTrapped == DOOR_PROVED_UNTRAPPED) {
+			warnings += st_format_printf("\n" + TacticalStr[DOOR_LOCK_UNTRAPPED_STR], GetTrapName(*pDoor));
+			disable = true;
+		}
+	}
+	if (idx == UNTRAP_DOOR_ICON) {
+		disable = pDoor->bPerceivedTrapped == DOOR_PROVED_UNTRAPPED;
+	}
+	if (soldier->bDesiredDirection & 1 && idx != OPEN_DOOR_ICON && idx != CANCEL_ICON) {
+		warnings += "\n" + *(GCM->getNewString(NS_DIAGONALITY_WARNING));
 		DisableButton(btn);
 	}
-	if (ap == 0 || !(gTacticalStatus.uiFlags & INCOMBAT))
-	{
-		btn->SetFastHelpText(help+diagWarning);
-	}
-	else
-	{
+	if (ap == 0 || !(gTacticalStatus.uiFlags & INCOMBAT)) {
+		btn->SetFastHelpText(help+warnings+revealedMods);
+	} else {
 		ST::string zDisp = ST::format("{} ( {} )", help, ap);
-		btn->SetFastHelpText(zDisp+diagWarning);
+		btn->SetFastHelpText(zDisp+warnings+revealedMods);
 	}
-	if (disable || (ap != 0 && !EnoughPoints(gOpenDoorMenu.pSoldier, ap, bp, FALSE)))
-	{
+	if (disable || (ap != 0 && !EnoughPoints(soldier, ap, bp, false))) {
 		DisableButton(btn);
 	}
 }
@@ -1450,10 +1481,13 @@ static void PopupDoorOpenMenu(BOOLEAN fClosingDoor)
 
 	MakeButtonDoor(EXAMINE_DOOR_ICON, EXAMINE_DOOR_IMAGES, dx, dy + 20, AP_EXAMINE_DOOR, BP_EXAMINE_DOOR, d0,
 			pTacticalPopupButtonStrings[EXAMINE_DOOR_ICON]);
+
 	MakeButtonDoor(BOOT_DOOR_ICON, BOOT_DOOR_IMAGES, dx, dy + 40, AP_BOOT_DOOR, BP_BOOT_DOOR, d0,
 			pTacticalPopupButtonStrings[BOOT_DOOR_ICON]);
+
 	MakeButtonDoor(UNTRAP_DOOR_ICON, UNTRAP_DOOR_ICON, dx + 20, dy + 40, AP_UNTRAP_DOOR, BP_UNTRAP_DOOR, d0,
 			pTacticalPopupButtonStrings[UNTRAP_DOOR_ICON]);
+
 	MakeButtonDoor(CANCEL_ICON, CANCEL_IMAGES, dx + 20, dy + 20, 0, 0, FALSE,
 			pTacticalPopupButtonStrings[CANCEL_ICON]);
 

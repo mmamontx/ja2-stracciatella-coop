@@ -5621,7 +5621,7 @@ UINT8 SoldierTakeDamage(SOLDIERTYPE* const pSoldier, INT16 sLifeDeduct, INT16 sB
 
 	// ATE: Put some logic in here to allow enemies to die quicker.....
 	// Are we an enemy?
-	if ( pSoldier->bSide != OUR_TEAM && !pSoldier->bNeutral && pSoldier->ubProfile == NO_PROFILE )
+	if ( pSoldier->bSide != Side::FRIENDLY && !pSoldier->bNeutral && pSoldier->ubProfile == NO_PROFILE )
 	{
 		// ATE: Give them a chance to fall down...
 		if ( pSoldier->bLife > 0 && pSoldier->bLife < ( OKLIFE - 1 ) )
@@ -6601,9 +6601,7 @@ void EVENT_SoldierBeginGiveItem( SOLDIERTYPE *pSoldier )
 	else
 	{
 		UnSetEngagedInConvFromPCAction( pSoldier );
-
-		delete pSoldier->pTempObject;
-		pSoldier->pTempObject = nullptr;
+		ClearTempObject(pSoldier);
 	}
 }
 
@@ -7330,8 +7328,7 @@ void HaultSoldierFromSighting( SOLDIERTYPE *pSoldier, BOOLEAN fFromSightingEnemy
 	{
 		// Place it back into inv....
 		AutoPlaceObject( pSoldier, pSoldier->pTempObject, FALSE );
-		delete pSoldier->pTempObject;
-		pSoldier->pTempObject        = NULL;
+		ClearTempObject(pSoldier);
 		pSoldier->usPendingAnimation = NO_PENDING_ANIMATION;
 	}
 
@@ -7909,6 +7906,19 @@ static INT32 CheckBleeding(SOLDIERTYPE* pSoldier)
 								// bleeding while "dying" costs a PERMANENT point of life each time!
 								pSoldier->bLifeMax--;
 								pSoldier->bBleeding--;
+								if (pSoldier->ubProfile != NO_PROFILE)
+								{
+									gMercProfiles[pSoldier->ubProfile].bLifeDelta--;
+									gMercProfiles[pSoldier->ubProfile].bLifeMax--;
+									gMercProfiles[pSoldier->ubProfile].bLife--;
+								}
+								if (pSoldier->bTeam == OUR_TEAM)
+								{
+									ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(g_langRes->Message[STR_LOSES_1_HP], pSoldier->name));
+									// make stat RED for a while...
+									pSoldier->uiChangeHealthTime = GetJA2Clock();
+									pSoldier->usValueGoneUp &= ~(HEALTH_INCREASE);
+								} 
 							}
 						}
 					}
@@ -7968,12 +7978,7 @@ static void SoldierBleed(SOLDIERTYPE* const s, const BOOLEAN fBandagedBleed)
 
 void SoldierCollapse( SOLDIERTYPE *pSoldier )
 {
-	BOOLEAN fMerc = FALSE;
-
-	if ( pSoldier->ubBodyType <= REGFEMALE )
-	{
-		fMerc = TRUE;
-	}
+	bool fMerc{ pSoldier->ubBodyType <= REGFEMALE };
 
 	// If we are an animal, etc, don't do anything....
 	switch( pSoldier->ubBodyType )
@@ -7997,6 +8002,14 @@ void SoldierCollapse( SOLDIERTYPE *pSoldier )
 
 	// CC has requested - handle sight here...
 	HandleSight(*pSoldier, SIGHT_LOOK);
+
+	// Handle edge case where we're collapsing while trying to
+	// give an item, issue #2265.
+	if (pSoldier->ubPendingAction == MERC_GIVEITEM)
+	{
+		ClearTempObject(pSoldier);
+		UnSetEngagedInConvFromPCAction(pSoldier);
+	}
 
 	// Check height
 	switch( gAnimControl[ pSoldier->usAnimState ].ubEndHeight )
@@ -8837,8 +8850,7 @@ void HandleSystemNewAISituation(SOLDIERTYPE* const pSoldier)
 				{
 					// Place it back into inv....
 					AutoPlaceObject( pSoldier, pSoldier->pTempObject, FALSE );
-					delete pSoldier->pTempObject;
-					pSoldier->pTempObject        = NULL;
+					ClearTempObject(pSoldier);
 					pSoldier->usPendingAnimation = NO_PENDING_ANIMATION;
 
 					// Decrement attack counter...
@@ -9020,6 +9032,18 @@ static void SetSoldierPersonalLightLevel(SOLDIERTYPE* const s)
 	n.ubSumLights         = 5;
 	n.ubMaxLights         = 5;
 	n.ubNaturalShadeLevel = 5;
+}
+
+
+void SetTempObject(SOLDIERTYPE * const pSoldier, OBJECTTYPE const& objectToCopy)
+{
+	pSoldier->pTempObject = new OBJECTTYPE{ objectToCopy };
+}
+
+
+void ClearTempObject(SOLDIERTYPE * const pSoldier)
+{
+	delete std::exchange(pSoldier->pTempObject, nullptr);
 }
 
 

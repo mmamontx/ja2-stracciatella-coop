@@ -1,7 +1,5 @@
 # JA2-Stracciatella Cooperative Multiplayer
 
-This is the fork of venerable JA2-Stracciatella project introducing cooperative multiplayer on top of it.
-
 The goal of the project is to enable the original JA2 campaign walkthrough with multiple players.
 
 ## How to start the game

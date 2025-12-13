@@ -2593,7 +2593,7 @@ struct SOLDIERTYPE : public Replica3
 	BOOLEAN AnimCache_initialized;
 
 	INT8 bLife; // current life (hit points or health)
-	UINT8 bSide;
+	Side bSide;
 	INT8 bNewOppCnt;
 
 	UINT16 usAniCode;

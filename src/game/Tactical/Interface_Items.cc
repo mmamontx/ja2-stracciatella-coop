@@ -9,9 +9,11 @@
 #include "HImage.h"
 #include "Map_Screen_Interface_Bottom.h"
 #include "Object_Cache.h"
+#include "Soldier_Functions.h"
 #include "Soldier_Macros.h"
 #include "TileDef.h"
 #include "Timer_Control.h"
+#include "Types.h"
 #include "VObject.h"
 #include "SysUtil.h"
 #include "Overhead.h"
@@ -1435,7 +1437,7 @@ BOOLEAN HandleCompatibleAmmoUI(const SOLDIERTYPE* pSoldier, INT8 bInvPos, BOOLEA
 					}
 				}
 
-				gubSkiDirtyLevel = SKI_DIRTY_LEVEL1;
+				gubSkiDirtyLevel = SKI_DIRTY_LEVEL2;
 				return( TRUE );
 			}
 		}
@@ -1450,7 +1452,7 @@ BOOLEAN HandleCompatibleAmmoUI(const SOLDIERTYPE* pSoldier, INT8 bInvPos, BOOLEA
 			{
 				pTestObject = &(pSoldier->inv[ bInvPos ]);
 				gpHighLightedItemObject = NULL;
-				gubSkiDirtyLevel = SKI_DIRTY_LEVEL1;
+				gubSkiDirtyLevel = SKI_DIRTY_LEVEL2;
 			}
 		}
 	}
@@ -1695,11 +1697,15 @@ BOOLEAN InItemDescriptionBox( )
 
 void CycleItemDescriptionItem( )
 {
+	// Don't try to cycle through keys in the keyring, because they do not
+	// have a dedicated slot where we could place the new item.
+	if (InKeyRingPopup()) return;
+
 	// Delete old box...
 	DeleteItemDescriptionBox( );
 
 	// Make new item....
-	const auto oldItemIndex = gpItemDescSoldier->inv[HANDPOS].usItem;
+	auto const oldItemIndex = gpItemDescObject->usItem;
 	auto items = GCM->getItems();
 	auto it = std::find_if(items.begin(), items.end(), [oldItemIndex](const ItemModel* item) -> bool {
 		return item->getItemIndex() == oldItemIndex;
@@ -1717,7 +1723,7 @@ void CycleItemDescriptionItem( )
 	else
 	{
 		// cycle forwards
-		it = it++;
+		++it;
 		if (it == items.end()) {
 			it = items.begin();
 		}
@@ -1725,9 +1731,10 @@ void CycleItemDescriptionItem( )
 
 	const auto newItemIndex = (*it)->getItemIndex();
 
-	CreateItem(newItemIndex, 100, &gpItemDescSoldier->inv[HANDPOS]);
+	CreateItem(newItemIndex, 100, gpItemDescObject);
 
-	InternalInitItemDescriptionBox( &( gpItemDescSoldier->inv[ HANDPOS ] ), INTERFACE_START_X + 214, (INT16)(INV_INTERFACE_START_Y + 1 ), gubItemDescStatusIndex, gpItemDescSoldier );
+	InternalInitItemDescriptionBox(gpItemDescObject, gsInvDescX, gsInvDescY,
+		gubItemDescStatusIndex, gpItemDescSoldier);
 }
 
 
@@ -1739,12 +1746,15 @@ void InitItemDescriptionBox(SOLDIERTYPE* pSoldier, UINT8 ubPosition, INT16 sX, I
 
 void InitKeyItemDescriptionBox(SOLDIERTYPE* const pSoldier, const UINT8 ubPosition, const INT16 sX, const INT16 sY)
 {
-	OBJECTTYPE *pObject;
+	// To be able to display the key we must have create a temporary OBJECTTYPE
+	// from the keyring. Using a static variable is easier and safer than
+	// allocating a new object on the heap.
+	static OBJECTTYPE tempKeyObject;
 
-	AllocateObject( &pObject );
-	CreateKeyObject( pObject, pSoldier->pKeyRing[ ubPosition ].ubNumber ,pSoldier->pKeyRing[ ubPosition ].ubKeyID );
+	auto const keyInRing = pSoldier->pKeyRing[ubPosition];
+	CreateKeyObject(&tempKeyObject, keyInRing.ubNumber, keyInRing.ubKeyID);
 
-	InternalInitItemDescriptionBox(pObject, sX, sY, 0, pSoldier);
+	InternalInitItemDescriptionBox(&tempKeyObject, sX, sY, 0, pSoldier);
 }
 
 
@@ -2765,15 +2775,6 @@ void DeleteItemDescriptionBox( )
 		fMapScreenBottomDirty = TRUE;
 	}
 
-	if (InKeyRingPopup())
-	{
-		DeleteKeyObject(gpItemDescObject);
-		gpItemDescObject = NULL;
-		fShowDescriptionFlag = FALSE;
-		fInterfacePanelDirty = DIRTYLEVEL2;
-		return;
-	}
-
 	fShowDescriptionFlag = FALSE;
 	fInterfacePanelDirty = DIRTYLEVEL2;
 
@@ -3446,8 +3447,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 					if ( sActionGridNo != -1 && (gRPC_Inv ? gRPC_Inv->ubHandPos : gbItemPointerSrcSlot) != NO_SLOT )
 					{
 							// Make a temp object for ammo...
-							(gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier)->pTempObject  = new OBJECTTYPE{};
-							*(gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier)->pTempObject = TempObject;
+							SetTempObject((gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier), TempObject);
 
 							// Remove from soldier's inv...
 							RemoveObjs( &( (gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier)->inv[ (gRPC_Inv ? gRPC_Inv->ubHandPos : gbItemPointerSrcSlot) ] ), 1 );
@@ -3540,8 +3540,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 				switch ( gAnimControl[ (gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier)->usAnimState ].ubHeight )
 				{
 					case ANIM_STAND:
-						(gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier)->pTempObject = new OBJECTTYPE{};
-						*(gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier)->pTempObject = *(gRPC_Inv ? gpItemPointerRPC : gpItemPointer);
+						SetTempObject((gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier), *(gRPC_Inv ? gpItemPointerRPC : gpItemPointer));
 						(gRPC_Inv ? gpItemPointerSoldierRPC : gpItemPointerSoldier)->sPendingActionData2 = usMapPos;
 
 						// Turn towards.....gridno
@@ -4068,8 +4067,7 @@ void RenderKeyRingPopup(const BOOLEAN fFullRender)
 		}
 	}
 
-	OBJECTTYPE o;
-	o = OBJECTTYPE{};
+	OBJECTTYPE o{};
 	o.bStatus[0] = 100;
 
 	ETRLEObject const& pTrav = guiItemPopupBoxes->SubregionProperties(0);

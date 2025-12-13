@@ -53,7 +53,6 @@
 #include "StrategicMap.h"
 #include "UILayout.h"
 #include "Video.h"
-#include "VObject.h"
 #include "VSurface.h"
 #include "WCheck.h"
 #include "WordWrap.h"
@@ -708,7 +707,7 @@ void CharacterDialogueUsingAlternateFile(SOLDIERTYPE& s, UINT16 const quote, Dia
 			DialogueHandler const handler_;
 	};
 
-	DialogueEvent::Add(new CharacterDialogueEventUsingAlternateFile(s, gTacticalStatus.ubGuideDescriptionToUse, handler));
+	DialogueEvent::Add(new CharacterDialogueEventUsingAlternateFile(s, quote, handler));
 }
 
 
@@ -726,7 +725,11 @@ BOOLEAN ExecuteCharacterDialogue(UINT8 const ubCharacterNum, UINT16 const usQuot
 
 	// Try to find soldier...
 	const SOLDIERTYPE* const pSoldier = FindSoldierByProfileIDOnPlayerTeam(ubCharacterNum);
-	if ( pSoldier != NULL )
+	if (pSoldier == NULL && fFromSoldier)
+	{ // If from a soldier, and he does not exist anymore, do not play!
+		return false;
+	}
+	if (pSoldier != NULL && gubVideoConferencingMode != AIM_VIDEO_MERC_ANSWERING_MACHINE_MODE)
 	{
 		// Check vital stats
 		if (pSoldier->bLife < CONSCIOUSNESS )
@@ -798,14 +801,6 @@ BOOLEAN ExecuteCharacterDialogue(UINT8 const ubCharacterNum, UINT16 const usQuot
 				}
 			}
 		}*/
-	}
-	else
-	{
-		// If from a soldier, and he does not exist anymore, donot play!
-		if ( fFromSoldier )
-		{
-			return( FALSE );
-		}
 	}
 
 	// Check face index
@@ -1476,7 +1471,7 @@ void SayQuote58FromNearbyMercInSector(GridNo const gridno, INT8 const distance, 
 }
 
 
-static void TextOverlayClickCallback(MOUSE_REGION* pRegion, UINT32 iReason)
+static void TextOverlayClickCallback(MOUSE_REGION *, UINT32 iReason)
 {
 	static BOOLEAN fLButtonDown = FALSE;
 
@@ -1499,7 +1494,7 @@ static void TextOverlayClickCallback(MOUSE_REGION* pRegion, UINT32 iReason)
 }
 
 
-static void FaceOverlayClickCallback(MOUSE_REGION* pRegion, UINT32 iReason)
+static void FaceOverlayClickCallback(MOUSE_REGION *, UINT32 iReason)
 {
 	static BOOLEAN fLButtonDown = FALSE;
 
