@@ -434,7 +434,7 @@ struct SOLDIERTYPE : public Replica3
 		AnimCache_initialized = FALSE;
 
 		bLife = 0;
-		bSide = 0;
+		bSide = (Side)0;
 		bNewOppCnt = 0;
 
 		usAniCode = 0;
