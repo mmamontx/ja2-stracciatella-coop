@@ -3,6 +3,7 @@
 #include "Faces.h"
 #include "Finances.h"
 #include "Game_Clock.h"
+#include "GameLoop.h"
 #include "GameScreen.h"
 #include "History.h"
 #include "Interface_Items.h"
@@ -47,6 +48,8 @@ std::list<RPC_DATA> gRPC_Events;
 
 // Etc.
 HANDLE gMainThread;
+HANDLE gPacketThread;
+HANDLE gReplicaManagerThread;
 // For clients: whether the server hit the time compression button
 BOOLEAN gStarted = FALSE;
 BOOLEAN MPReadyButtonValue = FALSE;
@@ -380,7 +383,10 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 			case ID_DISCONNECTION_NOTIFICATION:
 			case ID_CONNECTION_LOST:
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_DISCONNECTION_NOTIFICATION/ID_CONNECTION_LOST");
-				break;
+
+				guiPendingScreen = MAINMENU_SCREEN;
+
+				return 0; // Stop processing the packets
 			// Can't connect for various reasons:
 			case ID_CONNECTION_ATTEMPT_FAILED:
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_ATTEMPT_FAILED");

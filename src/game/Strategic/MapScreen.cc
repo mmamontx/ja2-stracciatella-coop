@@ -3189,6 +3189,8 @@ void EndMapScreen( BOOLEAN fDuringFade )
 	// ATE: Shutdown tactical interface panel
 //	ShutdownCurrentPanel( );
 
+	KillAllTextInputModes(); // Chat textbox
+
 	// still plotting movement?
 	if (bSelectedDestChar != -1 || fPlotForHelicopter)
 	{
@@ -3363,6 +3365,10 @@ void EndMapScreen( BOOLEAN fDuringFade )
 
 	// cancel request if we somehow leave first
 	gfRequestGiveSkyriderNewDestination = FALSE;
+
+	if (guiPendingScreen == MAINMENU_SCREEN) {
+		ReStartingGame();
+	}
 }
 
 static SGPSector GetSectorAtXY(INT16 relX, INT16 relY)

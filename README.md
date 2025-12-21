@@ -19,7 +19,10 @@ The following alterations are dictated by the multiplayer specifics and convenie
 3. There is an additional table on the strategic map screen with the list of players, their respective readiness statuses, and a dedicated button to change the latter.
 4. The original message box at the bottom left of the strategic map screen also shows multiplayer-specific system messages as well as chat messages from players (there is a text input field added just below it).
 5. The helicopter drop-off animation at Omerta is disabled.
-6. In the turn-based mode all the players share a single turn - they are not separated like it is done in 1.13. This complies with the original game design by keeping the ability for players to manage sequence of their collaborative actions. The 'end turn' button marks the individual player turn, once all the players hit this button, the turn is passed to the enemy and other NPC teams.
+
+It also worth mentioning a change compared to 1.13 experience:
+
+In the turn-based mode all the players share a single turn - the turns are not separated among them. This complies with the original game design by keeping the ability for players to manage sequence of their collaborative actions. The 'end turn' button marks the individual player turn, once all the players hit this button, the turn is passed to the enemy and other NPC teams.
 
 ## License
 

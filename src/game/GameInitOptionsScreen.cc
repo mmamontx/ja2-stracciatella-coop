@@ -460,6 +460,28 @@ static void DisplayMessageToUserAboutDeadIsDeadSaveScreen(const ST::string& zStr
 static BOOLEAN bNetworkInitialized = FALSE;
 static BOOLEAN bClientThreadCreated = FALSE;
 
+void NetworkShutdown(void)
+{
+	if (!bNetworkInitialized) return;
+
+	// FIXME: Handle MSVC warning C6258?
+	if (gPacketThread) TerminateThread(gPacketThread, 0);
+	bClientThreadCreated = FALSE;
+
+	if (gReplicaManagerThread) TerminateThread(gReplicaManagerThread, 0);
+
+	gReplicaManager.Clear();
+	gReplicaList.Clear(TRUE, NULL, 0);
+	gNetworkIdManager.Clear();
+
+	if (gNetworkOptions.connected) {
+		gNetworkOptions.peer->Shutdown(1000, 0);
+		gNetworkOptions.connected = FALSE;
+	}
+
+	bNetworkInitialized = FALSE;
+}
+
 static void NetworkInit()
 {
 	if (bNetworkInitialized) return;
@@ -495,7 +517,7 @@ static void NetworkInit()
 
 	if (IS_SERVER)
 	{
-		CreateThread(NULL, 0, replicamgr, NULL, 0, NULL);
+		gReplicaManagerThread = CreateThread(NULL, 0, replicamgr, NULL, 0, NULL);
 
 		gNetworkOptions.peer->Startup(MAX_NUM_PLAYERS - 1, &SocketDescriptor(gNetworkOptions.port, 0), 1);
 		gNetworkOptions.peer->AttachPlugin(&gReplicaManager);
@@ -518,7 +540,7 @@ static void NetworkInit()
 
 		gNetworkOptions.connected = TRUE; // Always TRUE for server
 
-		CreateThread(NULL, 0, server_packet, NULL, 0, NULL);
+		gPacketThread = CreateThread(NULL, 0, server_packet, NULL, 0, NULL);
 	}
 	else
 	{
@@ -542,7 +564,7 @@ static void ConnectToHost(void)
 
 	if (!(bClientThreadCreated))
 	{
-		CreateThread(NULL, 0, client_packet, NULL, 0, NULL);
+		gPacketThread = CreateThread(NULL, 0, client_packet, NULL, 0, NULL);
 		bClientThreadCreated = TRUE;
 	}
 }

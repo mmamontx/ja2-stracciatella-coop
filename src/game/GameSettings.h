@@ -123,4 +123,6 @@ BOOLEAN CanGameBeSaved(void);
 
 void DoDeadIsDeadSaveIfNecessary(void);
 
+void NetworkShutdown(void);
+
 #endif

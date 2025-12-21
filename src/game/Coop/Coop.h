@@ -319,9 +319,11 @@ extern std::list<RPC_DATA> gRPC_Events;
 
 // Etc.
 extern HANDLE gMainThread;
+extern HANDLE gPacketThread;
+extern HANDLE gReplicaManagerThread;
 extern BOOLEAN gStarted;
 extern BOOLEAN MPReadyButtonValue;
-extern BOOLEAN gEnemyEnabled;
+extern BOOLEAN gEnemyEnabled; // FIXME: Replace with a constant
 extern BOOLEAN gGameOptionsReceived;
 
 

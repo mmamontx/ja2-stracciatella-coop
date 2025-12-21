@@ -358,4 +358,19 @@ void ReStartingGame()
 	gpCustomizableTimerCallback = NULL;
 
 	RESET_CHEAT_LEVEL();
+
+	NetworkShutdown();
+
+	// RPCs
+	gRPC_Enable = TRUE;
+	gRPC_Squad = FALSE;
+	gpItemPointerRPC = NULL;
+	gRPC_Inv = NULL;
+	gpItemPointerSoldierRPC = NULL;
+	gRPC_Events.clear();
+
+	// Etc.
+	gStarted = FALSE;
+	gGameOptionsReceived = FALSE;
+	MPReadyButtonValue = FALSE;
 }
