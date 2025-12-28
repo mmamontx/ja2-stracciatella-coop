@@ -66,10 +66,7 @@ DWORD WINAPI replicamgr(LPVOID lpParam)
 
 INT8 PlayerIndex(RakNetGUID guid)
 {
-	printf("IS_VALID_CLIENT = %s\n", IS_VALID_CLIENT ? "TRUE" : "FALSE");
-
 	FOR_EACH_PLAYER(i) {
-		SLOGI("PLAYER_GUID({}) = {}", i, (PLAYER_GUID(i)).ToUint32(PLAYER_GUID(i)));
 		if (PLAYER_GUID(i) == guid) {
 			return i;
 		}

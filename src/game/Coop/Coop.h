@@ -58,14 +58,14 @@ using namespace RakNet;
 // For the valid clients return replicated values.
 // For the invalid clients return local values, which are just garbage.
 #define PLAYER_READY(i) (IS_VALID_CLIENT ? \
-    ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->ready : \
+    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->ready : \
     gPlayers[i].ready)
 #define PLAYER_NAME(i) (IS_VALID_CLIENT ? \
-    ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->name.C_String() : \
+    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->name.C_String() : \
     gPlayers[i].name.C_String())
 #define PLAYER_GUID(i) (IS_VALID_CLIENT ? \
-    ((PLAYER*)gReplicaList[REPLICA_PLAYER_INDEX + i])->guid \
-    : gPlayers[i].guid)
+    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->guid : \
+    gPlayers[i].guid)
 
 struct NETWORK_OPTIONS {
 	ST::string name;
@@ -184,7 +184,11 @@ struct PLAYER : public Replica3 {
 		serializeParameters->outputBitstream[0].Write(ready);
 		serializeParameters->outputBitstream[0].Write(endturn);
 
-		return RM3SR_BROADCAST_IDENTICALLY;
+		// For some reason, sometimes objects of this class aren't serialized, which
+		// causes a failed connection attempt because guid isn't replicated. So here
+		// the serialization is always forced.
+		//return RM3SR_BROADCAST_IDENTICALLY;
+		return RM3SR_BROADCAST_IDENTICALLY_FORCE_SERIALIZATION;
 	}
 
 	virtual void Deserialize(RakNet::DeserializeParameters* deserializeParameters) {

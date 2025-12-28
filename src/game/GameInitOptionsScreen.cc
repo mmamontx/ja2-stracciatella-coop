@@ -601,9 +601,9 @@ static void HandleGIOScreen(void)
 					if (!(gNetworkOptions.connected))
 					{
 						SLOGI("gNetworkOptions.connected == 0");
+						NetworkShutdown();
 						break; // TODO: Display a message?
 					}
-					SLOGI("guid = {}", gNetworkOptions.peer->GetMyGUID().ToUint32(gNetworkOptions.peer->GetMyGUID()));
 
 					struct USER_PACKET_CONNECT p;
 					p.id = ID_USER_PACKET_CONNECT;
@@ -620,6 +620,7 @@ static void HandleGIOScreen(void)
 					if (gReplicaList.Size() == 0)
 					{
 						SLOGI("gReplicaList.Size() == 0");
+						NetworkShutdown();
 						break; // TODO: Display a message?
 					}
 
@@ -632,6 +633,7 @@ static void HandleGIOScreen(void)
 					if (PlayerIndex(gNetworkOptions.peer->GetMyGUID()) == -1)
 					{
 						SLOGI("PlayerIndex() == -1");
+						NetworkShutdown();
 						break; // TODO: Display a message?
 					}
 
@@ -644,6 +646,7 @@ static void HandleGIOScreen(void)
 					if (!gGameOptionsReceived)
 					{
 						SLOGI("!gGameOptionsReceived");
+						NetworkShutdown();
 						break; // TODO: Display a message?
 					}
 				}
