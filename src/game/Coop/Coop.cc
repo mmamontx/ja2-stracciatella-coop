@@ -15,9 +15,7 @@
 #include "Message.h"
 #include "Overhead.h"
 #include "RakNet/MessageIdentifiers.h"
-#define GROUP GROUP_JA2
 #include "RakNet/RPC4Plugin.h"
-#undef GROUP
 #include "Soldier_Profile.h"
 #include "Squads.h"
 #include "Strategic.h"
