@@ -14,6 +14,7 @@
 #include <vector>
 
 
+class AIMListingModel;
 class ArmyCompositionModel;
 class BloodCatPlacementsModel;
 class BloodCatSpawnsModel;
@@ -92,7 +93,7 @@ public:
 
 	/* Open a game resource file for reading. */
 	/* Note: filename is passed by value here, it will be moved to SGPFile. */
-	virtual SGPFile* openGameResForReading(ST::string filename) const = 0;
+	virtual SGPFile* openGameResForReading(const ST::string& filename) const = 0;
 
 	/* Open a game resource file for reading, evaluating all layers, I will return highest priority layer first. */
 	virtual std::vector<std::unique_ptr<SGPFile>> openGameResForReadingOnAllLayers(const ST::string& filename) const = 0;
@@ -124,8 +125,6 @@ public:
 	virtual const std::vector<const MagazineModel*>& getMagazines() const = 0;
 
 	virtual const CalibreModel* getCalibre(uint8_t index) = 0;
-	virtual const ST::string* getCalibreName(uint8_t index) const = 0;
-	virtual const ST::string* getCalibreNameForBobbyRay(uint8_t index) const = 0;
 
 	virtual const AmmoTypeModel* getAmmoType(uint8_t index) = 0;
 
@@ -154,7 +153,6 @@ public:
 	virtual const std::vector<const ShippingDestinationModel*>& getShippingDestinations() const = 0;
 	virtual const ShippingDestinationModel* getShippingDestination(uint8_t locationId) const = 0;
 	virtual const ShippingDestinationModel* getPrimaryShippingDestination() const = 0;
-	virtual const ST::string* getShippingDestinationName(uint8_t index) const = 0;
 
 	virtual const ST::string* getMusicForMode(MusicMode mode) const = 0;
 
@@ -182,8 +180,6 @@ public:
 	virtual const TownModel* getTown(int8_t townId) const = 0;
 	virtual const TownModel* getTownByName(const ST::string& name) const = 0;
 	virtual const std::map<int8_t, const TownModel*>& getTowns() const = 0;
-	virtual const ST::string getTownName(uint8_t townId) const = 0;
-	virtual const ST::string getTownLocative(uint8_t townId) const = 0;
 	virtual const std::vector <const UndergroundSectorModel*> & getUndergroundSectors() const = 0;
 	virtual const CacheSectorsModel* getCacheSectors() const = 0;
 	virtual const MovementCostsModel* getMovementCosts() const = 0;
@@ -203,6 +199,12 @@ public:
 
 	/* Returns the full list of profile listings on M.E.R.C. */
 	virtual const std::vector<const MERCListingModel*>& getMERCListings() const = 0;
+
+	/* Returns the full list of profile listings on AIM */
+	virtual const std::vector<const AIMListingModel*>& getAIMListings() const = 0;
+
+	/* Returns a profile listing for a specific merc on AIM */
+	virtual const AIMListingModel* getAIMListing(uint8_t profileID) const = 0;
 
 	//returns the full list of character profiles
 	virtual const std::vector<const MercProfile*>& listMercProfiles() const = 0;

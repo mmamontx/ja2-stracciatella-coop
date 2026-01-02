@@ -1,8 +1,9 @@
 #include "DefaultContentManager.h"
 
+#include "AIMListingModel.h"
+#include "BinaryProfileData.h"
 #include "Exceptions.h"
 #include "ItemModel.h"
-#include "ItemStrings.h"
 #include "Directories.h"
 
 // XXX: GameRes.h should be integrated to ContentManager
@@ -16,6 +17,7 @@
 #include "CalibreModel.h"
 #include "ContentMusic.h"
 #include "Item_Types.h"
+#include "Json.h"
 #include "SmokeEffectModel.h"
 #include "ExplosionAnimationModel.h"
 #include "ExplosiveModel.h"
@@ -26,9 +28,9 @@
 #include "LoadingScreenModel.h"
 #include "MagazineModel.h"
 #include "NPC.h"
-#include "RustInterface.h"
 #include "ShippingDestinationModel.h"
 #include "Soldier_Profile_Type.h"
+#include "TranslatableString.h"
 #include "Types.h"
 #include "VehicleModel.h"
 #include "WeaponModels.h"
@@ -67,6 +69,8 @@
 #include "Strategic_AI.h"
 #include "Strategic_Status.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <string_theory/format>
 #include <string_theory/string>
@@ -183,6 +187,7 @@ DefaultContentManager::~DefaultContentManager()
 	deleteElements(m_undergroundSectors);
 	deleteElements(m_rpcSmallFaces);
 	deleteElements(m_MERCListings);
+	deleteElements(m_AIMListings);
 	deleteElements(m_mercProfileInfo);
 	deleteElements(m_mercProfiles);
 	deleteElements(m_vehicles);
@@ -233,11 +238,6 @@ const ShippingDestinationModel* DefaultContentManager::getPrimaryShippingDestina
 		}
 	}
 	throw DataError("Bobby Ray primary destination is not defined");
-}
-
-const ST::string* DefaultContentManager::getShippingDestinationName(uint8_t index) const
-{
-	return &m_shippingDestinationNames[index];
 }
 
 const NpcActionParamsModel* DefaultContentManager::getNpcActionParams(uint16_t actionCode) const
@@ -334,15 +334,9 @@ std::vector<ST::string> DefaultContentManager::getAllScriptRecords() const
  * settings directory) and file is present.
  * If file is not found, try to find it relatively to 'Data' directory.
  * If file is not found, try to find the file in libraries located in 'Data' directory; */
-SGPFile* DefaultContentManager::openGameResForReading(ST::string filename) const
+SGPFile* DefaultContentManager::openGameResForReading(const ST::string& filename) const
 {
-	RustPointer<VFile> vfile(Vfs_open(m_vfs.get(), filename.c_str()));
-	if (!vfile)
-	{
-		RustPointer<char> err{getRustError()};
-		throw std::runtime_error(ST::format("openGameResForReading: {}", err.get()).to_std_string());
-	}
-	return new SGPFile(vfile.release(), std::move(filename));
+	return SGPFile::openInVfs(m_vfs.get(), filename);
 }
 
 /* Open a game resource file for reading, evaluating all layers, I will return highest priority layer first. */
@@ -522,16 +516,6 @@ const CalibreModel* DefaultContentManager::getCalibre(uint8_t index)
 	return m_calibres[index];
 }
 
-const ST::string* DefaultContentManager::getCalibreName(uint8_t index) const
-{
-	return &m_calibreNames[index];
-}
-
-const ST::string* DefaultContentManager::getCalibreNameForBobbyRay(uint8_t index) const
-{
-	return &m_calibreNamesBobbyRay[index];
-}
-
 const AmmoTypeModel* DefaultContentManager::getAmmoType(uint8_t index)
 {
 	return m_ammoTypes[index];
@@ -558,11 +542,11 @@ const ExplosionAnimationModel* DefaultContentManager::getExplosionAnimation(uint
 	return *it;
 }
 
-bool DefaultContentManager::loadWeapons(const BinaryData& vanillaItemStrings)
+bool DefaultContentManager::loadWeapons(TranslatableString::Loader& stringLoader)
 {
 	auto json = readJsonDataFileWithSchema("weapons.json");
 	for (auto& element : json.toVec()) {
-		WeaponModel *w = WeaponModel::deserialize(element, m_calibreMap, m_explosiveCalibres, vanillaItemStrings);
+		WeaponModel *w = WeaponModel::deserialize(element, m_calibreMap, m_explosiveCalibres, stringLoader);
 		SLOGD("Loaded weapon {} {}", w->getItemIndex(), w->getInternalName());
 
 		if (w->getItemIndex() >= m_items.size())
@@ -578,11 +562,11 @@ bool DefaultContentManager::loadWeapons(const BinaryData& vanillaItemStrings)
 	return true;
 }
 
-bool DefaultContentManager::loadArmours(const BinaryData& vanillaItemStrings)
+bool DefaultContentManager::loadArmours(TranslatableString::Loader& stringLoader)
 {
 	auto json = readJsonDataFileWithSchema("armours.json");
 	for (auto& element : json.toVec()) {
-		ArmourModel *a = ArmourModel::deserialize(element, vanillaItemStrings);
+		ArmourModel *a = ArmourModel::deserialize(element, stringLoader);
 		SLOGD("Loaded armour {} {}", a->getItemIndex(), a->getInternalName());
 
 		if (a->getItemIndex() >= m_items.size())
@@ -680,11 +664,11 @@ bool DefaultContentManager::loadExplosiveCalibres()
 	return true;
 }
 
-bool DefaultContentManager::loadExplosives(const BinaryData& vanillaItemStrings, const std::vector<const ExplosionAnimationModel*>& animations)
+bool DefaultContentManager::loadExplosives(TranslatableString::Loader& stringLoader, const std::vector<const ExplosionAnimationModel*>& animations)
 {
 	auto json = readJsonDataFileWithSchema("explosives.json");
 	for (auto& element : json.toVec()) {
-		ExplosiveModel *e = ExplosiveModel::deserialize(element, m_explosiveCalibres, m_smokeEffects, m_explosionAnimations, vanillaItemStrings);
+		ExplosiveModel *e = ExplosiveModel::deserialize(element, m_explosiveCalibres, m_smokeEffects, m_explosionAnimations, stringLoader);
 		SLOGD("Loaded explosive {} {}", e->getItemIndex(), e->getInternalName());
 
 		m_items[e->getItemIndex()] = e;
@@ -693,12 +677,12 @@ bool DefaultContentManager::loadExplosives(const BinaryData& vanillaItemStrings,
 	return true;
 }
 
-bool DefaultContentManager::loadItems(const BinaryData& vanillaItemStrings)
+bool DefaultContentManager::loadItems(TranslatableString::Loader& stringLoader)
 {
 	auto json = readJsonDataFileWithSchema("items.json");
 	for (auto& el : json.toVec())
 	{
-		auto* item = ItemModel::deserialize(el, vanillaItemStrings);
+		auto* item = ItemModel::deserialize(el, stringLoader);
 		if (item->getItemIndex() <= MAX_WEAPONS || item->getItemIndex() > MAXITEMS)
 		{
 			ST::string err = ST::format("Item index must be in the interval {} - {}", MAX_WEAPONS+1, MAXITEMS);
@@ -719,12 +703,12 @@ bool DefaultContentManager::loadItems(const BinaryData& vanillaItemStrings)
 	return true;
 }
 
-bool DefaultContentManager::loadMagazines(const BinaryData& vanillaItemStrings)
+bool DefaultContentManager::loadMagazines(TranslatableString::Loader& stringLoader)
 {
 	auto json = readJsonDataFileWithSchema("magazines.json");
 	for (auto& element : json.toVec())
 	{
-		MagazineModel *mag = MagazineModel::deserialize(element, m_calibreMap, m_ammoTypeMap, vanillaItemStrings);
+		MagazineModel *mag = MagazineModel::deserialize(element, m_calibreMap, m_ammoTypeMap, stringLoader);
 		SLOGD("Loaded magazine {} {}", mag->getItemIndex(), mag->getInternalName());
 
 		m_magazines.push_back(mag);
@@ -735,11 +719,11 @@ bool DefaultContentManager::loadMagazines(const BinaryData& vanillaItemStrings)
 	return true;
 }
 
-bool DefaultContentManager::loadCalibres()
+bool DefaultContentManager::loadCalibres(TranslatableString::Loader& stringLoader)
 {
 	auto json = readJsonDataFileWithSchema("calibres.json");
 	for (auto& element : json.toVec()) {
-		CalibreModel *calibre = CalibreModel::deserialize(element);
+		CalibreModel *calibre = CalibreModel::deserialize(element, stringLoader);
 		SLOGD("Loaded calibre {} {}", calibre->index, calibre->internalName);
 
 		if(m_calibres.size() <= calibre->index)
@@ -922,31 +906,32 @@ void DefaultContentManager::loadStringRes(const ST::string& name, std::vector<ST
 /** Load the game data and the item descriptions from the original game resources. */
 bool DefaultContentManager::loadGameData()
 {
-	return loadGameData(BinaryData::deserialize(
-		AutoSGPFile{ openGameResForReading(BinaryData::itemsFilename()) },
-		AutoSGPFile{ openGameResForReading(BinaryData::profilesFilename()) }));
+	auto stringLoader = TranslatableString::FileLoader(m_vfs.get(), m_schemaManager.get(), m_gameVersion);
+	auto binaryProfileData = BinaryProfileData::deserialize(AutoSGPFile{ openGameResForReading(BinaryProfileData::profilesFilename()) });
+
+	return loadGameData(stringLoader, binaryProfileData);
 }
 
 
 /** Load the game data. */
-bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
+bool DefaultContentManager::loadGameData(TranslatableString::Loader& stringLoader, BinaryProfileData const& binaryData)
 {
-	loadPrioritizedData();
+	loadPrioritizedData(stringLoader);
 
 	auto game_json = readJsonDataFileWithSchema("game.json");
 	m_gamePolicy = std::make_unique<DefaultGamePolicy>(game_json);
 
 	m_items.resize(MAXITEMS);
-	bool result = loadItems(binaryData)
-		&& loadCalibres()
+	bool result = loadItems(stringLoader)
+		&& loadCalibres(stringLoader)
 		&& loadExplosiveCalibres()
 		&& loadAmmoTypes()
-		&& loadMagazines(binaryData)
-		&& loadWeapons(binaryData)
+		&& loadMagazines(stringLoader)
+		&& loadWeapons(stringLoader)
 		&& loadSmokeEffects()
 		&& loadExplosionAnimations()
-		&& loadExplosives(binaryData, m_explosionAnimations)
-		&& loadArmours(binaryData)
+		&& loadExplosives(stringLoader, m_explosionAnimations)
+		&& loadArmours(stringLoader)
 		&& loadArmyData()
 		&& loadMusic();
 
@@ -959,7 +944,7 @@ bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
 
 	m_mapItemReplacements = MapItemReplacementModel::deserialize(replacement_json, this);
 
-	loadMercsData(binaryData);
+	loadMercsData(binaryData, stringLoader);
 	loadAllDealersAndInventory();
 
 	auto imp_json = readJsonDataFileWithSchema("imp.json");
@@ -968,23 +953,18 @@ bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
 	auto sai_json = readJsonDataFileWithSchema("strategic-ai-policy.json");
 	m_strategicAIPolicy = std::make_unique<DefaultStrategicAIPolicy>(sai_json);
 
-	loadStringRes("strings/shipping-destinations", m_shippingDestinationNames);
-
 	auto shippingDestJson = readJsonDataFileWithSchema("shipping-destinations.json");
 	for (auto& element : shippingDestJson.toVec())
 	{
-		m_shippingDestinations.push_back(ShippingDestinationModel::deserialize(element));
+		m_shippingDestinations.push_back(ShippingDestinationModel::deserialize(element, stringLoader));
 	}
-	ShippingDestinationModel::validateData(m_shippingDestinations, m_shippingDestinationNames);
+	ShippingDestinationModel::validateData(m_shippingDestinations);
 
 	auto loadScreensList = readJsonDataFileWithSchema("loading-screens.json");
 	auto loadScreensMapping = readJsonDataFileWithSchema("loading-screens-mapping.json");
 
 	m_loadingScreenModel.reset(LoadingScreenModel::deserialize(loadScreensList, loadScreensMapping));
 	m_loadingScreenModel->validateData(this);
-
-	loadStringRes("strings/ammo-calibre", m_calibreNames);
-	loadStringRes("strings/ammo-calibre-bobbyray", m_calibreNamesBobbyRay);
 
 	loadStringRes("strings/new-strings", m_newStrings);
 	loadStringRes("strings/strategic-map-land-types", m_landTypeStrings);
@@ -1017,31 +997,19 @@ bool DefaultContentManager::loadGameData(BinaryData const& binaryData)
 
 JsonValue DefaultContentManager::readJsonDataFile(const ST::string& fileName) const
 {
-	auto r = Vfs_readPatchedJson(m_vfs.get(), fileName.c_str());
-	throwRustError(!r);
-	return JsonValue(r);
+	return JsonValue::readFromFile(m_vfs.get(), fileName);
 }
 
 JsonValue DefaultContentManager::readJsonDataFileWithSchema(const ST::string& jsonPath) const
 {
-	auto value = readJsonDataFile(jsonPath);
-	RustPointer<VecCString> errors(SchemaManager_validateValueForPath(m_schemaManager.get(), jsonPath.c_str(), value.get()));
-	if (errors) {
-		auto numErrors = VecCString_len(errors.get());
-		for (uintptr_t i = 0; i < numErrors; i++) {
-			RustPointer<char> error(VecCString_get(errors.get(), i));
-			SLOGE("{}", error.get());
-		}
-		throw DataError(ST::format("JSON schema validation error(s) occurred when validating JSON file `{}`", jsonPath));
-	}
-	return value;
+	return JsonValue::readFromFileWithSchema(m_vfs.get(), m_schemaManager.get(), jsonPath);
 }
 
-bool DefaultContentManager::loadPrioritizedData()
+bool DefaultContentManager::loadPrioritizedData(TranslatableString::Loader& stringLoader)
 {
 	auto json = readJsonDataFileWithSchema("strategic-map-towns.json");
 	for (auto& element : json.toVec()) {
-		auto town = TownModel::deserialize(element);
+		auto town = TownModel::deserialize(element, stringLoader);
 		m_towns.insert(std::make_pair(town->townId, town));
 	}
 
@@ -1291,7 +1259,7 @@ bool DefaultContentManager::loadTacticalLayerData()
 	return true;
 }
 
-bool DefaultContentManager::loadMercsData(const BinaryData& binaryProfiles)
+bool DefaultContentManager::loadMercsData(const BinaryProfileData& binaryProfiles, TranslatableString::Loader& stringLoader)
 {
 	MercProfileInfo::load = [this](uint8_t p) { return this->getMercProfileInfo(p); };
 
@@ -1303,7 +1271,7 @@ bool DefaultContentManager::loadMercsData(const BinaryData& binaryProfiles)
 		ProfileID profileID = profileInfo->profileID;
 		m_mercProfileInfo[profileID] = profileInfo;
 		m_mercProfiles.push_back(new MercProfile(profileID));
-		temp_mercStructs[profileID] = MercProfile::deserializeStruct(binaryProfiles.getProfile(profileID), charProperties, this);
+		temp_mercStructs[profileID] = MercProfile::deserializeStruct(binaryProfiles.getProfile(profileID), stringLoader, charProperties, this);
 	}
 	MercProfileInfo::validateData(m_mercProfileInfo);
 
@@ -1335,10 +1303,19 @@ bool DefaultContentManager::loadMercsData(const BinaryData& binaryProfiles)
 	int i = 0;
 	for (auto& element : json.toVec())
 	{
-		auto item = MERCListingModel::deserialize(i++, element, this);
+		auto item = MERCListingModel::deserialize(i++, element, this, stringLoader);
 		m_MERCListings.push_back(item);
 	}
 	MERCListingModel::validateData(m_MERCListings);
+
+	json = readJsonDataFileWithSchema("mercs-AIM-listings.json");
+	i = 0;
+	for (auto& element : json.toVec())
+	{
+		auto item = AIMListingModel::deserialize(i++, element, this, stringLoader);
+		m_AIMListings.push_back(item);
+	}
+	AIMListingModel::validateData(m_AIMListings);
 
 	return true;
 }
@@ -1572,24 +1549,6 @@ const std::map<int8_t, const TownModel*>& DefaultContentManager::getTowns() cons
 	return m_towns;
 }
 
-const ST::string DefaultContentManager::getTownName(uint8_t townId) const
-{
-	if (townId >= m_townNames.size()) {
-		SLOGD("Town name not defined for index {}", townId);
-		return {};
-	}
-	return m_townNames[townId];
-}
-
-const ST::string DefaultContentManager::getTownLocative(uint8_t townId) const
-{
-	if (townId >= m_townNameLocatives.size()) {
-		SLOGD("Town name locative not defined for index {}", townId);
-		return {};
-	}
-	return m_townNameLocatives[townId];
-}
-
 const std::vector<const UndergroundSectorModel*>& DefaultContentManager::getUndergroundSectors() const
 {
 	return m_undergroundSectors;
@@ -1643,6 +1602,21 @@ const RPCSmallFaceModel* DefaultContentManager::getRPCSmallFaceOffsets(uint8_t p
 const std::vector<const MERCListingModel*>& DefaultContentManager::getMERCListings() const
 {
 	return m_MERCListings;
+}
+
+const std::vector<const AIMListingModel*>& DefaultContentManager::getAIMListings() const
+{
+	return m_AIMListings;
+}
+
+const AIMListingModel* DefaultContentManager::getAIMListing(uint8_t const profileID) const {
+	auto result = std::find_if(m_AIMListings.begin(), m_AIMListings.end(), [profileID](const AIMListingModel* model) {
+		return model->profileID == profileID;
+	});
+	if (result == m_AIMListings.end()) {
+		return nullptr;
+	}
+	return *result;
 }
 
 const MercProfileInfo* DefaultContentManager::getMercProfileInfo(uint8_t const profileID) const

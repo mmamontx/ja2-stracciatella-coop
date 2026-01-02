@@ -1569,10 +1569,12 @@ void StructureHit(BULLET* const pBullet, const UINT16 usStructureID, const INT32
 
 	const BOOLEAN fHitSameStructureAsBefore = (usStructureID == pBullet->usLastStructureHit);
 
+	// Tile's height is here to account for cliff-elevated sectors, e.g. Drassen mine. Everywhere else it's zero
+	const int8_t level = sZPos > ( WALL_HEIGHT - ROOF_HIT_ADJUSTMENT ) + gpWorldLevelData[attacker->sGridNo].sHeight;
+
 	const GridNo sGridNo = pBullet->sGridNo;
 	if ( !fHitSameStructureAsBefore )
 	{
-		const INT8 level = (sZPos > WALL_HEIGHT ? 1 : 0);
 		MakeNoise(attacker, sGridNo, level, GCM->getWeapon(usWeaponIndex)->ubHitVolume, NOISE_BULLET_IMPACT);
 	}
 
@@ -1586,7 +1588,7 @@ void StructureHit(BULLET* const pBullet, const UINT16 usStructureID, const INT32
 			SLOGD("Freeing up attacker - end of LAW fire");
 			FreeUpAttacker(attacker);
 
-			IgniteExplosion(attacker, 0, sGridNo, C1, sZPos >= WALL_HEIGHT);
+			IgniteExplosion(attacker, 0, sGridNo, C1, level);
 			//FreeUpAttacker(attacker);
 
 			return;
@@ -1607,13 +1609,16 @@ void StructureHit(BULLET* const pBullet, const UINT16 usStructureID, const INT32
 		}
 	}
 
+	STRUCTURE* pStructure = nullptr;
 	// Get Structure pointer and damage it!
 	if ( usStructureID != INVALID_STRUCTURE_ID )
 	{
-		STRUCTURE* const pStructure = FindStructureByID(sGridNo, usStructureID);
+		pStructure = FindStructureByID(sGridNo, usStructureID);
 		DamageStructure(pStructure, iImpact, STRUCTURE_DAMAGE_GUNFIRE, sGridNo, sXPos, sYPos, attacker);
 	}
 
+	GridNo adjustedGridNo = sGridNo;
+	GridNo oppositeSideGridNo = sGridNo;
 	switch(  GCM->getWeapon( usWeaponIndex )->ubWeaponClass )
 	{
 		case HANDGUNCLASS:
@@ -1634,7 +1639,23 @@ void StructureHit(BULLET* const pBullet, const UINT16 usStructureID, const INT32
 			break;
 
 		case MONSTERCLASS:
-			DoSpecialEffectAmmoMiss(attacker, sGridNo, sXPos, sYPos, sZPos, FALSE, TRUE, pBullet);
+			// If the structure is wall-oriented determine which side of it monster spit arrives at
+			if (pStructure && pStructure->ubWallOrientation)
+			{
+				if (pStructure->ubWallOrientation == OUTSIDE_TOP_RIGHT || pStructure->ubWallOrientation == INSIDE_TOP_RIGHT)
+				{
+					oppositeSideGridNo += DirectionInc(EAST);
+				}
+				else
+				{
+					oppositeSideGridNo += DirectionInc(SOUTH);
+				}
+				if (PythSpacesAway(attacker->sGridNo, sGridNo) > PythSpacesAway(attacker->sGridNo, oppositeSideGridNo))
+				{
+					adjustedGridNo = oppositeSideGridNo;
+				}
+			}
+			DoSpecialEffectAmmoMiss(attacker, adjustedGridNo, sXPos, sYPos, sZPos, FALSE, TRUE, pBullet);
 
 			RemoveBullet(pBullet);
 			SLOGD("Freeing up attacker - monster attack hit structure");

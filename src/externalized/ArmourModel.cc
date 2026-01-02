@@ -51,6 +51,8 @@ ArmourModel::ArmourModel(
 			ST::string&& shortName,
 			ST::string&& name,
 			ST::string&& description,
+			ST::string&& bobbyRaysName,
+			ST::string&& bobbyRaysDescription,
 			InventoryGraphicsModel&& inventoryGraphics,
 			TilesetTileIndexModel&& tileGraphic,
 			uint8_t weight,
@@ -65,7 +67,7 @@ ArmourModel::ArmourModel(
 			uint8_t explosivesProtection,
 			uint8_t degradePercentage,
 			bool ignoreForMaxProtection
-	) : ItemModel(itemIndex, std::move(internalName), std::move(shortName), std::move(name), std::move(description), IC_ARMOUR, 0, INVALIDCURS, std::move(inventoryGraphics), std::move(tileGraphic), weight, perPocket, price, coolness, reliability, repairEase, flags) {
+	) : ItemModel(itemIndex, std::move(internalName), std::move(shortName), std::move(name), std::move(description), std::move(bobbyRaysName), std::move(bobbyRaysDescription), IC_ARMOUR, 0, INVALIDCURS, std::move(inventoryGraphics), std::move(tileGraphic), weight, perPocket, price, coolness, reliability, repairEase, flags) {
 	this->armourClass = armourClass;
 	this->protection = protection;
 	this->explosivesProtection = explosivesProtection;
@@ -73,15 +75,17 @@ ArmourModel::ArmourModel(
 	this->ignoreForMaxProtection = ignoreForMaxProtection;
 }
 
-ArmourModel* ArmourModel::deserialize(const JsonValue &json, const BinaryData& vanillaItemStrings) {
+ArmourModel* ArmourModel::deserialize(const JsonValue &json, TranslatableString::Loader& stringLoader) {
 	auto obj = json.toObject();
-	ItemModel::InitData const initData{ obj, vanillaItemStrings };
+	ItemModel::InitData const initData{ obj, stringLoader };
 
 	int itemIndex = obj.GetInt("itemIndex");
 	ST::string internalName = obj.GetString("internalName");
 	auto shortName = ItemModel::deserializeShortName(initData);
 	auto name = ItemModel::deserializeName(initData);
 	auto description = ItemModel::deserializeDescription(initData);
+	auto bobbyRaysName = ItemModel::deserializeBobbyRaysName(initData);
+	auto bobbyRaysDescription = ItemModel::deserializeBobbyRaysDescription(initData);
 	auto flags = ItemModel::deserializeFlags(obj);
 	auto inventoryGraphics = InventoryGraphicsModel::deserialize(obj["inventoryGraphics"]);
 	auto tileGraphic = TilesetTileIndexModel::deserialize(obj["tileGraphic"]);
@@ -97,6 +101,8 @@ ArmourModel* ArmourModel::deserialize(const JsonValue &json, const BinaryData& v
 		std::move(shortName),
 		std::move(name),
 		std::move(description),
+		std::move(bobbyRaysName),
+		std::move(bobbyRaysDescription),
 		std::move(inventoryGraphics),
 		std::move(tileGraphic),
 		obj.GetUInt("ubWeight"),

@@ -1,7 +1,7 @@
 #include "ExplosiveModel.h"
 
 #include "Exceptions.h"
-#include "Weapons.h"
+#include "TranslatableString.h"
 
 uint32_t deserializeItemClass(const ST::string& s) {
 	if (s == "GRENADE") {
@@ -92,6 +92,8 @@ ExplosiveModel::ExplosiveModel(
 			ST::string&& shortName,
 			ST::string&& name,
 			ST::string&& description,
+			ST::string&& bobbyRaysName,
+			ST::string&& bobbyRaysDescription,
 			uint32_t  itemClass,
 			ItemCursor cursor,
 			InventoryGraphicsModel&& inventoryGraphics,
@@ -112,7 +114,7 @@ ExplosiveModel::ExplosiveModel(
 			const ExplosiveLightEffect *lightEffect,
 			const ExplosiveCalibreModel* calibre,
 			const ExplosionAnimationModel *animation
-	) : ItemModel(itemIndex, std::move(internalName), std::move(shortName), std::move(name), std::move(description), itemClass, 0, cursor, std::move(inventoryGraphics), std::move(tileGraphic), weight, perPocket, price, coolness, reliability, repairEase, flags) {
+	) : ItemModel(itemIndex, std::move(internalName), std::move(shortName), std::move(name), std::move(description), std::move(bobbyRaysName), std::move(bobbyRaysDescription), itemClass, 0, cursor, std::move(inventoryGraphics), std::move(tileGraphic), weight, perPocket, price, coolness, reliability, repairEase, flags) {
 	this->noise = noise;
 	this->volatility = volatility;
 	this->pressureActivated = isPressureTriggered;
@@ -136,16 +138,18 @@ ExplosiveModel* ExplosiveModel::deserialize(
 	const std::vector<const ExplosiveCalibreModel*> &explosiveCalibres,
 	const std::vector<const SmokeEffectModel*> &smokeEffects,
 	const std::vector<const ExplosionAnimationModel*> &animations,
-	const BinaryData& vanillaItemStrings
+	TranslatableString::Loader& stringLoader
 ) {
 	auto obj = json.toObject();
-	ItemModel::InitData const initData{ obj, vanillaItemStrings };
+	ItemModel::InitData const initData{ obj, stringLoader };
 
 	int itemIndex = obj.GetInt("itemIndex");
 	ST::string internalName = obj.GetString("internalName");
 	auto shortName = ItemModel::deserializeShortName(initData);
 	auto name = ItemModel::deserializeName(initData);
 	auto description = ItemModel::deserializeDescription(initData);
+	auto bobbyRaysName = ItemModel::deserializeBobbyRaysName(initData);
+	auto bobbyRaysDescription = ItemModel::deserializeBobbyRaysDescription(initData);
 	auto itemClass = deserializeItemClass(obj.GetString("itemClass"));
 	auto flags = ItemModel::deserializeFlags(obj);
 	auto inventoryGraphics = InventoryGraphicsModel::deserialize(obj["inventoryGraphics"]);
@@ -225,6 +229,8 @@ ExplosiveModel* ExplosiveModel::deserialize(
 		std::move(shortName),
 		std::move(name),
 		std::move(description),
+		std::move(bobbyRaysName),
+		std::move(bobbyRaysDescription),
 		itemClass,
 		cursor,
 		std::move(inventoryGraphics),

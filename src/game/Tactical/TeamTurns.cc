@@ -1053,7 +1053,7 @@ BOOLEAN StandardInterruptConditionsMet(const SOLDIERTYPE* const pSoldier, const 
 		if ( pOpponent->bTeam == OUR_TEAM )
 		{
 			const SOLDIERTYPE* const sel = GetSelectedMan();
-			if (pOpponent != sel && pSoldier->bSide != sel->bSide)
+			if (sel == nullptr || (pOpponent != sel && pSoldier->bSide != sel->bSide) )
 			{
 				return( FALSE );
 			}

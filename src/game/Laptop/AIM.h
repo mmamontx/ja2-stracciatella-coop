@@ -3,12 +3,8 @@
 
 #include "Types.h"
 
-#define AIMHISTORYFILE			BINARYDATADIR "/aimhist.edt"
-#define AIM_HISTORY_LINE_SIZE		400
-
-
 #define MAX_NUMBER_MERCS		40
-extern UINT8 AimMercArray[MAX_NUMBER_MERCS];
+extern std::vector<UINT8> AimMercArray;
 
 #define NUM_AIM_SCREENS			6
 
@@ -86,5 +82,9 @@ void DisplayAimSlogan(void);
 void DisplayAimCopyright(void);
 
 void DisableAimButton(void);
+
+void OpenAIMTexts();
+void CloseAIMTexts();
+ST::string LoadAIMText(UINT32 entry);
 
 #endif

@@ -383,7 +383,6 @@ static void FlowerOrderDisplayShippingLocationCity(void);
 void RenderFloristOrderForm()
 {
 	UINT16 usPosX;
-	UINT32	uiStartLoc=0;
 
 	DisplayFloristDefaults();
 
@@ -400,9 +399,7 @@ void RenderFloristOrderForm()
 
 	//The flower name
 	usPosX = StringPixLength( sOrderFormText[FLORIST_ORDER_NAME_BOUQUET], FLOWER_ORDEER_SMALL_FONT) + 5 + FLOWER_ORDER_FLOWER_NAME_X;
-	uiStartLoc = FLOR_GALLERY_TEXT_TOTAL_SIZE * guiCurrentlySelectedFlower;
-	ST::string sTemp = GCM->loadEncryptedString(FLOR_GALLERY_TEXT_FILE, uiStartLoc, FLOR_GALLERY_TEXT_TITLE_SIZE);
-	DrawTextToScreen(sTemp, usPosX, FLOWER_ORDER_FLOWER_NAME_Y, 0, FLOWER_ORDEER_SMALL_FONT, FLOWER_ORDEER_SMALL_COLOR, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
+	DrawTextToScreen(GetFloristGalleryText(guiCurrentlySelectedFlower, 0), usPosX, FLOWER_ORDER_FLOWER_NAME_Y, 0, FLOWER_ORDEER_SMALL_FONT, FLOWER_ORDEER_SMALL_COLOR, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
 
 
 	//Deliverry Date
@@ -613,7 +610,6 @@ static void SelectFloristCardGalleryLinkRegionCallBack(MOUSE_REGION* pRegion, UI
 //display the things that change on the screen
 static void DisplayFlowerDynamicItems(void)
 {
-	UINT32	uiStartLoc=0;
 	UINT16	usPosX;
 	ST::string sTemp;
 	UINT16	usPrice;
@@ -642,8 +638,7 @@ static void DisplayFlowerDynamicItems(void)
 
 	//price
 	usPosX = StringPixLength( sOrderFormText[FLORIST_ORDER_PRICE], FLOWER_ORDEER_SMALL_FONT) + 5 + FLOWER_ORDER_BOUQUET_NAME_X;
-	uiStartLoc = FLOR_GALLERY_TEXT_TOTAL_SIZE * guiCurrentlySelectedFlower + FLOR_GALLERY_TEXT_TITLE_SIZE;
-	sTemp = GCM->loadEncryptedString(FLOR_GALLERY_TEXT_FILE, uiStartLoc, FLOR_GALLERY_TEXT_PRICE_SIZE);
+	sTemp = GetFloristGalleryText(guiCurrentlySelectedFlower, 1);
 	sscanf(sTemp.c_str(), "%hu", &usPrice);
 
 	//if its the next day delivery
@@ -802,7 +797,7 @@ static BOOLEAN CreateDestroyFlowerOrderDestDropDown(UINT8 ubDropDownMode)
 
 			//display the name on the title bar
 			ColorFillVideoSurfaceArea( FRAME_BUFFER, FLOWER_ORDER_DROP_DOWN_LOCATION_X+3, FLOWER_ORDER_DELIVERY_LOCATION_Y+3, FLOWER_ORDER_DROP_DOWN_LOCATION_X+FLOWER_ORDER_DROP_DOWN_LOCATION_WIDTH,	FLOWER_ORDER_DELIVERY_LOCATION_Y+FLOWER_ORDER_DELIVERY_LOCATION_HEIGHT-2, Get16BPPColor( FROMRGB( 0, 0, 0 ) ) );
-			DrawTextToScreen(*(GCM->getShippingDestinationName(gubCurrentlySelectedFlowerLocation)), FLOWER_ORDER_DROP_DOWN_CITY_START_X + 6, FLOWER_ORDER_DROP_DOWN_CITY_START_Y + 3, 0, FLOWER_ORDEER_DROP_DOWN_FONT, FLOWER_ORDEER_DROP_DOWN_COLOR, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
+			DrawTextToScreen(GCM->getShippingDestination(gubCurrentlySelectedFlowerLocation)->name, FLOWER_ORDER_DROP_DOWN_CITY_START_X + 6, FLOWER_ORDER_DROP_DOWN_CITY_START_Y + 3, 0, FLOWER_ORDEER_DROP_DOWN_FONT, FLOWER_ORDEER_DROP_DOWN_COLOR, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
 
 			//enable the drop down region
 			gSelectedFloristDisableDropDownRegion.Disable();
@@ -865,7 +860,7 @@ static BOOLEAN CreateDestroyFlowerOrderDestDropDown(UINT8 ubDropDownMode)
 			usPosY = FLOWER_ORDER_DROP_DOWN_CITY_START_Y + 3;
 			for (i = 0; i < GCM->getShippingDestinations().size(); i++)
 			{
-				DrawTextToScreen(*(GCM->getShippingDestinationName(i)), FLOWER_ORDER_DROP_DOWN_CITY_START_X + 6, usPosY, 0, FLOWER_ORDEER_DROP_DOWN_FONT, FLOWER_ORDEER_DROP_DOWN_COLOR, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
+				DrawTextToScreen(GCM->getShippingDestination(i)->name, FLOWER_ORDER_DROP_DOWN_CITY_START_X + 6, usPosY, 0, FLOWER_ORDEER_DROP_DOWN_FONT, FLOWER_ORDEER_DROP_DOWN_COLOR, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
 				usPosY += usFontHeight + 2;
 			}
 
@@ -890,7 +885,7 @@ static void FlowerOrderDrawSelectedCity(UINT8 ubNumber)
 	ColorFillVideoSurfaceArea( FRAME_BUFFER, FLOWER_ORDER_DROP_DOWN_CITY_START_X, usPosY+2, FLOWER_ORDER_DROP_DOWN_CITY_START_X+FLOWER_ORDER_DROP_DOWN_LOCATION_WIDTH-9,	usPosY+usFontHeight+4, Get16BPPColor( FROMRGB( 255, 255, 255 ) ) );
 
 	SetFontShadow(NO_SHADOW);
-	DrawTextToScreen(*(GCM->getShippingDestinationName(ubNumber)), FLOWER_ORDER_DROP_DOWN_CITY_START_X + 6, usPosY + 3, 0, FLOWER_ORDEER_DROP_DOWN_FONT, 2, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
+	DrawTextToScreen(GCM->getShippingDestination(ubNumber)->name, FLOWER_ORDER_DROP_DOWN_CITY_START_X + 6, usPosY + 3, 0, FLOWER_ORDEER_DROP_DOWN_FONT, 2, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
 	SetFontShadow(DEFAULT_SHADOW);
 
 	FlowerOrderDisplayShippingLocationCity();
@@ -901,7 +896,7 @@ static void FlowerOrderDisplayShippingLocationCity(void)
 {
 	//display the name on the title bar
 	ColorFillVideoSurfaceArea( FRAME_BUFFER, FLOWER_ORDER_DROP_DOWN_LOCATION_X+3, FLOWER_ORDER_DELIVERY_LOCATION_Y+3, FLOWER_ORDER_DROP_DOWN_LOCATION_X+FLOWER_ORDER_DROP_DOWN_LOCATION_WIDTH,	FLOWER_ORDER_DELIVERY_LOCATION_Y+FLOWER_ORDER_DELIVERY_LOCATION_HEIGHT-2, Get16BPPColor( FROMRGB( 0, 0, 0 ) ) );
-	DrawTextToScreen(*(GCM->getShippingDestinationName(gubCurrentlySelectedFlowerLocation)), FLOWER_ORDER_DELIVERY_LOCATION_X + 5, FLOWER_ORDER_DELIVERY_LOCATION_Y + 5, 0, FLOWER_ORDEER_SMALL_FONT, FLOWER_ORDEER_SMALL_COLOR, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
+	DrawTextToScreen(GCM->getShippingDestination(gubCurrentlySelectedFlowerLocation)->name, FLOWER_ORDER_DELIVERY_LOCATION_X + 5, FLOWER_ORDER_DELIVERY_LOCATION_Y + 5, 0, FLOWER_ORDEER_SMALL_FONT, FLOWER_ORDEER_SMALL_COLOR, FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
 }
 
 
@@ -921,10 +916,7 @@ static void InitFlowerOrderTextInputBoxes(void)
 	{
 		//Get and display the card saying
 		//Display Flower Desc
-
-		const UINT32 uiStartLoc = FLOR_CARD_TEXT_TITLE_SIZE * gbCurrentlySelectedCard;
-		ST::string sTemp = GCM->loadEncryptedString( FLOR_CARD_TEXT_FILE, uiStartLoc, FLOR_CARD_TEXT_TITLE_SIZE);
-		ST::string sText = CleanOutControlCodesFromString(sTemp);
+		ST::string sText = CleanOutControlCodesFromString(GetFloristCardString(gbCurrentlySelectedCard));
 
 		gsSentimentTextField = sText;
 

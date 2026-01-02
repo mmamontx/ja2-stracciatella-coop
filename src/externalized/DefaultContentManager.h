@@ -4,12 +4,13 @@
  * of this class or inheriting from it there should not be any reason to
  * include this file instead of ContentManager.h.
  */
+#include "AIMListingModel.h"
 #include "GameRes.h"
 
 #include "ContentManager.h"
 #include "ContentMusic.h"
 #include "IEDT.h"
-#include "ItemStrings.h"
+#include "BinaryProfileData.h"
 #include "Json.h"
 #include "StringEncodingTypes.h"
 #include "Types.h"
@@ -68,7 +69,7 @@ public:
 	virtual DirFs* tempFiles() const override;
 
 	/* Open a game resource file for reading. */
-	virtual SGPFile* openGameResForReading(ST::string filename) const override;
+	virtual SGPFile* openGameResForReading(const ST::string& filename) const override;
 
 	/* Open a game resource file for reading, evaluating all layers, I will return highest priority layer first. */
 	virtual std::vector<std::unique_ptr<SGPFile>> openGameResForReadingOnAllLayers(const ST::string& filename) const override;
@@ -94,8 +95,6 @@ public:
 	virtual const std::vector<const MagazineModel*>& getMagazines() const override;
 
 	virtual const CalibreModel* getCalibre(uint8_t index) override;
-	virtual const ST::string* getCalibreName(uint8_t index) const override;
-	virtual const ST::string* getCalibreNameForBobbyRay(uint8_t index) const override;
 
 	virtual const AmmoTypeModel* getAmmoType(uint8_t index) override;
 
@@ -132,7 +131,6 @@ public:
 	virtual const std::vector<const ShippingDestinationModel*>& getShippingDestinations() const override;
 	virtual const ShippingDestinationModel* getShippingDestination(uint8_t locationId) const override;
 	virtual const ShippingDestinationModel* getPrimaryShippingDestination() const override;
-	virtual const ST::string* getShippingDestinationName(uint8_t index) const override;
 
 	virtual const NpcActionParamsModel* getNpcActionParams(uint16_t actionCode) const override;
 	virtual const FactParamsModel* getFactParams(Fact fact) const override;
@@ -162,8 +160,6 @@ public:
 	virtual const TownModel* getTown(int8_t townId) const  override;
 	virtual const TownModel* getTownByName(const ST::string& name) const  override;
 	virtual const std::map<int8_t, const TownModel*>& getTowns() const override;
-	virtual const ST::string getTownName(uint8_t townId) const override;
-	virtual const ST::string getTownLocative(uint8_t townId) const override;
 	virtual const std::vector <const UndergroundSectorModel*>& getUndergroundSectors() const override;
 	virtual const MovementCostsModel* getMovementCosts() const override;
 	virtual       int16_t getSectorLandType(uint8_t sectorID, uint8_t sectorLevel) const override;
@@ -174,6 +170,8 @@ public:
 	virtual const NpcPlacementModel* getNpcPlacement(uint8_t profileId) const override;
 	virtual const RPCSmallFaceModel* getRPCSmallFaceOffsets(uint8_t profileID) const override;
 	virtual const std::vector<const MERCListingModel*>& getMERCListings() const override;
+	virtual const std::vector<const AIMListingModel*>& getAIMListings() const override;
+	virtual const AIMListingModel* getAIMListing(uint8_t profileID) const override;
 	virtual const std::vector<const MercProfile*>& listMercProfiles() const override;
 	virtual void resetMercProfileStructs() const override;
 	virtual const VehicleModel* getVehicle(uint8_t vehicleID) const override;
@@ -215,8 +213,6 @@ protected:
 	std::vector<const MagazineModel*> m_magazines;
 
 	std::vector<const CalibreModel*> m_calibres;
-	std::vector<ST::string> m_calibreNames;
-	std::vector<ST::string> m_calibreNamesBobbyRay;
 
 	std::vector<AmmoTypeModel const *> m_ammoTypes;
 
@@ -253,7 +249,6 @@ protected:
 	std::vector<const DealerModel*> m_dealers;
 
 	std::vector<const ShippingDestinationModel*> m_shippingDestinations;
-	std::vector<ST::string> m_shippingDestinationNames;
 
 	std::map<Fact, const FactParamsModel*> m_factParams;
 	std::map<uint16_t, const NpcActionParamsModel*> m_npcActionParams;
@@ -282,6 +277,7 @@ protected:
 
 	std::map<uint8_t, const RPCSmallFaceModel*> m_rpcSmallFaces;
 	std::vector<const MERCListingModel*> m_MERCListings;
+	std::vector<const AIMListingModel*> m_AIMListings;
 	std::vector<const VehicleModel*> m_vehicles;
 
 	// List of pre-constructed MercProfile objects; indices of elements are arbitrary (unlike gMercProfiles) and not guaranteed to follow any order
@@ -292,19 +288,19 @@ protected:
 
 	RustPointer<Vfs> m_vfs;
 
-	bool loadGameData(const BinaryData& vanillaItemStrings);
+	bool loadGameData(TranslatableString::Loader& stringLoader, const BinaryProfileData& binaryProfileData);
 	/* Extracts the content that requires load precedence and it can't be resolved
 	   by changing the order of execution of other functions. */
-	bool loadPrioritizedData();
-	bool loadWeapons(const BinaryData& vanillaItemStrings);
-	bool loadArmours(const BinaryData& vanillaItemStrings);
+	bool loadPrioritizedData(TranslatableString::Loader& stringLoader);
+	bool loadWeapons(TranslatableString::Loader& stringLoader);
+	bool loadArmours(TranslatableString::Loader& stringLoader);
 	bool loadSmokeEffects();
 	bool loadExplosionAnimations();
-	bool loadExplosives(const BinaryData& vanillaItemStrings, const std::vector<const ExplosionAnimationModel*>& animations);
-	bool loadItems(const BinaryData& vanillaItemStrings);
-	bool loadMagazines(const BinaryData& vanillaItemStrings);
+	bool loadExplosives(TranslatableString::Loader& stringLoader, const std::vector<const ExplosionAnimationModel*>& animations);
+	bool loadItems(TranslatableString::Loader& stringLoader);
+	bool loadMagazines(TranslatableString::Loader& stringLoader);
 	bool loadExplosiveCalibres();
-	bool loadCalibres();
+	bool loadCalibres(TranslatableString::Loader& stringLoader);
 	bool loadAmmoTypes();
 	bool loadArmyData();
 	bool loadMusicModeList(MusicMode mode, const JsonValue& array);
@@ -320,7 +316,7 @@ protected:
 
 	bool loadStrategicLayerData();
 	bool loadTacticalLayerData();
-	bool loadMercsData(const BinaryData& binaryProfiles);
+	bool loadMercsData(const BinaryProfileData& binaryProfiles, TranslatableString::Loader& stringLoader);
 	void loadVehicles();
 	void loadTranslationTable();
 	void loadAllScriptRecords();

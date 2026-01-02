@@ -2,10 +2,10 @@
 
 #include "GamePolicy.h"
 #include "Item_Types.h"
-#include "ItemStrings.h"
 #include "InventoryGraphicsModel.h"
 #include "Json.h"
 #include "TilesetTileIndexModel.h"
+#include "TranslatableString.h"
 
 #include <string_theory/string>
 
@@ -31,6 +31,8 @@ struct ItemModel
 		ST::string&& shortName,
 		ST::string&& name,
 		ST::string&& description,
+		ST::string&& bobbyRaysName,
+		ST::string&& bobbyRaysDescription,
 		uint32_t   usItemClass,
 		uint8_t    ubClassIndex,
 		ItemCursor ubCursor,
@@ -50,6 +52,8 @@ struct ItemModel
 	const virtual ST::string& getShortName() const;
 	const virtual ST::string& getName() const;
 	const virtual ST::string& getDescription() const;
+	const virtual ST::string& getBobbyRaysName() const;
+	const virtual ST::string& getBobbyRaysDescription() const;
 
 	virtual uint16_t        getItemIndex() const;
 	virtual uint32_t        getItemClass() const;
@@ -100,22 +104,26 @@ struct ItemModel
 	struct InitData
 	{
 		JsonObject const& json;
-		BinaryData const& strings;
+		TranslatableString::Loader& stringLoader;
 	};
 
 	virtual JsonValue serialize() const;
-	static const ItemModel* deserialize(const JsonValue &json, const BinaryData& vanillaItemStrings);
+	static const ItemModel* deserialize(const JsonValue &json, TranslatableString::Loader& stringLoader);
 
 protected:
 	static ST::string deserializeShortName(InitData const&);
 	static ST::string deserializeName(InitData const&);
 	static ST::string deserializeDescription(InitData const&);
+	static ST::string deserializeBobbyRaysName(InitData const&);
+	static ST::string deserializeBobbyRaysDescription(InitData const&);
 
 	uint16_t   itemIndex;
 	ST::string internalName;
 	ST::string shortName;
 	ST::string name;
 	ST::string description;
+	ST::string bobbyRaysName;
+	ST::string bobbyRaysDescription;
 	uint32_t   usItemClass;
 	uint8_t    ubClassIndex;
 	ItemCursor ubCursor;

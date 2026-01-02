@@ -76,6 +76,7 @@
 #include "Text.h"
 #include "Timer_Control.h"
 #include "Town_Militia.h"
+#include "TownModel.h"
 #include "Utils/Text_Input.h"
 #include "Video.h"
 #include "VObject.h"
@@ -804,7 +805,12 @@ static void DrawCharacterInfo(SOLDIERTYPE const& s)
 			break;
 
 		case TRAIN_TOWN:
-			assignment2 = GCM->getTownName(GetTownIdForSector(s.sSector.AsByte()));
+			{
+				auto townId = GetTownIdForSector(s.sSector.AsByte());
+				if (townId != BLANK_SECTOR) {
+					assignment2 = GCM->getTown(townId)->name;
+				}
+			}
 			break;
 
 		case REPAIR:
@@ -6865,6 +6871,7 @@ bool MapCharacterHasAccessibleInventory(SOLDIERTYPE const& s)
 		s.bAssignment         != ASSIGNMENT_POW &&
 		!IsMechanical(s)                        &&
 		s.ubWhatKindOfMercAmI != MERC_TYPE__EPC &&
+		!CREATURE_OR_BLOODCAT(&s)               &&
 		s.bLife               >= OKLIFE;
 }
 
@@ -7649,7 +7656,7 @@ static void HandleMilitiaRedistributionClick(void)
 			else
 			{
 				// can't have militia in this town
-				sString = st_format_printf(pMapErrorString[ 31 ], GCM->getTownName(bTownId));
+				sString = st_format_printf(pMapErrorString[ 31 ], GCM->getTown(bTownId)->name);
 				DoScreenIndependantMessageBox( sString, MSG_BOX_FLAG_OK, NULL );
 			}
 		}

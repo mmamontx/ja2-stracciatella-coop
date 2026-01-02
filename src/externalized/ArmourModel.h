@@ -11,6 +11,8 @@ struct ArmourModel : ItemModel
 		ST::string&& shortName,
 		ST::string&& name,
 		ST::string&& description,
+		ST::string&& bobbyRaysName,
+		ST::string&& bobbyRaysDescription,
 		InventoryGraphicsModel&& inventoryGraphics,
 		TilesetTileIndexModel&& tileGraphic,
 		uint8_t weight,
@@ -29,7 +31,7 @@ struct ArmourModel : ItemModel
 
 	virtual const ArmourModel* asArmour() const override { return this; }
 
-	static ArmourModel* deserialize(const JsonValue &json, const BinaryData& vanillaItemStrings);
+	static ArmourModel* deserialize(const JsonValue &json, TranslatableString::Loader& stringLoader);
 
 	bool isIgnoredForMaxProtection() const;
 	uint8_t getArmourClass() const;
