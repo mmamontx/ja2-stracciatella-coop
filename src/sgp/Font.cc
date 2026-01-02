@@ -105,7 +105,7 @@ INT16 StringPixLength(const ST::utf32_buffer& codepoints, SGPFont font)
 	UINT32 w = 0;
 	for (char32_t c : codepoints)
 	{
-		w += GetCharWidth_JA2(font, c);
+		w += GetCharWidth(font, c);
 	}
 	return w;
 }
@@ -174,7 +174,7 @@ static GlyphIdx GetGlyphIndex(char32_t c)
 }
 
 
-UINT32 GetCharWidth_JA2(SGPFont SGPFont, char32_t c)
+UINT32 GetCharWidth(SGPFont SGPFont, char32_t c)
 {
 	return GetWidth(SGPFont, GetGlyphIndex(c));
 }

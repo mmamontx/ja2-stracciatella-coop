@@ -845,7 +845,7 @@ static UINT32 GetWidthOfString(const ST::utf32_buffer& codepoints)
 				font = normal_font;
 				break;
 		}
-		w += GetCharWidth_JA2(font, c);
+		w += GetCharWidth(font, c);
 	}
 }
 
