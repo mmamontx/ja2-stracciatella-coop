@@ -1230,7 +1230,7 @@ static INT8 AimMemberHireMerc(void)
 	if (IS_CLIENT) // Tell the host to hire the merc for us
 	{
 		// FIXME: Handle the case when HireMerc() returns FALSE
-		RPC_DATA data;
+		RPC_DATA_HIRE_MERC data;
 		RakNet::BitStream bs;
 
 		data.h = h;

@@ -498,7 +498,7 @@ ScreenID HandleTacticalUI(void)
 		if (IS_CLIENT) { // Execute the new event remotely on the server side
 			SOLDIERTYPE* sel;
 			RakNet::BitStream bs;
-			RPC_DATA data;
+			RPC_DATA_EVENT data;
 
 			data.puiNewEvent = uiNewEvent;
 
@@ -521,8 +521,8 @@ ScreenID HandleTacticalUI(void)
 				sel = GetSelectedMan();
 
 				data.id = Soldier2ID(sel);
-				data.usMapPos = guiCurrentCursorGridNo;
-				data.fUIMovementFast = sel->fUIMovementFast;
+				data.c_move_merc.usMapPos = guiCurrentCursorGridNo;
+				data.c_move_merc.fUIMovementFast = sel->fUIMovementFast;
 
 				bs.WriteCompressed(data);
 
@@ -538,9 +538,9 @@ ScreenID HandleTacticalUI(void)
 				sel = GetSelectedMan();
 
 				data.id = Soldier2ID(sel);
-				data.usMapPos = guiCurrentCursorGridNo;
-				data.tgt_id = Soldier2ID(gUIFullTarget);
-				data.bShownAimTime = sel->bShownAimTime;
+				data.ca_merc_shoot.usMapPos = guiCurrentCursorGridNo;
+				data.ca_merc_shoot.tgt_id = Soldier2ID(gUIFullTarget);
+				data.ca_merc_shoot.bShownAimTime = sel->bShownAimTime;
 
 				bs.WriteCompressed(data);
 
@@ -568,7 +568,7 @@ ScreenID HandleTacticalUI(void)
 				sel = GetSelectedMan();
 
 				data.id = Soldier2ID(sel);
-				data.usMapPos = guiCurrentCursorGridNo;
+				data.lc_look.usMapPos = guiCurrentCursorGridNo;
 
 				bs.WriteCompressed(data);
 
@@ -608,7 +608,7 @@ ScreenID HandleTacticalUI(void)
 
 			gRPC_Enable = FALSE;
 		}
-	} else if (!(IS_CLIENT)) { // If there is no local event, a remote event can be executed (if there is one)
+	} else if (IS_SERVER) { // If there is no local event, a remote event can be executed (if there is one)
 		if (!(gRPC_Events.empty())) {
 			uiNewEvent = gRPC_Events.front().puiNewEvent;
 
@@ -1787,14 +1787,14 @@ static ScreenID UIHandleCMoveMerc(UI_EVENT* pUIEvent)
 	LEVELNODE *pIntTile;
 	INT16 sIntTileGridNo;
 	BOOLEAN fOldFastMove;
-	RPC_DATA data;
+	RPC_DATA_EVENT data;
 	bool fRPC = RPC_READY;
 
 	SOLDIERTYPE* sel;
 	if (fRPC) {
 		data = gRPC_Events.front();
 		sel = ID2Soldier(data.id);
-		sel->fUIMovementFast = data.fUIMovementFast;
+		sel->fUIMovementFast = data.c_move_merc.fUIMovementFast;
 		gRPC_Events.pop_front();
 	} else {
 		sel = GetSelectedMan();
@@ -1805,7 +1805,7 @@ static ScreenID UIHandleCMoveMerc(UI_EVENT* pUIEvent)
 		fAllMove = gfUIAllMoveOn;
 		gfUIAllMoveOn = FALSE;
 
-		const GridNo usMapPos = fRPC ? data.usMapPos : guiCurrentCursorGridNo;
+		const GridNo usMapPos = fRPC ? data.c_move_merc.usMapPos : guiCurrentCursorGridNo;
 		if (usMapPos == NOWHERE) return GAME_SCREEN;
 
 		// ERASE PATH
@@ -2450,14 +2450,14 @@ static void AttackRequesterCallback(MessageBoxReturnValue const bExitValue)
 
 static ScreenID UIHandleCAMercShoot(UI_EVENT* pUIEvent)
 {
-	RPC_DATA data;
+	RPC_DATA_EVENT data;
 	bool fRPC = RPC_READY;
 
 	SOLDIERTYPE* sel;
 	if (fRPC) {
 		data = gRPC_Events.front();
 		sel = ID2Soldier(data.id);
-		sel->bShownAimTime = data.bShownAimTime;
+		sel->bShownAimTime = data.ca_merc_shoot.bShownAimTime;
 		gRPC_Events.pop_front();
 	} else {
 		sel = GetSelectedMan();
@@ -2468,10 +2468,10 @@ static ScreenID UIHandleCAMercShoot(UI_EVENT* pUIEvent)
 	// are coming after this line and put the value to true
 	sel->fDontChargeTurningAPs = FALSE;
 
-	const GridNo usMapPos = fRPC ? data.usMapPos : guiCurrentCursorGridNo;
+	const GridNo usMapPos = fRPC ? data.ca_merc_shoot.usMapPos : guiCurrentCursorGridNo;
 	if (usMapPos == NOWHERE) return GAME_SCREEN;
 
-	SOLDIERTYPE* const tgt = fRPC ? ID2Soldier(data.tgt_id) : gUIFullTarget;
+	SOLDIERTYPE* const tgt = fRPC ? ID2Soldier(data.ca_merc_shoot.tgt_id) : gUIFullTarget;
 	// FIXME: The confirmation pop-up is disabled since it appears on the server
 	/*if (tgt != NULL)
 	{
@@ -3006,7 +3006,7 @@ static BOOLEAN SoldierCanAffordNewStance(SOLDIERTYPE* pSoldier, UINT8 ubDesiredS
 void UIHandleSoldierStanceChange(SOLDIERTYPE* s, INT8 bNewStance)
 {
 	if (IS_CLIENT) {
-		RPC_DATA data;
+		RPC_DATA_STANCE_CHANGE data;
 		RakNet::BitStream bs;
 
 		data.id = Soldier2ID(s);
@@ -4079,7 +4079,7 @@ static BOOLEAN MakeSoldierTurn(SOLDIERTYPE* const pSoldier, const GridNo pos)
 
 static ScreenID UIHandleLCLook(UI_EVENT* pUIEvent)
 {
-	RPC_DATA data;
+	RPC_DATA_EVENT data;
 	bool fRPC = RPC_READY;
 
 	if (fRPC) {
@@ -4087,7 +4087,7 @@ static ScreenID UIHandleLCLook(UI_EVENT* pUIEvent)
 		gRPC_Events.pop_front();
 	}
 
-	const GridNo pos = fRPC ? data.usMapPos : guiCurrentCursorGridNo;
+	const GridNo pos = fRPC ? data.lc_look.usMapPos : guiCurrentCursorGridNo;
 	if (pos == NOWHERE) return GAME_SCREEN;
 
 	if ( gTacticalStatus.fAtLeastOneGuyOnMultiSelect )

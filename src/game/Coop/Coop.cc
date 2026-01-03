@@ -39,10 +39,11 @@ struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 BOOLEAN gRPC_Enable = TRUE; // Enables remote events so that they don't overlap with local events
 BOOLEAN gRPC_Squad = FALSE;
 OBJECTTYPE* gpItemPointerRPC = NULL; // If RPCs can be executed in parallel (to be checked) a single shared variable would cause conflicts
-RPC_DATA* gRPC_Inv = NULL; // Currently executed inventory RPC
+RPC_DATA_INV_CLICK* gRPC_InvClick = NULL; // Click on an item in the inventory
+RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick = NULL; // Click with an item held in the cursor
 RPC4 gRPC;
 SOLDIERTYPE* gpItemPointerSoldierRPC = NULL;
-std::list<RPC_DATA> gRPC_Events;
+std::list<RPC_DATA_EVENT> gRPC_Events;
 
 // Etc.
 HANDLE gMainThread;
@@ -517,7 +518,7 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 
 void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_CLIMB_UP data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -527,7 +528,7 @@ void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* pa
 
 void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_CLIMB_DOWN data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -537,7 +538,7 @@ void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* 
 
 void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_CLIMB_FENCE data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -547,7 +548,7 @@ void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 
 void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_STEALTH_MODE data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -562,7 +563,7 @@ void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 
 void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_CHANGE_WEAPON_MODE data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -572,7 +573,7 @@ void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 
 void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_STANCE_CHANGE data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -582,35 +583,35 @@ void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet
 
 void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_INV_CLICK data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	gRPC_Inv = &data;
+	gRPC_InvClick = &data;
 
 	SMInvClickCallbackPrimary(NULL, 0);
 
-	gRPC_Inv = NULL;
+	gRPC_InvClick = NULL;
 }
 
 void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_ITEM_PTR_CLICK data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	gRPC_Inv = &data;
+	gRPC_ItemPointerClick = &data;
 
 	HandleItemPointerClick(data.usMapPos);
 
-	gRPC_Inv = NULL;
+	gRPC_ItemPointerClick = NULL;
 }
 
 void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_HIRE_MERC data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -671,7 +672,7 @@ void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 
 void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_ADD_STRATEGIC_EVENT data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -681,7 +682,7 @@ void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 
 void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_ADD_TO_SQUAD data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -695,7 +696,7 @@ void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet
 
 void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_ADD_HISTORY data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -705,7 +706,7 @@ void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 
 void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_ADD_TRANSACTION data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
@@ -713,9 +714,14 @@ void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet
 	AddTransactionToPlayersBook(data.ubCode, data.ubSecondCode, data.uiDate, data.iAmount);
 }
 
+/*
+ * The following call processes the events that are generated by the clients in
+ * HandleTacticalUI(). At the same location the host executes these events on
+ * behalf of the clients.
+ */
 void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA data;
+	RPC_DATA_EVENT data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);

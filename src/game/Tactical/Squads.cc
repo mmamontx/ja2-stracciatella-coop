@@ -207,7 +207,7 @@ BOOLEAN AddCharacterToSquad(SOLDIERTYPE* const s, INT8 const bSquadValue)
 		{
 			// Broadcast this call to clients
 			RakNet::BitStream bs;
-			RPC_DATA data;
+			RPC_DATA_ADD_TO_SQUAD data;
 
 			data.id = Soldier2ID(s);
 			data.bSquadValue = bSquadValue;

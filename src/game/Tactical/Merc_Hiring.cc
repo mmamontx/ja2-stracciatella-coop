@@ -158,7 +158,7 @@ INT8 HireMerc(MERC_HIRE_STRUCT& h)
 		AddStrategicEvent(EVENT_DELAYED_HIRING_OF_MERC, h.uiTimeTillMercArrives, s->ubID);
 		if (IS_SERVER)
 		{
-			RPC_DATA data;
+			RPC_DATA_ADD_STRATEGIC_EVENT data;
 			RakNet::BitStream bs;
 
 			data.Kind = EVENT_DELAYED_HIRING_OF_MERC;

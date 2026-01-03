@@ -3752,7 +3752,7 @@ void ChangeWeaponMode(SOLDIERTYPE* const s)
 {
 	if (IS_CLIENT) {
 		RakNet::BitStream bs;
-		RPC_DATA data;
+		RPC_DATA_CHANGE_WEAPON_MODE data;
 
 		data.id = Soldier2ID(s);
 

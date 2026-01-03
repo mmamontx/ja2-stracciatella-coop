@@ -214,7 +214,7 @@ void AddTransactionToPlayersBook(UINT8 ubCode, UINT8 ubSecondCode, UINT32 uiDate
 
 	if (IS_SERVER)
 	{
-		RPC_DATA data_broadcast;
+		RPC_DATA_ADD_TRANSACTION data_broadcast;
 		RakNet::BitStream bs;
 
 		data_broadcast.ubCode = ubCode;

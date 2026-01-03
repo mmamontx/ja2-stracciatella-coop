@@ -122,7 +122,7 @@ void AddHistoryToPlayersLog(const UINT8 ubCode, const UINT8 ubSecondCode, const 
 
 	if (IS_SERVER)
 	{
-		RPC_DATA data_broadcast;
+		RPC_DATA_ADD_HISTORY data_broadcast;
 		RakNet::BitStream bs;
 
 		data_broadcast.ubCode = ubCode;

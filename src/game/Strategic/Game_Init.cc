@@ -363,7 +363,8 @@ void ReStartingGame()
 	gRPC_Enable = TRUE;
 	gRPC_Squad = FALSE;
 	gpItemPointerRPC = NULL;
-	gRPC_Inv = NULL;
+	gRPC_InvClick = NULL;
+	gRPC_ItemPointerClick = NULL;
 	gpItemPointerSoldierRPC = NULL;
 	gRPC_Events.clear();
 

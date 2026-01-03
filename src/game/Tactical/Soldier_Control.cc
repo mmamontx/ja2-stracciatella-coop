@@ -5182,7 +5182,7 @@ static void InternalReceivingSoldierCancelServices(SOLDIERTYPE* pSoldier, BOOLEA
 void BeginSoldierClimbUpRoof(SOLDIERTYPE* const s)
 {
 	if (IS_CLIENT) {
-		RPC_DATA data;
+		RPC_DATA_CLIMB_UP data;
 		RakNet::BitStream bs;
 
 		data.id = Soldier2ID(s);
@@ -5225,7 +5225,7 @@ void BeginSoldierClimbWindow(SOLDIERTYPE* const s)
 void BeginSoldierClimbFence(SOLDIERTYPE* const s)
 {
 	if (IS_CLIENT) {
-		RPC_DATA data;
+		RPC_DATA_CLIMB_FENCE data;
 		RakNet::BitStream bs;
 
 		data.id = Soldier2ID(s);
@@ -6218,7 +6218,7 @@ BOOLEAN CheckSoldierHitRoof( SOLDIERTYPE *pSoldier )
 void BeginSoldierClimbDownRoof(SOLDIERTYPE* const s)
 {
 	if (IS_CLIENT) {
-		RPC_DATA data;
+		RPC_DATA_CLIMB_DOWN data;
 		RakNet::BitStream bs;
 
 		data.id = Soldier2ID(s);

@@ -4,7 +4,10 @@
 
 #include <string_theory/string>
 
-// Preventing name conflict with windows.h
+/*
+ * RakNet headers included across the project introduce conflicts with
+ * windows.h. The following line fixes this.
+ */
 #undef small
 
 class InventoryGraphicsModel {
