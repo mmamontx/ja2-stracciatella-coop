@@ -9,6 +9,13 @@
 
 using namespace RakNet;
 
+#define BS_ARRAY_WRITE(array, size) \
+    for (int i = 0; i < size; i++) \
+		serializeParameters->outputBitstream[0].Write(array[i])
+#define BS_ARRAY_READ(array, size) \
+    for (int i = 0; i < size; i++) \
+		deserializeParameters->serializationBitstream[0].Read(array[i])
+
 #include <string_theory/string>
 
 
@@ -677,8 +684,8 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(sMedicalGain);
 		serializeParameters->outputBitstream[0].Write(bMedicalDelta);
 
-		serializeParameters->outputBitstream[0].Write(usStatChangeChances); // used strictly for balancing, never shown!
-		serializeParameters->outputBitstream[0].Write(usStatChangeSuccesses); // used strictly for balancing, never shown!
+		BS_ARRAY_WRITE(usStatChangeChances, 12); // used strictly for balancing, never shown!
+		BS_ARRAY_WRITE(usStatChangeSuccesses, 12); // used strictly for balancing, never shown!
 
 		serializeParameters->outputBitstream[0].Write(bPersonalityTrait);
 		serializeParameters->outputBitstream[0].Write(bSkillTrait);
@@ -709,13 +716,13 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(fUseProfileInsertionInfo); // Set to various flags, ( contained in TacticalSave.h )
 		serializeParameters->outputBitstream[0].Write(bTown);
 		serializeParameters->outputBitstream[0].Write(bTownAttachment);
-		serializeParameters->outputBitstream[0].Write(ubRoomRangeStart);
-		serializeParameters->outputBitstream[0].Write(ubRoomRangeEnd);
+		BS_ARRAY_WRITE(ubRoomRangeStart, 2);
+		BS_ARRAY_WRITE(ubRoomRangeEnd, 2);
 
-		serializeParameters->outputBitstream[0].Write(bBuddy); // Only indices 0, 1, 2 are used. Contain id's for friend1, friend2 and eventual friend respectively
-		serializeParameters->outputBitstream[0].Write(bHated); // Only indices 0, 1, 2 are used. Contain id's for enemy1, enemy2 and eventual enemy respectively
-		serializeParameters->outputBitstream[0].Write(bHatedCount); // Only indices 0, 1, 2 are used. Contain remaining decrements till contract termination due to an enemy present on the team
-		serializeParameters->outputBitstream[0].Write(bHatedTime); // Only indices 0, 1, 2 are used. Contain decrements till contract termination due to an enemy present on the team
+		BS_ARRAY_WRITE(bBuddy, 5); // Only indices 0, 1, 2 are used. Contain id's for friend1, friend2 and eventual friend respectively
+		BS_ARRAY_WRITE(bHated, 5); // Only indices 0, 1, 2 are used. Contain id's for enemy1, enemy2 and eventual enemy respectively
+		BS_ARRAY_WRITE(bHatedCount, 5); // Only indices 0, 1, 2 are used. Contain remaining decrements till contract termination due to an enemy present on the team
+		BS_ARRAY_WRITE(bHatedTime, 5); // Only indices 0, 1, 2 are used. Contain decrements till contract termination due to an enemy present on the team
 		serializeParameters->outputBitstream[0].Write(bLearnToLike); // eventual friend's id
 		serializeParameters->outputBitstream[0].Write(bLearnToLikeCount); // remaining decrements till the eventual friend becomes an actual friend
 		serializeParameters->outputBitstream[0].Write(bLearnToLikeTime); // how many decrements till the eventual friend becomes an actual friend
@@ -725,11 +732,11 @@ struct MERCPROFILESTRUCT : public Replica3
 		// Flags used for the precedent to repeating oneself in Contract negotiations. Used for quote 80 - ~107. Gets reset every day
 		serializeParameters->outputBitstream[0].Write(ubTimeTillNextHatedComplaint);
 
-		serializeParameters->outputBitstream[0].Write(bMercOpinion);
+		BS_ARRAY_WRITE(bMercOpinion, 75);
 
-		serializeParameters->outputBitstream[0].Write(inv);
-		serializeParameters->outputBitstream[0].Write(bInvNumber);
-		serializeParameters->outputBitstream[0].Write(bInvStatus);
+		BS_ARRAY_WRITE(inv, 19);
+		BS_ARRAY_WRITE(bInvNumber, 19);
+		BS_ARRAY_WRITE(bInvStatus, 19);
 		serializeParameters->outputBitstream[0].Write(ubInvUndroppable);
 		serializeParameters->outputBitstream[0].Write(uiMoney);
 		serializeParameters->outputBitstream[0].Write(bArmourAttractiveness);
@@ -752,9 +759,9 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(bThreatenDefaultResponseUsedRecently);
 
 		serializeParameters->outputBitstream[0].Write(bApproached);
-		serializeParameters->outputBitstream[0].Write(usApproachFactor);
-		serializeParameters->outputBitstream[0].Write(ubApproachVal);
-		serializeParameters->outputBitstream[0].Write(ubApproachMod);
+		BS_ARRAY_WRITE(usApproachFactor, 4);
+		BS_ARRAY_WRITE(ubApproachVal, 4);
+		BS_ARRAY_WRITE(ubApproachMod, 3 * 4);
 		/* Statistics */
 		serializeParameters->outputBitstream[0].Write(usKills);
 		serializeParameters->outputBitstream[0].Write(usAssists);
@@ -850,8 +857,8 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(sMedicalGain);
 		deserializeParameters->serializationBitstream[0].Read(bMedicalDelta);
 
-		deserializeParameters->serializationBitstream[0].Read(usStatChangeChances); // used strictly for balancing, never shown!
-		deserializeParameters->serializationBitstream[0].Read(usStatChangeSuccesses); // used strictly for balancing, never shown!
+		BS_ARRAY_READ(usStatChangeChances, 12); // used strictly for balancing, never shown!
+		BS_ARRAY_READ(usStatChangeSuccesses, 12); // used strictly for balancing, never shown!
 
 		deserializeParameters->serializationBitstream[0].Read(bPersonalityTrait);
 		deserializeParameters->serializationBitstream[0].Read(bSkillTrait);
@@ -882,13 +889,13 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(fUseProfileInsertionInfo); // Set to various flags, ( contained in TacticalSave.h )
 		deserializeParameters->serializationBitstream[0].Read(bTown);
 		deserializeParameters->serializationBitstream[0].Read(bTownAttachment);
-		deserializeParameters->serializationBitstream[0].Read(ubRoomRangeStart[2]);
-		deserializeParameters->serializationBitstream[0].Read(ubRoomRangeEnd[2]);
+		BS_ARRAY_READ(ubRoomRangeStart, 2);
+		BS_ARRAY_READ(ubRoomRangeEnd, 2);
 
-		deserializeParameters->serializationBitstream[0].Read(bBuddy); // Only indices 0, 1, 2 are used. Contain id's for friend1, friend2 and eventual friend respectively
-		deserializeParameters->serializationBitstream[0].Read(bHated); // Only indices 0, 1, 2 are used. Contain id's for enemy1, enemy2 and eventual enemy respectively
-		deserializeParameters->serializationBitstream[0].Read(bHatedCount); // Only indices 0, 1, 2 are used. Contain remaining decrements till contract termination due to an enemy present on the team
-		deserializeParameters->serializationBitstream[0].Read(bHatedTime); // Only indices 0, 1, 2 are used. Contain decrements till contract termination due to an enemy present on the team
+		BS_ARRAY_READ(bBuddy, 5); // Only indices 0, 1, 2 are used. Contain id's for friend1, friend2 and eventual friend respectively
+		BS_ARRAY_READ(bHated, 5); // Only indices 0, 1, 2 are used. Contain id's for enemy1, enemy2 and eventual enemy respectively
+		BS_ARRAY_READ(bHatedCount, 5); // Only indices 0, 1, 2 are used. Contain remaining decrements till contract termination due to an enemy present on the team
+		BS_ARRAY_READ(bHatedTime, 5); // Only indices 0, 1, 2 are used. Contain decrements till contract termination due to an enemy present on the team
 		deserializeParameters->serializationBitstream[0].Read(bLearnToLike); // eventual friend's id
 		deserializeParameters->serializationBitstream[0].Read(bLearnToLikeCount); // remaining decrements till the eventual friend becomes an actual friend
 		deserializeParameters->serializationBitstream[0].Read(bLearnToLikeTime); // how many decrements till the eventual friend becomes an actual friend
@@ -898,11 +905,11 @@ struct MERCPROFILESTRUCT : public Replica3
 		// Flags used for the precedent to repeating oneself in Contract negotiations. Used for quote 80 - ~107. Gets reset every day
 		deserializeParameters->serializationBitstream[0].Read(ubTimeTillNextHatedComplaint);
 
-		deserializeParameters->serializationBitstream[0].Read(bMercOpinion);
+		BS_ARRAY_READ(bMercOpinion, 75);
 
-		deserializeParameters->serializationBitstream[0].Read(inv);
-		deserializeParameters->serializationBitstream[0].Read(bInvNumber);
-		deserializeParameters->serializationBitstream[0].Read(bInvStatus);
+		BS_ARRAY_READ(inv, 19);
+		BS_ARRAY_READ(bInvNumber, 19);
+		BS_ARRAY_READ(bInvStatus, 19);
 		deserializeParameters->serializationBitstream[0].Read(ubInvUndroppable);
 		deserializeParameters->serializationBitstream[0].Read(uiMoney);
 		deserializeParameters->serializationBitstream[0].Read(bArmourAttractiveness);
@@ -925,9 +932,9 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(bThreatenDefaultResponseUsedRecently);
 
 		deserializeParameters->serializationBitstream[0].Read(bApproached);
-		deserializeParameters->serializationBitstream[0].Read(usApproachFactor);
-		deserializeParameters->serializationBitstream[0].Read(ubApproachVal);
-		deserializeParameters->serializationBitstream[0].Read(ubApproachMod);
+		BS_ARRAY_READ(usApproachFactor, 4);
+		BS_ARRAY_READ(ubApproachVal, 4);
+		BS_ARRAY_READ(ubApproachMod, 3 * 4);
 		/* Statistics */
 		deserializeParameters->serializationBitstream[0].Read(usKills);
 		deserializeParameters->serializationBitstream[0].Read(usAssists);

@@ -24,6 +24,13 @@
 
 using namespace RakNet;
 
+#define BS_ARRAY_WRITE(array, size) \
+    for (int i = 0; i < size; i++) \
+		serializeParameters->outputBitstream[0].Write(array[i])
+#define BS_ARRAY_READ(array, size) \
+    for (int i = 0; i < size; i++) \
+		deserializeParameters->serializationBitstream[0].Read(array[i])
+
 #include <string_theory/string>
 #include <optional>
 
@@ -1355,7 +1362,7 @@ struct SOLDIERTYPE : public Replica3
 
 		serializeParameters->outputBitstream[0].Write(uiStatusFlags);
 
-		serializeParameters->outputBitstream[0].Write(inv);
+		BS_ARRAY_WRITE(inv, NUM_INV_SLOTS);
 		//serializeParameters->outputBitstream[0].Write(pTempObject);
 		//serializeParameters->outputBitstream[0].Write(pKeyRing);
 
@@ -1516,7 +1523,7 @@ struct SOLDIERTYPE : public Replica3
 		serializeParameters->outputBitstream[0].Write(sFinalDestination);
 		serializeParameters->outputBitstream[0].Write(bLevel);
 
-		serializeParameters->outputBitstream[0].Write(ubPathingData);
+		BS_ARRAY_WRITE(ubPathingData, MAX_PATH_LIST_SIZE);
 		serializeParameters->outputBitstream[0].Write(ubPathDataSize);
 		serializeParameters->outputBitstream[0].Write(ubPathIndex);
 		serializeParameters->outputBitstream[0].Write(sBlackList);
@@ -1544,7 +1551,7 @@ struct SOLDIERTYPE : public Replica3
 
 		serializeParameters->outputBitstream[0].Write(uiTimeOfLastRandomAction);
 
-		serializeParameters->outputBitstream[0].Write(bOppList);
+		BS_ARRAY_WRITE(bOppList, MAX_NUM_SOLDIERS);
 		serializeParameters->outputBitstream[0].Write(bLastAction);
 		serializeParameters->outputBitstream[0].Write(bAction);
 		serializeParameters->outputBitstream[0].Write(usActionData);
@@ -1564,7 +1571,7 @@ struct SOLDIERTYPE : public Replica3
 		serializeParameters->outputBitstream[0].Write(bDominantDir);
 		serializeParameters->outputBitstream[0].Write(bPatrolCnt);
 		serializeParameters->outputBitstream[0].Write(bNextPatrolPnt);
-		serializeParameters->outputBitstream[0].Write(usPatrolGrid);
+		BS_ARRAY_WRITE(usPatrolGrid, MAXPATROLGRIDS);
 		serializeParameters->outputBitstream[0].Write(sNoiseGridno);
 		serializeParameters->outputBitstream[0].Write(ubNoiseVolume);
 		serializeParameters->outputBitstream[0].Write(bLastAttackHit);
@@ -1653,7 +1660,7 @@ struct SOLDIERTYPE : public Replica3
 
 		//serializeParameters->outputBitstream[0].Write(effect_shade);
 
-		serializeParameters->outputBitstream[0].Write(sSpreadLocations);
+		BS_ARRAY_WRITE(sSpreadLocations, 6);
 		serializeParameters->outputBitstream[0].Write(fDoSpread);
 		serializeParameters->outputBitstream[0].Write(sStartGridNo);
 		serializeParameters->outputBitstream[0].Write(sEndGridNo);
@@ -1702,8 +1709,8 @@ struct SOLDIERTYPE : public Replica3
 		serializeParameters->outputBitstream[0].Write(uiUniqueSoldierIdValue);
 		serializeParameters->outputBitstream[0].Write(bBeingAttackedCount);
 
-		serializeParameters->outputBitstream[0].Write(bNewItemCount);
-		serializeParameters->outputBitstream[0].Write(bNewItemCycleCount);
+		BS_ARRAY_WRITE(bNewItemCount, NUM_INV_SLOTS);
+		BS_ARRAY_WRITE(bNewItemCycleCount, NUM_INV_SLOTS);
 		serializeParameters->outputBitstream[0].Write(fCheckForNewlyAddedItems);
 		serializeParameters->outputBitstream[0].Write(bEndDoorOpenCode);
 
@@ -1752,11 +1759,11 @@ struct SOLDIERTYPE : public Replica3
 		serializeParameters->outputBitstream[0].Write(bSleepDrugCounter);
 		serializeParameters->outputBitstream[0].Write(ubMilitiaKills);
 
-		serializeParameters->outputBitstream[0].Write(bFutureDrugEffect);
-		serializeParameters->outputBitstream[0].Write(bDrugEffectRate);
-		serializeParameters->outputBitstream[0].Write(bDrugEffect);
-		serializeParameters->outputBitstream[0].Write(bDrugSideEffectRate);
-		serializeParameters->outputBitstream[0].Write(bDrugSideEffect);
+		BS_ARRAY_WRITE(bFutureDrugEffect, 2);
+		BS_ARRAY_WRITE(bDrugEffectRate, 2);
+		BS_ARRAY_WRITE(bDrugEffect, 2);
+		BS_ARRAY_WRITE(bDrugSideEffectRate, 2);
+		BS_ARRAY_WRITE(bDrugSideEffect, 2);
 
 		serializeParameters->outputBitstream[0].Write(bBlindedCounter);
 		serializeParameters->outputBitstream[0].Write(fMercCollapsedFlag);
@@ -1830,7 +1837,7 @@ struct SOLDIERTYPE : public Replica3
 		serializeParameters->outputBitstream[0].Write(uiTuringSoundID);
 		serializeParameters->outputBitstream[0].Write(ubLastDamageReason);
 		serializeParameters->outputBitstream[0].Write(fComplainedThatTired);
-		serializeParameters->outputBitstream[0].Write(sLastTwoLocations);
+		BS_ARRAY_WRITE(sLastTwoLocations, 2);
 		serializeParameters->outputBitstream[0].Write(uiTimeSinceLastBleedGrunt);
 
 		serializeParameters->outputBitstream[0].Write(ubPlayer);
@@ -1848,7 +1855,7 @@ struct SOLDIERTYPE : public Replica3
 
 		deserializeParameters->serializationBitstream[0].Read(uiStatusFlags);
 
-		deserializeParameters->serializationBitstream[0].Read(inv);
+		BS_ARRAY_READ(inv, NUM_INV_SLOTS);
 		//deserializeParameters->serializationBitstream[0].Read(pTempObject);
 		//deserializeParameters->serializationBitstream[0].Read(pKeyRing);
 
@@ -2010,7 +2017,7 @@ struct SOLDIERTYPE : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(sFinalDestination);
 		deserializeParameters->serializationBitstream[0].Read(bLevel);
 
-		deserializeParameters->serializationBitstream[0].Read(ubPathingData);
+		BS_ARRAY_READ(ubPathingData, MAX_PATH_LIST_SIZE);
 		deserializeParameters->serializationBitstream[0].Read(ubPathDataSize);
 		deserializeParameters->serializationBitstream[0].Read(ubPathIndex);
 		deserializeParameters->serializationBitstream[0].Read(sBlackList);
@@ -2037,7 +2044,7 @@ struct SOLDIERTYPE : public Replica3
 
 		deserializeParameters->serializationBitstream[0].Read(uiTimeOfLastRandomAction);
 
-		deserializeParameters->serializationBitstream[0].Read(bOppList);
+		BS_ARRAY_READ(bOppList, MAX_NUM_SOLDIERS);
 		deserializeParameters->serializationBitstream[0].Read(bLastAction);
 		deserializeParameters->serializationBitstream[0].Read(bAction);
 		deserializeParameters->serializationBitstream[0].Read(usActionData);
@@ -2057,7 +2064,7 @@ struct SOLDIERTYPE : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(bDominantDir);
 		deserializeParameters->serializationBitstream[0].Read(bPatrolCnt);
 		deserializeParameters->serializationBitstream[0].Read(bNextPatrolPnt);
-		deserializeParameters->serializationBitstream[0].Read(usPatrolGrid);
+		BS_ARRAY_READ(usPatrolGrid, MAXPATROLGRIDS);
 		deserializeParameters->serializationBitstream[0].Read(sNoiseGridno);
 		deserializeParameters->serializationBitstream[0].Read(ubNoiseVolume);
 		deserializeParameters->serializationBitstream[0].Read(bLastAttackHit);
@@ -2146,7 +2153,7 @@ struct SOLDIERTYPE : public Replica3
 
 		//deserializeParameters->serializationBitstream[0].Read(effect_shade);
 
-		deserializeParameters->serializationBitstream[0].Read(sSpreadLocations);
+		BS_ARRAY_READ(sSpreadLocations, 6);
 		deserializeParameters->serializationBitstream[0].Read(fDoSpread);
 		deserializeParameters->serializationBitstream[0].Read(sStartGridNo);
 		deserializeParameters->serializationBitstream[0].Read(sEndGridNo);
@@ -2195,8 +2202,8 @@ struct SOLDIERTYPE : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(uiUniqueSoldierIdValue);
 		deserializeParameters->serializationBitstream[0].Read(bBeingAttackedCount);
 
-		deserializeParameters->serializationBitstream[0].Read(bNewItemCount);
-		deserializeParameters->serializationBitstream[0].Read(bNewItemCycleCount);
+		BS_ARRAY_READ(bNewItemCount, NUM_INV_SLOTS);
+		BS_ARRAY_READ(bNewItemCycleCount, NUM_INV_SLOTS);
 		deserializeParameters->serializationBitstream[0].Read(fCheckForNewlyAddedItems);
 		deserializeParameters->serializationBitstream[0].Read(bEndDoorOpenCode);
 
@@ -2245,11 +2252,11 @@ struct SOLDIERTYPE : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(bSleepDrugCounter);
 		deserializeParameters->serializationBitstream[0].Read(ubMilitiaKills);
 
-		deserializeParameters->serializationBitstream[0].Read(bFutureDrugEffect);
-		deserializeParameters->serializationBitstream[0].Read(bDrugEffectRate);
-		deserializeParameters->serializationBitstream[0].Read(bDrugEffect);
-		deserializeParameters->serializationBitstream[0].Read(bDrugSideEffectRate);
-		deserializeParameters->serializationBitstream[0].Read(bDrugSideEffect);
+		BS_ARRAY_READ(bFutureDrugEffect, 2);
+		BS_ARRAY_READ(bDrugEffectRate, 2);
+		BS_ARRAY_READ(bDrugEffect, 2);
+		BS_ARRAY_READ(bDrugSideEffectRate, 2);
+		BS_ARRAY_READ(bDrugSideEffect, 2);
 
 		deserializeParameters->serializationBitstream[0].Read(bBlindedCounter);
 		deserializeParameters->serializationBitstream[0].Read(fMercCollapsedFlag);
@@ -2323,7 +2330,7 @@ struct SOLDIERTYPE : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(uiTuringSoundID);
 		deserializeParameters->serializationBitstream[0].Read(ubLastDamageReason);
 		deserializeParameters->serializationBitstream[0].Read(fComplainedThatTired);
-		deserializeParameters->serializationBitstream[0].Read(sLastTwoLocations);
+		BS_ARRAY_READ(sLastTwoLocations, 2);
 		deserializeParameters->serializationBitstream[0].Read(uiTimeSinceLastBleedGrunt);
 
 		deserializeParameters->serializationBitstream[0].Read(ubPlayer);
