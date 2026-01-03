@@ -20,6 +20,7 @@ using namespace RakNet;
 #define ENEMY_ENABLED
 
 #define COOP_DEBUG // Comment out for releases
+#define TEST_NUM_PLAYERS 2
 
 #define MAX_NUM_PLAYERS 3 // Enough for debugging
 
@@ -409,10 +410,12 @@ extern BOOLEAN gRPC_Enable;
 extern BOOLEAN gRPC_Squad;
 
 // Item RPCs
-extern OBJECTTYPE* gpItemPointerRPC;
 extern RPC_DATA_INV_CLICK* gRPC_InvClick;
+extern OBJECTTYPE* gpItemPointerRPC[MAX_NUM_PLAYERS];
+extern SOLDIERTYPE* gpItemPointerSoldierRPC[MAX_NUM_PLAYERS];
+extern INT8 gRPC_ClientIndex;
+
 extern RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick;
-extern SOLDIERTYPE* gpItemPointerSoldierRPC;
 
 extern std::list<RPC_DATA_EVENT> gRPC_Events;
 
@@ -451,6 +454,7 @@ void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* 
 void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 
 // Etc.
+INT8 ClientIndex(RakNetGUID guid);
 void HireRandomMercs(unsigned int n);
 UINT8 NumberOfPlayers();
 INT8 PlayerIndex(RakNetGUID guid);

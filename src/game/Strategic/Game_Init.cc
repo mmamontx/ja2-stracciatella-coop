@@ -356,10 +356,13 @@ void ReStartingGame()
 	// RPCs
 	gRPC_Enable = TRUE;
 	gRPC_Squad = FALSE;
-	gpItemPointerRPC = NULL;
+	FOR_EACH_CLIENT(i)
+	{
+		gpItemPointerRPC[i] = NULL;
+		gpItemPointerSoldierRPC[i] = NULL;
+	}
 	gRPC_InvClick = NULL;
 	gRPC_ItemPointerClick = NULL;
-	gpItemPointerSoldierRPC = NULL;
 	gRPC_Events.clear();
 
 	// Etc.

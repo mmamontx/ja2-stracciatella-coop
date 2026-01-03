@@ -629,10 +629,10 @@ static void HandleGIOScreen(void)
 					do {
 						Sleep(period);
 						t += period;
-					} while ((PlayerIndex(gNetworkOptions.peer->GetMyGUID()) == -1) && (t < CONNECT_TIMEOUT_MS));
-					if (PlayerIndex(gNetworkOptions.peer->GetMyGUID()) == -1)
+					} while ((ClientIndex(gNetworkOptions.peer->GetMyGUID()) == -1) && (t < CONNECT_TIMEOUT_MS));
+					if (ClientIndex(gNetworkOptions.peer->GetMyGUID()) == -1)
 					{
-						SLOGI("PlayerIndex() == -1");
+						SLOGI("ClientIndex() == -1");
 						NetworkShutdown();
 						break; // TODO: Display a message?
 					}

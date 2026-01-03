@@ -1744,7 +1744,7 @@ ScreenID MapScreenHandle(void)
 		{
 			if (!gfAtLeastOneMercWasHired)
 			{
-				HireRandomMercs(2);
+				HireRandomMercs(TEST_NUM_PLAYERS);
 			}
 		}
 #endif

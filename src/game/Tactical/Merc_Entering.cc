@@ -502,7 +502,6 @@ void HandleHeliDrop( )
 			UnPauseGame();
 
 			// Select our first guy
-			//SelectSoldier(gHeliSeats[0], SELSOLDIER_FORCE_RESELECT);
 			INT8 ubPlayer = PlayerIndex(gNetworkOptions.peer->GetMyGUID());
 			if (ubPlayer != -1)
 			{

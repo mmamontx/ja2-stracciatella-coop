@@ -55,16 +55,13 @@ BOOLEAN gRPC_Squad = FALSE;
  *    gpItemPointerRPC and gpItemPointerSoldierRPC keep pointers to the picked
  *    item and the merc, who picks it (in whose inventory it has been located).
  *
- * FIXME: For now, there is only a single pair of pointers, which means that if
- *        two clients pick an item, the latter would overwrite the former one,
- *        which would cause undefined behavior. Use an array of N players size.
- *
  * 2. gRPC_ItemPointerClick is used when clients click somewhere with an item
  *    held in their cursor.
  */
 RPC_DATA_INV_CLICK* gRPC_InvClick = NULL;
-OBJECTTYPE* gpItemPointerRPC = NULL;
-SOLDIERTYPE* gpItemPointerSoldierRPC = NULL;
+OBJECTTYPE* gpItemPointerRPC[MAX_NUM_PLAYERS] = { NULL };
+SOLDIERTYPE* gpItemPointerSoldierRPC[MAX_NUM_PLAYERS] = { NULL };
+INT8 gRPC_ClientIndex;
 
 RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick = NULL;
 
@@ -87,6 +84,17 @@ DWORD WINAPI replicamgr(LPVOID lpParam)
 	while (1)
 		Sleep(33); // NOTE: ~30 FPS, can be improved if needed
 	return 0;
+}
+
+INT8 ClientIndex(RakNetGUID guid)
+{
+	FOR_EACH_CLIENT(i) {
+		if (PLAYER_GUID(i) == guid) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 
 INT8 PlayerIndex(RakNetGUID guid)
@@ -150,7 +158,7 @@ void HireRandomMercs(unsigned int n)
 		HireMerc(h);
 
 		s = FindSoldierByProfileID(id_random);
-		s->ubPlayer = i % 2; // NB: Considering that 2 players would be used for debugging
+		s->ubPlayer = i % TEST_NUM_PLAYERS;
 	}
 
 	fDrawCharacterList = true;
@@ -663,11 +671,15 @@ void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
+	gRPC_ClientIndex = ClientIndex(packet->guid);
+
 	gRPC_ItemPointerClick = &data;
 
 	HandleItemPointerClick(data.usMapPos);
 
 	gRPC_ItemPointerClick = NULL;
+
+	gRPC_ClientIndex = -1;
 }
 
 void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
@@ -703,7 +715,7 @@ void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 		AddHistoryToPlayersLog(HISTORY_HIRED_MERC_FROM_AIM, data.h.ubProfileID,
 			GetWorldTotalMin(), SGPSector(-1, -1));
 
-		INT8 i = PlayerIndex(packet->guid);
+		INT8 i = ClientIndex(packet->guid);
 		s->ubPlayer = i;
 
 		// Broadcast
@@ -738,11 +750,15 @@ void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* 
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
+	gRPC_ClientIndex = ClientIndex(packet->guid);
+
 	gRPC_InvClick = &data;
 
 	SMInvClickCallbackPrimary(NULL, 0);
 
 	gRPC_InvClick = NULL;
+
+	gRPC_ClientIndex = -1;
 }
 
 void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
