@@ -1,5 +1,5 @@
-#ifndef COOP_H
-#define COOP_H
+#ifndef __COOP_H
+#define __COOP_H
 
 #include "Game_Event_Hook.h"
 #include "Handle_UI.h"
@@ -9,16 +9,66 @@
 #include "RakPeerInterface.h"
 #include "ReplicaManager3.h"
 #undef GROUP
-#include "MessageIdentifiers.h"
 #include "Merc_Hiring.h"
-#include "MouseSystem.h"
+#include "MessageIdentifiers.h"
 #include "Soldier_Control.h"
 #include "Soldier_Profile_Type.h"
 
+
 using namespace RakNet;
 
-// Comment out for releases
-#define JA2S_MP_DEBUG
+#define ENEMY_ENABLED
+
+#define COOP_DEBUG // Comment out for releases
+
+#define MAX_NUM_PLAYERS 3 // Enough for debugging
+
+#define KEY_RETURN 13
+
+#define IS_SERVER       (gGameOptions.fNetwork == 0)
+#define IS_CLIENT       (gGameOptions.fNetwork != 0)
+#define IS_VALID_CLIENT (IS_CLIENT && (gNetworkOptions.connected) && \
+                         (gReplicaList.Size() != 0))
+
+#define CONNECT_TIMEOUT_MS 1000
+
+#define RPC_READY ((gRPC_Events.empty() == FALSE) && gRPC_Enable)
+
+#define FOR_EACH_PLAYER(i) for (int i = 0; i < MAX_NUM_PLAYERS; i++)
+#define FOR_EACH_CLIENT(i) for (int i = 1; i < MAX_NUM_PLAYERS; i++)
+
+#define REPLICA_PROFILE_INDEX TOTAL_SOLDIERS
+#define REPLICA_PLAYER_INDEX  (TOTAL_SOLDIERS + NUM_PROFILES)
+
+/*
+ * The following macroses maintain access to the shared objects:
+ *
+ * 1. For the host return local values from the original objects that are
+ *    replicated to the clients.
+ * 2. For the valid clients return replicated values.
+ * 3. For the invalid clients return local values (which are just garbage).
+ */
+#define PLAYER_READY(i) (IS_VALID_CLIENT ? \
+    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->ready : \
+    gPlayers[i].ready)
+#define PLAYER_NAME(i) (IS_VALID_CLIENT ? \
+    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->name.C_String() : \
+    gPlayers[i].name.C_String())
+#define PLAYER_GUID(i) (IS_VALID_CLIENT ? \
+    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->guid : \
+    gPlayers[i].guid)
+
+// Packet structures
+
+// The following fields are set in the game init options screen
+struct NETWORK_OPTIONS {
+	ST::string name;
+	ST::string ip;
+	UINT16 port;
+	RakPeerInterface *peer;
+	// FIXME: Remove this var and obtain the status using GetConnectionState()?
+	BOOLEAN connected;
+};
 
 #define ID_USER_PACKET_CONNECT          ID_USER_PACKET_ENUM
 #define ID_USER_PACKET_MESSAGE          (ID_USER_PACKET_ENUM + 1)
@@ -30,56 +80,25 @@ using namespace RakNet;
 #define ID_USER_PACKET_END_TURN         (ID_USER_PACKET_ENUM + 7)
 #define ID_USER_PACKET_GAME_OPTIONS     (ID_USER_PACKET_ENUM + 8)
 
-#define MAX_NAME_LEN    16
-#define MAX_MESSAGE_LEN 128
+#define DEFINE_EMPTY_PACKET_STRUCT(name) \
+	struct name { \
+		unsigned char id; \
+	} \
 
-#define MAX_NUM_PLAYERS 4
+DEFINE_EMPTY_PACKET_STRUCT(USER_PACKET_START);
+DEFINE_EMPTY_PACKET_STRUCT(USER_PACKET_TEAM_PANEL_DIRTY);
+DEFINE_EMPTY_PACKET_STRUCT(USER_PACKET_END_COMBAT);
+DEFINE_EMPTY_PACKET_STRUCT(USER_PACKET_END_TURN);
 
-#define KEY_RETURN 13
-
-#define IS_SERVER         (gGameOptions.fNetwork == 0)
-#define IS_CLIENT         (gGameOptions.fNetwork != 0)
-#define IS_VALID_CLIENT   (IS_CLIENT && (gNetworkOptions.connected) && \
-                           (gReplicaList.Size() != 0))
-
-#define CONNECT_TIMEOUT_MS 1000
-
-#define RPC_READY ((gRPC_Events.empty() == FALSE) && gRPC_Enable)
-
-// TODO: Modify the macro below to use an iterator that points to the local (for the server) or the replicated (for the client) variables
-#define FOR_EACH_PLAYER(i) for (int i = 0; i < MAX_NUM_PLAYERS; i++)
-#define FOR_EACH_CLIENT(i) for (int i = 1; i < MAX_NUM_PLAYERS; i++)
-
-#define REPLICA_PROFILE_INDEX TOTAL_SOLDIERS
-#define REPLICA_PLAYER_INDEX  (TOTAL_SOLDIERS + NUM_PROFILES)
-
-// For the host return local values from the original objects that are
-// replicated to the clients.
-// For the valid clients return replicated values.
-// For the invalid clients return local values, which are just garbage.
-#define PLAYER_READY(i) (IS_VALID_CLIENT ? \
-    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->ready : \
-    gPlayers[i].ready)
-#define PLAYER_NAME(i) (IS_VALID_CLIENT ? \
-    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->name.C_String() : \
-    gPlayers[i].name.C_String())
-#define PLAYER_GUID(i) (IS_VALID_CLIENT ? \
-    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->guid : \
-    gPlayers[i].guid)
-
-struct NETWORK_OPTIONS {
-	ST::string name;
-	ST::string ip;
-	UINT16 port;
-	RakPeerInterface *peer;
-	BOOLEAN connected; // FIXME: Remove this variable and obtain the status using GetConnectionState()?
-};
+#define MAX_NAME_LEN 16
 
 struct USER_PACKET_CONNECT {
 	unsigned char id;
 	char name[MAX_NAME_LEN];
 	BOOLEAN ready;
 };
+
+#define MAX_MESSAGE_LEN 128
 
 struct USER_PACKET_MESSAGE {
 	unsigned char id;
@@ -89,23 +108,6 @@ struct USER_PACKET_MESSAGE {
 struct USER_PACKET_READY {
 	unsigned char id;
 	BOOLEAN ready;
-};
-
-// TODO: Use a shared structure for the packets that have no data
-struct USER_PACKET_START {
-	unsigned char id;
-};
-
-struct USER_PACKET_TEAM_PANEL_DIRTY {
-	unsigned char id;
-};
-
-struct USER_PACKET_END_COMBAT {
-	unsigned char id;
-};
-
-struct USER_PACKET_END_TURN {
-	unsigned char id;
 };
 
 struct USER_PACKET_TOP_MESSAGE {
@@ -125,10 +127,12 @@ struct USER_PACKET_GAME_OPTIONS {
 	UINT8	ubGameSaveMode;
 };
 
+// Classes
+
 struct PLAYER : public Replica3 {
 	RakNetGUID guid;
 	RakString name;
-	BOOLEAN ready; // Used only on the strategic map in the very beginning
+	BOOLEAN ready; // Ready button (on the strategic map in the very beginning)
 	BOOLEAN endturn;
 
 	bool operator == (const PLAYER& s) const { return guid == s.guid; }
@@ -238,6 +242,40 @@ struct PLAYER : public Replica3 {
 		return QueryActionOnPopConnection_Server(droppedConnection);
 	}
 };
+
+class SampleConnection : public Connection_RM3
+{
+public:
+	SampleConnection(const SystemAddress& _systemAddress, RakNetGUID _guid) : Connection_RM3(_systemAddress, _guid) {}
+	virtual ~SampleConnection() {}
+
+	bool QueryGroupDownloadMessages(void) const { return true; }
+
+	virtual Replica3* AllocReplica(BitStream* allocationId, ReplicaManager3* replicaManager3)
+	{
+		RakString typeName;
+		allocationId->Read(typeName);
+		if (typeName == "SOLDIERTYPE") return new SOLDIERTYPE;
+		if (typeName == "MERCPROFILESTRUCT") return new MERCPROFILESTRUCT;
+		if (typeName == "PLAYER") return new PLAYER;
+		return 0;
+	}
+protected:
+};
+
+class ReplicaManager3Sample : public ReplicaManager3
+{
+	virtual Connection_RM3* AllocConnection(const SystemAddress& systemAddress, RakNetGUID rakNetGUID) const
+	{
+		return new SampleConnection(systemAddress, rakNetGUID);
+	}
+	virtual void DeallocConnection(Connection_RM3* connection) const
+	{
+		delete connection;
+	}
+};
+
+// RPC structures
 
 // AddCharacterToSquadRPC
 struct RPC_DATA_ADD_TO_SQUAD {
@@ -352,38 +390,8 @@ struct RPC_DATA_EVENT {
 	};
 };
 
-class SampleConnection : public Connection_RM3
-{
-public:
-	SampleConnection(const SystemAddress& _systemAddress, RakNetGUID _guid) : Connection_RM3(_systemAddress, _guid) {}
-	virtual ~SampleConnection() {}
 
-	bool QueryGroupDownloadMessages(void) const { return true; }
-
-	virtual Replica3* AllocReplica(BitStream* allocationId, ReplicaManager3* replicaManager3)
-	{
-		RakString typeName;
-		allocationId->Read(typeName);
-		if (typeName == "SOLDIERTYPE") return new SOLDIERTYPE;
-		if (typeName == "MERCPROFILESTRUCT") return new MERCPROFILESTRUCT;
-		if (typeName == "PLAYER") return new PLAYER;
-		return 0;
-	}
-protected:
-};
-
-class ReplicaManager3Sample : public ReplicaManager3
-{
-	virtual Connection_RM3* AllocConnection(const SystemAddress& systemAddress, RakNetGUID rakNetGUID) const
-	{
-		return new SampleConnection(systemAddress, rakNetGUID);
-	}
-	virtual void DeallocConnection(Connection_RM3* connection) const
-	{
-		delete connection;
-	}
-};
-
+// Externs
 
 // Networking
 extern NETWORK_OPTIONS gNetworkOptions;
@@ -395,24 +403,30 @@ extern ReplicaManager3Sample gReplicaManager;
 extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 
 // RPCs
+extern RPC4 gRPC;
+
 extern BOOLEAN gRPC_Enable;
 extern BOOLEAN gRPC_Squad;
+
+// Item RPCs
 extern OBJECTTYPE* gpItemPointerRPC;
 extern RPC_DATA_INV_CLICK* gRPC_InvClick;
 extern RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick;
-extern RPC4 gRPC;
 extern SOLDIERTYPE* gpItemPointerSoldierRPC;
+
 extern std::list<RPC_DATA_EVENT> gRPC_Events;
 
 // Etc.
 extern HANDLE gMainThread;
 extern HANDLE gPacketThread;
 extern HANDLE gReplicaManagerThread;
+
 extern BOOLEAN gStarted;
 extern BOOLEAN MPReadyButtonValue;
-extern BOOLEAN gEnemyEnabled; // FIXME: Replace with a constant
 extern BOOLEAN gGameOptionsReceived;
 
+
+// Prototypes
 
 // Networking
 DWORD WINAPI client_packet(LPVOID lpParam);
@@ -421,17 +435,16 @@ DWORD WINAPI server_packet(LPVOID lpParam);
 unsigned char SGetPacketIdentifier(Packet* p);
 
 // RPCs
-void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-
 void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
 void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
@@ -439,8 +452,8 @@ void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet
 
 // Etc.
 void HireRandomMercs(unsigned int n);
-void UpdateTeamPanel();
-INT8 PlayerIndex(RakNetGUID guid);
 UINT8 NumberOfPlayers();
+INT8 PlayerIndex(RakNetGUID guid);
+void UpdateTeamPanel();
 
 #endif

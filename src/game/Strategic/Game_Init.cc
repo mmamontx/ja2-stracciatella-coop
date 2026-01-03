@@ -268,12 +268,6 @@ void InitNewGame()
 		gTacticalStatus.fHasAGameBeenStarted = TRUE;
 
 		DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &gMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
-
-		if (IS_CLIENT) {
-			gEnemyEnabled = FALSE; // Disabling creating enemies for the client (he receives the 'replicants')
-		} else {
-			gEnemyEnabled = TRUE;
-		}
 	}
 	else if (gubScreenCount == 1)
 	{

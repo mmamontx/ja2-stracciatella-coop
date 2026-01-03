@@ -404,7 +404,7 @@ void StartHelicopterRun( INT16 sGridNoSweetSpot )
 
 	gsGridNoSweetSpot = sGridNoSweetSpot;
 
-#ifdef JA2S_MP_DEBUG
+#ifdef COOP_DEBUG
 	if (IS_CLIENT) {
 		FOR_EACH_IN_TEAM(s, OUR_TEAM) {
 			AddMercToHeli(s);

@@ -443,8 +443,9 @@ void SetCurrentWorldSector(const SGPSector& sector)
 		SetPendingNewScreen(GAME_SCREEN);
 		if (NumEnemyInSector() == 0)
 		{
-			if (gEnemyEnabled)
-				PrepareEnemyForSectorBattle();
+#ifdef ENEMY_ENABLED
+			if (IS_SERVER) PrepareEnemyForSectorBattle();
+#endif
 		}
 		if (gubNumCreaturesAttackingTown != 0 &&
 				sector.z                    == 0 &&
@@ -627,8 +628,9 @@ void PrepareLoadedSector()
 
 		if( !AreInMeanwhile() || GetMeanwhileID() == INTERROGATION )
 		{ // Insert the enemies into the newly loaded map based on the strategic information.
-			if (gEnemyEnabled)
-				PrepareEnemyForSectorBattle();
+#ifdef ENEMY_ENABLED
+			if (IS_SERVER) PrepareEnemyForSectorBattle();
+#endif
 		}
 
 

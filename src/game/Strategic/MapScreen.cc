@@ -1739,7 +1739,7 @@ ScreenID MapScreenHandle(void)
 	}
 	else
 	{
-#ifdef JA2S_MP_DEBUG
+#ifdef COOP_DEBUG
 		if (IS_SERVER) // Create new objects for server only - for clients they are replicated
 		{
 			if (!gfAtLeastOneMercWasHired)

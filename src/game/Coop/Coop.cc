@@ -1,15 +1,12 @@
 #include "Animation_Control.h"
-#include "Assignments.h"
-#include "Faces.h"
 #include "Finances.h"
 #include "Game_Clock.h"
+#include "Game_Event_Hook.h"
 #include "GameLoop.h"
 #include "GameScreen.h"
 #include "History.h"
 #include "Interface_Items.h"
 #include "Interface_Panels.h"
-#include "Items.h"
-#include "Map_Screen_Interface.h"
 #include "MapScreen.h"
 #include "Merc_Hiring.h"
 #include "Message.h"
@@ -21,38 +18,67 @@
 #include "Strategic.h"
 #include "Weapons.h"
 
-#include <Game_Event_Hook.h>
-
 
 // Networking
 NETWORK_OPTIONS gNetworkOptions;
+/*
+ * TODO: Maintaining network IDs seems to be excessive as all the objects are
+ *       created by the server. Does RakNet permit to work without it?
+ */
 NetworkIDManager gNetworkIdManager;
 
 // Replication
 DataStructures::List<Replica3*> gReplicaList;
 ReplicaManager3Sample gReplicaManager;
-// gPlayers is located in gReplicaList starting from REPLICA_PLAYER_INDEX
+// Located in gReplicaList at REPLICA_PLAYER_INDEX
 struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 
 // RPCs
+RPC4 gRPC; // Single RPC handle
 // FIXME: Use a common entity for all the sorts of RPCs below
-BOOLEAN gRPC_Enable = TRUE; // Enables remote events so that they don't overlap with local events
+
+/*
+ * In HandleTacticalUI() the server uses this variable to turn on remote events
+ * when there is no local events for processing.
+ */
+BOOLEAN gRPC_Enable = TRUE;
+/*
+ * In AddCharacterToSquad() the server uses this variable to check if it is
+ * being executed as an RPC.
+ */
 BOOLEAN gRPC_Squad = FALSE;
-OBJECTTYPE* gpItemPointerRPC = NULL; // If RPCs can be executed in parallel (to be checked) a single shared variable would cause conflicts
-RPC_DATA_INV_CLICK* gRPC_InvClick = NULL; // Click on an item in the inventory
-RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick = NULL; // Click with an item held in the cursor
-RPC4 gRPC;
+
+/*
+ * Item RPCs:
+ *
+ * 1. gRPC_InvClick is used when clients click on an item in the inventory.
+ *    gpItemPointerRPC and gpItemPointerSoldierRPC keep pointers to the picked
+ *    item and the merc, who picks it (in whose inventory it has been located).
+ *
+ * FIXME: For now, there is only a single pair of pointers, which means that if
+ *        two clients pick an item, the latter would overwrite the former one,
+ *        which would cause undefined behavior. Use an array of N players size.
+ *
+ * 2. gRPC_ItemPointerClick is used when clients click somewhere with an item
+ *    held in their cursor.
+ */
+RPC_DATA_INV_CLICK* gRPC_InvClick = NULL;
+OBJECTTYPE* gpItemPointerRPC = NULL;
 SOLDIERTYPE* gpItemPointerSoldierRPC = NULL;
+
+RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick = NULL;
+
+// Events processed by the server in HandleTacticalUI()
 std::list<RPC_DATA_EVENT> gRPC_Events;
 
-// Etc.
+// Handles for suspending and terminating the threads
 HANDLE gMainThread;
 HANDLE gPacketThread;
 HANDLE gReplicaManagerThread;
-// For clients: whether the server hit the time compression button
-BOOLEAN gStarted = FALSE;
+
+// Etc.
+BOOLEAN gStarted = FALSE; // Server hit the time compression button
 BOOLEAN MPReadyButtonValue = FALSE;
-BOOLEAN gEnemyEnabled;
 BOOLEAN gGameOptionsReceived = FALSE;
 
 
@@ -516,14 +542,48 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 	return 0;
 }
 
-void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA_CLIMB_UP data;
+	RPC_DATA_ADD_TO_SQUAD data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	BeginSoldierClimbUpRoof(ID2Soldier(data.id));
+	gRPC_Squad = TRUE;
+
+	AddCharacterToSquad(ID2Soldier(data.id), data.bSquadValue);
+
+	gRPC_Squad = FALSE;
+}
+
+void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA_ADD_HISTORY data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	AddHistoryToPlayersLog(data.ubCode, data.ubSecondCode, data.uiDate, SGPSector(-1, -1));
+}
+
+void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA_ADD_STRATEGIC_EVENT data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	AddStrategicEvent(data.Kind, data.uiMinStamp, data.uiParam);
+}
+
+void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA_ADD_TRANSACTION data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	AddTransactionToPlayersBook(data.ubCode, data.ubSecondCode, data.uiDate, data.iAmount);
 }
 
 void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
@@ -544,6 +604,16 @@ void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 	RakAssert(read);
 
 	BeginSoldierClimbFence(ID2Soldier(data.id));
+}
+
+void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+{
+	RPC_DATA_CLIMB_UP data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	BeginSoldierClimbUpRoof(ID2Soldier(data.id));
 }
 
 void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
@@ -571,28 +641,19 @@ void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 	ChangeWeaponMode(ID2Soldier(data.id));
 }
 
-void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+/*
+ * The following call processes the events that are generated by the clients in
+ * HandleTacticalUI(). At the same location the host executes these events on
+ * behalf of the clients.
+ */
+void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA_STANCE_CHANGE data;
+	RPC_DATA_EVENT data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	UIHandleSoldierStanceChange(ID2Soldier(data.id), data.bNewStance);
-}
-
-void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
-{
-	RPC_DATA_INV_CLICK data;
-	int offset = bitStream->GetReadOffset();
-	bool read = bitStream->ReadCompressed(data);
-	RakAssert(read);
-
-	gRPC_InvClick = &data;
-
-	SMInvClickCallbackPrimary(NULL, 0);
-
-	gRPC_InvClick = NULL;
+	gRPC_Events.push_back(data);
 }
 
 void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
@@ -670,61 +731,26 @@ void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 	UpdateTeamPanel();
 }
 
-void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA_ADD_STRATEGIC_EVENT data;
+	RPC_DATA_INV_CLICK data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	AddStrategicEvent(data.Kind, data.uiMinStamp, data.uiParam);
+	gRPC_InvClick = &data;
+
+	SMInvClickCallbackPrimary(NULL, 0);
+
+	gRPC_InvClick = NULL;
 }
 
-void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 {
-	RPC_DATA_ADD_TO_SQUAD data;
+	RPC_DATA_STANCE_CHANGE data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	gRPC_Squad = TRUE;
-
-	AddCharacterToSquad(ID2Soldier(data.id), data.bSquadValue);
-
-	gRPC_Squad = FALSE;
-}
-
-void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
-{
-	RPC_DATA_ADD_HISTORY data;
-	int offset = bitStream->GetReadOffset();
-	bool read = bitStream->ReadCompressed(data);
-	RakAssert(read);
-
-	AddHistoryToPlayersLog(data.ubCode, data.ubSecondCode, data.uiDate, SGPSector(-1, -1));
-}
-
-void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
-{
-	RPC_DATA_ADD_TRANSACTION data;
-	int offset = bitStream->GetReadOffset();
-	bool read = bitStream->ReadCompressed(data);
-	RakAssert(read);
-
-	AddTransactionToPlayersBook(data.ubCode, data.ubSecondCode, data.uiDate, data.iAmount);
-}
-
-/*
- * The following call processes the events that are generated by the clients in
- * HandleTacticalUI(). At the same location the host executes these events on
- * behalf of the clients.
- */
-void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
-{
-	RPC_DATA_EVENT data;
-	int offset = bitStream->GetReadOffset();
-	bool read = bitStream->ReadCompressed(data);
-	RakAssert(read);
-
-	gRPC_Events.push_back(data);
+	UIHandleSoldierStanceChange(ID2Soldier(data.id), data.bNewStance);
 }
