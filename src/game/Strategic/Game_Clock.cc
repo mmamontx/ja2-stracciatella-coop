@@ -462,7 +462,7 @@ static void SetClockResolutionToCompressMode(INT32 iCompressMode)
 		{
 			struct USER_PACKET_MESSAGE up_broadcast;
 			up_broadcast.id = ID_USER_PACKET_START;
-			gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+			peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 		}
 	}
 

@@ -170,7 +170,7 @@ INT8 HireMerc(MERC_HIRE_STRUCT& h)
 			// Broadcasting so that every player would place the hired merc into the
 			// chopper - no matter whether the merc belongs to the player or not.
 			gRPC.Signal("AddStrategicEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED,
-				0, gNetworkOptions.peer->GetMyGUID(), true, false);
+				0, peer->GetMyGUID(), true, false);
 		}
 		// Specify that the merc is hired but has not arrived yet
 		p.bMercStatus = MERC_HIRED_BUT_NOT_ARRIVED_YET;

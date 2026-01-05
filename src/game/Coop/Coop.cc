@@ -19,23 +19,27 @@
 #include "Weapons.h"
 
 
+// Global variables
+
 // Networking
 NETWORK_OPTIONS gNetworkOptions;
-/*
- * TODO: Maintaining network IDs seems to be excessive as all the objects are
- *       created by the server. Does RakNet permit to work without it?
- */
 NetworkIDManager gNetworkIdManager;
+RakPeerInterface* peer;
+BOOLEAN connected;
 
 // Replication
+
+// The following list holds all the objects shared by the server
 DataStructures::List<Replica3*> gReplicaList;
-ReplicaManager3Sample gReplicaManager;
-// Located in gReplicaList at REPLICA_PLAYER_INDEX
+CoopReplicaManager gReplicaManager;
+/*
+ * The following array is maintained by the server only. The clients use its
+ * replicated copy inside gReplicaList.
+ */
 struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 
 // RPCs
-RPC4 gRPC; // Single RPC handle
-// FIXME: Use a common entity for all the sorts of RPCs below
+RPC4 gRPC; // Single RPC plugin handle
 
 /*
  * In HandleTacticalUI() the server uses this variable to turn on remote events
@@ -61,7 +65,7 @@ BOOLEAN gRPC_Squad = FALSE;
 RPC_DATA_INV_CLICK* gRPC_InvClick = NULL;
 OBJECTTYPE* gpItemPointerRPC[MAX_NUM_PLAYERS] = { NULL };
 SOLDIERTYPE* gpItemPointerSoldierRPC[MAX_NUM_PLAYERS] = { NULL };
-INT8 gRPC_ClientIndex;
+INT8 gRPC_ClientIndex = -1;
 
 RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick = NULL;
 
@@ -71,27 +75,23 @@ std::list<RPC_DATA_EVENT> gRPC_Events;
 // Handles for suspending and terminating the threads
 HANDLE gMainThread;
 HANDLE gPacketThread;
-HANDLE gReplicaManagerThread;
 
 // Etc.
-BOOLEAN gStarted = FALSE; // Server hit the time compression button
+
+/*
+ * The following variable is used when the host lets the clients enter the
+ * tactical map.
+ */
+BOOLEAN gEnableTimeCompression = FALSE;
 BOOLEAN MPReadyButtonValue = FALSE;
 BOOLEAN gGameOptionsReceived = FALSE;
 
 
-DWORD WINAPI replicamgr(LPVOID lpParam)
-{
-	while (1)
-		Sleep(33); // NOTE: ~30 FPS, can be improved if needed
-	return 0;
-}
-
 INT8 ClientIndex(RakNetGUID guid)
 {
-	FOR_EACH_CLIENT(i) {
-		if (PLAYER_GUID(i) == guid) {
-			return i;
-		}
+	FOR_EACH_CLIENT(i)
+	{
+		if (PLAYER_GUID(i) == guid) return i;
 	}
 
 	return -1;
@@ -99,10 +99,9 @@ INT8 ClientIndex(RakNetGUID guid)
 
 INT8 PlayerIndex(RakNetGUID guid)
 {
-	FOR_EACH_PLAYER(i) {
-		if (PLAYER_GUID(i) == guid) {
-			return i;
-		}
+	FOR_EACH_PLAYER(i)
+	{
+		if (PLAYER_GUID(i) == guid) return i;
 	}
 
 	return -1;
@@ -110,12 +109,11 @@ INT8 PlayerIndex(RakNetGUID guid)
 
 UINT8 NumberOfPlayers()
 {
-	UINT8 n = 0;
+	UINT8 n = 1;
 
-	FOR_EACH_PLAYER(i) {
-		if (PLAYER_GUID(i) != UNASSIGNED_RAKNET_GUID) {
-			n++;
-		}
+	FOR_EACH_CLIENT(i)
+	{
+		if (PLAYER_GUID(i) != UNASSIGNED_RAKNET_GUID) n++;
 	}
 
 	return n;
@@ -123,9 +121,17 @@ UINT8 NumberOfPlayers()
 
 void UpdateTeamPanel()
 {
-	fDrawCharacterList = true;
-	fTeamPanelDirty = true;
+	fDrawCharacterList = TRUE;
+	fTeamPanelDirty = TRUE;
 	ReBuildCharactersList();
+
+	if (IS_SERVER && (NumberOfPlayers() > 1)) // Tell others
+	{
+		struct USER_PACKET_MESSAGE up_broadcast;
+		up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
+		peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
+			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+	}
 }
 
 // For debugging purposes (so we don't have to hire mercs manually everytime)
@@ -134,13 +140,16 @@ void HireRandomMercs(unsigned int n)
 	struct MERC_HIRE_STRUCT h;
 	SOLDIERTYPE* s;
 	int id_random;
+
 	srand((unsigned)time(NULL));
 
-	for (int i = 0; i < n; i++) {
-		// Prevent repetitive mercs
-		do {
-			id_random = rand() % 40; // There should be at least 40 mercs (considering AIM only)
-		} while (gMercProfiles[id_random].bMercStatus < 0);
+	for (int i = 0; i < n; i++)
+	{
+		do
+		{
+			id_random = rand() % 40; // 40 AIM mercs
+		}
+		while (gMercProfiles[id_random].bMercStatus < 0); // Prevent repeats
 
 		h = MERC_HIRE_STRUCT{};
 
@@ -149,11 +158,12 @@ void HireRandomMercs(unsigned int n)
 		h.fUseLandingZoneForArrival = TRUE;
 		h.ubInsertionCode = INSERTION_CODE_ARRIVING_GAME;
 		h.iTotalContractLength = 1;
-		h.fCopyProfileItemsOver = true;
+		h.fCopyProfileItemsOver = TRUE;
 		h.uiTimeTillMercArrives = GetMercArrivalTimeOfDay();
 		h.bWhatKindOfMerc = MERC_TYPE__AIM_MERC;
 
-		gMercProfiles[id_random].ubMiscFlags |= PROFILE_MISC_FLAG_ALREADY_USED_ITEMS;
+		gMercProfiles[id_random].ubMiscFlags
+			|= PROFILE_MISC_FLAG_ALREADY_USED_ITEMS;
 
 		HireMerc(h);
 
@@ -161,112 +171,103 @@ void HireRandomMercs(unsigned int n)
 		s->ubPlayer = i % TEST_NUM_PLAYERS;
 	}
 
-	fDrawCharacterList = true;
-	fTeamPanelDirty = true;
-	ReBuildCharactersList();
+	UpdateTeamPanel(); // With the new merc(s)
 }
 
-unsigned char SGetPacketIdentifier(Packet* p)
+unsigned char PacketId(Packet* p)
 {
-	if (p == 0)
-		return 255;
+	if (p == 0) return 255; // -1
 
-	if ((unsigned char)p->data[0] == ID_TIMESTAMP) {
-		assert(p->length > sizeof(unsigned char) + sizeof(unsigned long));
-		return (unsigned char)p->data[sizeof(unsigned char) + sizeof(unsigned long)];
-	} else {
-		return (unsigned char)p->data[0];
+	if (p->data[0] == ID_TIMESTAMP)	return p->data[sizeof(unsigned long) + 1];
+
+	return p->data[0];
+}
+
+void SendToChats(ST::string message)
+{
+	struct USER_PACKET_MESSAGE up_broadcast;
+
+	ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, message);
+
+	if (IS_SERVER && (NumberOfPlayers() > 1))
+	{
+		// Broadcasting the message to the clients
+		up_broadcast.id = ID_USER_PACKET_MESSAGE;
+		strcpy(up_broadcast.message, message.c_str());
+		peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
+			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 	}
 }
 
-// We are the server and process packets from clients here
-DWORD WINAPI server_packet(LPVOID lpParam)
+DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 {
-	RakNet::Packet* p;
-	unsigned char SpacketIdentifier;
+	Packet* p;
+	unsigned char id;
 
-	while (TRUE) {
-		p = gNetworkOptions.peer->Receive();
+	while (TRUE)
+	{
+		while (TRUE)
+		{
+			p = peer->Receive();
+			if (p == NULL) break;
 
-		while (p) {
-			// We got a packet, get the identifier with our handy function
-			SpacketIdentifier = SGetPacketIdentifier(p);
+			id = PacketId(p);
 
-			// Check if this is a network message packet
-			switch (SpacketIdentifier) {
-			case ID_NEW_INCOMING_CONNECTION:
-				// This tells the server that a client has connected
-				// NB: The player is not yet registered in gPlayers structure at this point
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_NEW_INCOMING_CONNECTION");
-				break;
+			switch (id)
+			{
 			case ID_DISCONNECTION_NOTIFICATION:
 			case ID_CONNECTION_LOST:
-				// Couldn't deliver a reliable packet - i.e. the other system was abnormally
-				// terminated
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_DISCONNECTION_NOTIFICATION/ID_CONNECTION_LOST");
-
-				SLOGI("A player disconnected, guid = {}", p->guid.ToUint32(p->guid));
-
 				FOR_EACH_CLIENT(i)
-					if (gPlayers[i].guid == p->guid) {
-						ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)(gPlayers[i].name) + " disconnected.");
+				{
+					if (gPlayers[i].guid == p->guid)
+					{
 						gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;
+
+						SendToChats((ST::string)(gPlayers[i].name) +
+							" has disconnected.");
+
 						break;
 					}
+				}
 
 				UpdateTeamPanel(); // Without the disconnected player
 
-				// Tell others
-				struct USER_PACKET_MESSAGE up_broadcast;
-				up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
-				gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-
 				break;
-			// Replication
-			case ID_REPLICA_MANAGER_SCOPE_CHANGE:
-				// Changed scope of an object
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_SCOPE_CHANGE");
-				break;
-			case ID_RPC_PLUGIN:
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_RPC_PLUGIN");
-				break;
-			// Custom
 			case ID_USER_PACKET_CONNECT:
 			{
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_CONNECT");
 				struct USER_PACKET_CONNECT* up;
 				up = (struct USER_PACKET_CONNECT*)p->data;
 
 				// Registering the new player in the global struct
 				bool present = false;
 				INT8 first_free = -1;
-				FOR_EACH_CLIENT(i) {
-					if (gPlayers[i].guid == p->guid) {
+				FOR_EACH_CLIENT(i)
+				{
+					if (gPlayers[i].guid == p->guid)
+					{
 						present = true;
 						break;
-					} else if ((gPlayers[i].guid == UNASSIGNED_RAKNET_GUID) &&
-						       (first_free == -1)) {
-						first_free = i;
+					}
+					else
+					{
+						if ((gPlayers[i].guid == UNASSIGNED_RAKNET_GUID) &&
+							(first_free == -1))
+						{
+							first_free = i;
+						}
 					}
 				}
 
-				if ((!present) && (first_free != -1)) {
+				// Not connected already and there is space available
+				if ((!present) && (first_free != -1))
+				{
 					gPlayers[first_free].guid = p->guid;
 					gPlayers[first_free].name = up->name;
 					gPlayers[first_free].ready = up->ready;
 
-					SLOGI("A new player connected, guid = {}", p->guid.ToUint32(p->guid));
+					SendToChats((ST::string)(up->name) + " has connected.");
 
-					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)up->name + " connected.");
-
-					// FIXME: Remove?
 					UpdateTeamPanel(); // With the connected player
-
-					// Tell others
-					struct USER_PACKET_MESSAGE up_broadcast;
-					up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
-					gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
-						MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 					// Share the game options with the connected player
 					struct USER_PACKET_GAME_OPTIONS up_gops;
@@ -278,245 +279,181 @@ DWORD WINAPI server_packet(LPVOID lpParam)
 					up_gops.fTurnTimeLimit = gGameOptions.fTurnTimeLimit;
 					up_gops.ubGameSaveMode = gGameOptions.ubGameSaveMode;
 
-					gNetworkOptions.peer->Send((char*)&up_gops, sizeof(up_gops),
-						MEDIUM_PRIORITY, RELIABLE, 0, p->guid, false);
-				} // Otherwise ignore the duplicated connection request
+					peer->Send((char*)&up_gops,
+						sizeof(up_gops), MEDIUM_PRIORITY, RELIABLE, 0, p->guid,
+						false);
+				} // Otherwise - ignore
 
 				break;
 			}
 			case ID_USER_PACKET_MESSAGE:
 			{
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_MESSAGE");
 				struct USER_PACKET_MESSAGE* up;
-				struct USER_PACKET_MESSAGE up_broadcast;
 				up = (struct USER_PACKET_MESSAGE*)p->data;
 
 				FOR_EACH_CLIENT(i)
-					if (gPlayers[i].guid == p->guid) {
-						ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)(gPlayers[i].name) + "> " + (ST::string)up->message);
-
-						// Broadcasting the message to the clients including the one that has sent this message
-						up_broadcast.id = ID_USER_PACKET_MESSAGE;
-						strcpy(up_broadcast.message, ((ST::string)(gPlayers[i].name) + "> " + (ST::string)up->message).c_str());
-						gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				{
+					if (gPlayers[i].guid == p->guid)
+					{
+						SendToChats((ST::string)gPlayers[i].name + "> " +
+							(ST::string)up->message);
 
 						break;
 					}
+				}
 
 				break;
 			}
 			case ID_USER_PACKET_READY:
 			{
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_READY");
 				struct USER_PACKET_READY* up;
 				struct USER_PACKET_MESSAGE up_broadcast;
 				char str[256];
+
 				up = (struct USER_PACKET_READY*)p->data;
 
 				FOR_EACH_PLAYER(i)
-					if (gPlayers[i].guid == p->guid) {
+				{
+					if (gPlayers[i].guid == p->guid)
+					{
 						gPlayers[i].ready = up->ready;
 
-						// Broadcasting the name of the person that is ready
-						sprintf(str, "%s is %s.", gPlayers[i].name.C_String(), gPlayers[i].ready ? "ready" : "not ready");
-						up_broadcast.id = ID_USER_PACKET_MESSAGE;
-						strcpy(up_broadcast.message, str);
-						gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-
-						ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
+						SendToChats((ST::string)gPlayers[i].name +
+							(gPlayers[i].ready ? " is ready." :
+								" is not ready anymore."));
 
 						break;
 					}
+				}
 
 				break;
 			}
 			case ID_USER_PACKET_END_TURN:
 			{
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_END_TURN");
 				struct USER_PACKET_END_TURN* up;
 				struct USER_PACKET_MESSAGE up_broadcast;
 				char str[256];
+
 				up = (struct USER_PACKET_END_TURN*)p->data;
 
 				UINT8 finished = 0;
 				FOR_EACH_PLAYER(i)
-					if (gPlayers[i].endturn)
-						finished++;
+				{
+					if (gPlayers[i].endturn) finished++;
+				}
 
 				UINT8 n = NumberOfPlayers();
 
 				FOR_EACH_PLAYER(i)
-					if (gPlayers[i].guid == p->guid) {
-						if (!(gPlayers[i].endturn)) {
+				{
+					if (gPlayers[i].guid == p->guid)
+					{
+						if (!(gPlayers[i].endturn))
+						{
 							gPlayers[i].endturn = true;
 							finished++;
 
-							// Broadcasting the name of the person that has finished its turn
-							sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[i].name.C_String(), finished, n);
-							up_broadcast.id = ID_USER_PACKET_MESSAGE;
-							strcpy(up_broadcast.message, str);
-							gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-
-							ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
+							SendToChats(ST::string(gPlayers[i].name) +
+								" has finished his/her turn. " +
+								std::to_string(finished) + "/" +
+								std::to_string(n) + " total.");
 						}
 
 						break;
 					}
+				}
 
-				// TODO: In the interrupt mode check only the players, whose mercs have received the interrupt
-				if (finished == n)
-					gfBeginEndTurn = TRUE;
+				if (finished == n) gfBeginEndTurn = TRUE;
 
 				break;
 			}
+			case ID_NEW_INCOMING_CONNECTION:
+			case ID_REPLICA_MANAGER_SCOPE_CHANGE:
+			case ID_RPC_PLUGIN:
+				break;
 			default:
-				char unknown_id[3];
-				itoa(SpacketIdentifier, unknown_id, 10);
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, "SpacketIdentifier = " + (ST::string)unknown_id);
+				SLOGW("Received unknown packet id = {}", id);
 				break;
 			}
 
-			// We're done with the packet, get more :)
-			gNetworkOptions.peer->DeallocatePacket(p);
-			p = gNetworkOptions.peer->Receive();
+			peer->DeallocatePacket(p);
 		}
 
-		Sleep(33); // NOTE: ~30 FPS, can be improved if needed
+		Sleep(1); // 1 ms
 	}
 
 	return 0;
 }
 
-// We are a client and process packets from the server here
-DWORD WINAPI client_packet(LPVOID lpParam)
+DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam)
 {
-	RakNet::Packet* p;
-	unsigned char SpacketIdentifier;
+	Packet* p;
+	unsigned char id;
 
-	while (TRUE) {
-		p = gNetworkOptions.peer->Receive();
+	while (TRUE)
+	{
+		while (TRUE)
+		{
+			p = peer->Receive();
+			if (p == NULL) break;
 
-		while (p) {
-			// We got a packet, get the identifier with our handy function
-			SpacketIdentifier = SGetPacketIdentifier(p);
+			id = PacketId(p);
 
-			// Check if this is a network message packet
-			switch (SpacketIdentifier) {
-			case ID_CONNECTION_REQUEST_ACCEPTED: // This message and below are custom messages of JA2S Coop
-				// This tells the client that it has connected
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_REQUEST_ACCEPTED");
+			switch (id)
+			{
+			case ID_CONNECTION_REQUEST_ACCEPTED:
+				connected = TRUE;
 
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Connected.");
+				SendToChats((ST::string)"Connected");
 
-				gNetworkOptions.connected = TRUE;
 				break;
 			case ID_DISCONNECTION_NOTIFICATION:
 			case ID_CONNECTION_LOST:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_DISCONNECTION_NOTIFICATION/ID_CONNECTION_LOST");
-
 				guiPendingScreen = MAINMENU_SCREEN;
-
-				return 0; // Stop processing the packets
-			// Can't connect for various reasons:
-			case ID_CONNECTION_ATTEMPT_FAILED:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_CONNECTION_ATTEMPT_FAILED");
-				break;
-			case ID_NO_FREE_INCOMING_CONNECTIONS:
-				// Sorry, the server is full
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_NO_FREE_INCOMING_CONNECTIONS");
-				break;
-			case ID_ALREADY_CONNECTED:
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_ALREADY_CONNECTED");
-				break;
-			// Notifications about other clients:
-			case ID_REMOTE_DISCONNECTION_NOTIFICATION: // Server telling the clients of another client disconnecting gracefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-			case ID_REMOTE_CONNECTION_LOST: // Server telling the clients of another client disconnecting forcefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOTE_DISCONNECTION_NOTIFICATION/ID_REMOTE_CONNECTION_LOST");
-				break;
-			case ID_REMOTE_NEW_INCOMING_CONNECTION: // Server telling the clients of another client connecting.  You can manually broadcast this in a peer to peer enviroment if you want.
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REMOT/MING_CONNECTION");
-				break;
-			// Replication
-			case ID_REPLICA_MANAGER_CONSTRUCTION:
-				// Create an object
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_CONSTRUCTION");
-				break;
-			case ID_REPLICA_MANAGER_SCOPE_CHANGE: // Not sure what does this one mean
-				// Changed scope of an object
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_SCOPE_CHANGE");
-				break;
-			case ID_REPLICA_MANAGER_SERIALIZE:
-				// Serialized data of an object
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_SERIALIZE");
-				break;
-			case ID_REPLICA_MANAGER_DOWNLOAD_STARTED:
-				// New connection, about to send all world objects
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_DOWNLOAD_STARTED");
-				break;
+				return 0; // Stop processing the packets and exit the thread
 			case ID_REPLICA_MANAGER_DOWNLOAD_COMPLETE:
-				// Finished downloading all serialized objects
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_REPLICA_MANAGER_DOWNLOAD_COMPLETE");
-
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Replication is completed.");
-				SLOGI("ID_REPLICA_MANAGER_DOWNLOAD_COMPLETE");
-
 				gReplicaManager.GetReferencedReplicaList(gReplicaList);
 
-				// Update merc list in the left panel to show replicated characters
-				UpdateTeamPanel();
+				// With the replicated mercs
+				EXECUTE_WHILE_MAIN_SUSPENDED(UpdateTeamPanel());
 
 				break;
-			// Custom
 			case ID_USER_PACKET_MESSAGE:
 			{
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_MESSAGE");
 				struct USER_PACKET_MESSAGE* up;
 				up = (struct USER_PACKET_MESSAGE*)p->data;
 
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, (ST::string)up->message);
+				SendToChats((ST::string)(up->message));
 
 				break;
 			}
 			case ID_USER_PACKET_START:
-			{
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_START");
-
-				gStarted = TRUE;
-
+				gEnableTimeCompression = TRUE;
 				break;
-			}
 			case ID_USER_PACKET_TEAM_PANEL_DIRTY:
-			{
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_TEAM_PANEL_DIRTY");
-
-				UpdateTeamPanel();
-
+				EXECUTE_WHILE_MAIN_SUSPENDED(UpdateTeamPanel());
 				break;
-			}
 			case ID_USER_PACKET_TOP_MESSAGE:
 			{
 				struct USER_PACKET_TOP_MESSAGE* up;
 				up = (struct USER_PACKET_TOP_MESSAGE*)p->data;
 
 				gTacticalStatus.ubCurrentTeam = up->ubCurrentTeam;
-				gTacticalStatus.ubTopMessageType = (MESSAGE_TYPES)(up->ubTopMessageType);
-				gTacticalStatus.usTactialTurnLimitCounter = up->usTactialTurnLimitCounter;
-				gTacticalStatus.usTactialTurnLimitMax = up->usTactialTurnLimitMax;
+				gTacticalStatus.ubTopMessageType =
+					(MESSAGE_TYPES)(up->ubTopMessageType);
+				gTacticalStatus.usTactialTurnLimitCounter =
+					up->usTactialTurnLimitCounter;
+				gTacticalStatus.usTactialTurnLimitMax =
+					up->usTactialTurnLimitMax;
 
-				SuspendThread(gMainThread);
-				AddTopMessage((MESSAGE_TYPES)(up->ubTopMessageType));
-				ResumeThread(gMainThread);
+				EXECUTE_WHILE_MAIN_SUSPENDED(
+					AddTopMessage((MESSAGE_TYPES)(up->ubTopMessageType)));
 
 				break;
 			}
 			case ID_USER_PACKET_END_COMBAT:
-			{
-				//ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"ID_USER_PACKET_END_COMBAT");
-
-				ExitCombatMode();
-
+				EXECUTE_WHILE_MAIN_SUSPENDED(ExitCombatMode());
 				break;
-			}
 			case ID_USER_PACKET_GAME_OPTIONS:
 			{
 				struct USER_PACKET_GAME_OPTIONS* up;
@@ -532,25 +469,32 @@ DWORD WINAPI client_packet(LPVOID lpParam)
 
 				break;
 			}
+			case ID_ALREADY_CONNECTED:
+			case ID_CONNECTION_ATTEMPT_FAILED:
+			case ID_NO_FREE_INCOMING_CONNECTIONS:
+			case ID_REMOTE_CONNECTION_LOST:
+			case ID_REMOTE_DISCONNECTION_NOTIFICATION:
+			case ID_REMOTE_NEW_INCOMING_CONNECTION:
+			case ID_REPLICA_MANAGER_CONSTRUCTION:
+			case ID_REPLICA_MANAGER_DOWNLOAD_STARTED:
+			case ID_REPLICA_MANAGER_SCOPE_CHANGE:
+			case ID_REPLICA_MANAGER_SERIALIZE:
+				break;
 			default:
-				char unknown_id[3];
-				itoa(SpacketIdentifier, unknown_id, 10);
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, "SpacketIdentifier = " + (ST::string)unknown_id);
+				SLOGW("Received unknown packet id = {}", id);
 				break;
 			}
 
-			// We're done with the packet, get more :)
-			gNetworkOptions.peer->DeallocatePacket(p);
-			p = gNetworkOptions.peer->Receive();
-		}
+			peer->DeallocatePacket(p);
+		};
 
-		Sleep(33); // NOTE: ~30 FPS, can be improved if needed
+		Sleep(1); // 1 ms
 	}
 
 	return 0;
 }
 
-void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void AddCharacterToSquadRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_ADD_TO_SQUAD data;
 	int offset = bitStream->GetReadOffset();
@@ -559,72 +503,79 @@ void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet
 
 	gRPC_Squad = TRUE;
 
-	AddCharacterToSquad(ID2Soldier(data.id), data.bSquadValue);
+	EXECUTE_WHILE_MAIN_SUSPENDED(AddCharacterToSquad(ID2Soldier(data.id),
+		data.bSquadValue));
 
 	gRPC_Squad = FALSE;
 }
 
-void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void AddHistoryToPlayersLogRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_ADD_HISTORY data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	AddHistoryToPlayersLog(data.ubCode, data.ubSecondCode, data.uiDate, SGPSector(-1, -1));
+	EXECUTE_WHILE_MAIN_SUSPENDED(
+		AddHistoryToPlayersLog(data.ubCode, data.ubSecondCode, data.uiDate,
+			SGPSector(-1, -1)));
 }
 
-void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void AddStrategicEventRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_ADD_STRATEGIC_EVENT data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	AddStrategicEvent(data.Kind, data.uiMinStamp, data.uiParam);
+	EXECUTE_WHILE_MAIN_SUSPENDED(
+		AddStrategicEvent(data.Kind, data.uiMinStamp, data.uiParam));
 }
 
-void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void AddTransactionToPlayersBookRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_ADD_TRANSACTION data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	AddTransactionToPlayersBook(data.ubCode, data.ubSecondCode, data.uiDate, data.iAmount);
+	EXECUTE_WHILE_MAIN_SUSPENDED(
+		AddTransactionToPlayersBook(data.ubCode, data.ubSecondCode,
+			data.uiDate, data.iAmount));
 }
 
-void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void BeginSoldierClimbDownRoofRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_CLIMB_DOWN data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	BeginSoldierClimbDownRoof(ID2Soldier(data.id));
+	EXECUTE_WHILE_MAIN_SUSPENDED(
+		BeginSoldierClimbDownRoof(ID2Soldier(data.id)));
 }
 
-void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void BeginSoldierClimbFenceRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_CLIMB_FENCE data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	BeginSoldierClimbFence(ID2Soldier(data.id));
+	EXECUTE_WHILE_MAIN_SUSPENDED(BeginSoldierClimbFence(ID2Soldier(data.id)));
 }
 
-void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void BeginSoldierClimbUpRoofRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_CLIMB_UP data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	BeginSoldierClimbUpRoof(ID2Soldier(data.id));
+	EXECUTE_WHILE_MAIN_SUSPENDED(BeginSoldierClimbUpRoof(ID2Soldier(data.id)));
 }
 
-void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void BtnStealthModeCallbackRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_STEALTH_MODE data;
 	int offset = bitStream->GetReadOffset();
@@ -635,18 +586,18 @@ void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 
 	gpSMCurrentMerc->bStealthMode = !(s->bStealthMode);
 	gfUIStanceDifferent = TRUE;
-	gfPlotNewMovement = TRUE; // Not sure if it is needed, but let it be
+	gfPlotNewMovement = TRUE;
 	fInterfacePanelDirty = DIRTYLEVEL2;
 }
 
-void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void ChangeWeaponModeRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_CHANGE_WEAPON_MODE data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	ChangeWeaponMode(ID2Soldier(data.id));
+	EXECUTE_WHILE_MAIN_SUSPENDED(ChangeWeaponMode(ID2Soldier(data.id)));
 }
 
 /*
@@ -654,7 +605,7 @@ void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
  * HandleTacticalUI(). At the same location the host executes these events on
  * behalf of the clients.
  */
-void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void HandleEventRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_EVENT data;
 	int offset = bitStream->GetReadOffset();
@@ -664,7 +615,7 @@ void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
 	gRPC_Events.push_back(data);
 }
 
-void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void HandleItemPointerClickRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_ITEM_PTR_CLICK data;
 	int offset = bitStream->GetReadOffset();
@@ -675,75 +626,65 @@ void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* pac
 
 	gRPC_ItemPointerClick = &data;
 
-	HandleItemPointerClick(data.usMapPos);
+	EXECUTE_WHILE_MAIN_SUSPENDED(HandleItemPointerClick(data.usMapPos));
 
 	gRPC_ItemPointerClick = NULL;
 
 	gRPC_ClientIndex = -1;
 }
 
-void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void HireMercRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_HIRE_MERC data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
+	SuspendThread(gMainThread);
+
 	INT8 const ret = HireMerc(data.h);
 	if (ret == MERC_HIRE_OK)
 	{
-		// Set the type of contract the merc is on
-		SOLDIERTYPE* const s = FindSoldierByProfileIDOnPlayerTeam(data.h.ubProfileID);
-		if (!s) return;
+		SOLDIERTYPE* const s =
+			FindSoldierByProfileIDOnPlayerTeam(data.h.ubProfileID);
+		if (s == NULL)
+		{
+			ResumeThread(gMainThread);
+			return;
+		}
 		s->bTypeOfLastContract = data.contract_type;
 
 		MERCPROFILESTRUCT& p = GetProfile(data.h.ubProfileID);
-		if (data.fBuyEquipment) p.ubMiscFlags |= PROFILE_MISC_FLAG_ALREADY_USED_ITEMS;
+		if (data.fBuyEquipment)
+		{
+			p.ubMiscFlags |= PROFILE_MISC_FLAG_ALREADY_USED_ITEMS;
+		}
 
-		// Add an entry in the finacial page for the hiring of the merc
 		AddTransactionToPlayersBook(HIRED_MERC, data.h.ubProfileID,
 			GetWorldTotalMin(), -(data.iContractAmount) +
 			p.sMedicalDepositAmount);
 
 		if (p.bMedicalDeposit)
-		{ // Add an entry in the finacial page for the medical deposit
+		{
 			AddTransactionToPlayersBook(MEDICAL_DEPOSIT, data.h.ubProfileID,
 				GetWorldTotalMin(), -p.sMedicalDepositAmount);
 		}
 
-		// Add an entry in the history page for the hiring of the merc
 		AddHistoryToPlayersLog(HISTORY_HIRED_MERC_FROM_AIM, data.h.ubProfileID,
 			GetWorldTotalMin(), SGPSector(-1, -1));
 
 		INT8 i = ClientIndex(packet->guid);
 		s->ubPlayer = i;
 
-		// Broadcast
-		struct USER_PACKET_MESSAGE up_broadcast;
-		char str[256];
-		sprintf(str, "%s hired %s.", gPlayers[i].name.C_String(), s->name.c_str());
-
-		up_broadcast.id = ID_USER_PACKET_MESSAGE;
-		strcpy(up_broadcast.message, str);
-		gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
-			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-
-		// FIXME: The line below doesn't (always?) show the message in the host chat
-		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str);
-	}
-	else if (ret == MERC_HIRE_OVER_20_MERCS_HIRED)
-	{
-		// Display a warning saying you can't hire more then 20 mercs
-		// TODO: Display to the client
-		//DoLapTopMessageBox(MSG_BOX_LAPTOP_DEFAULT,
-		// AimPopUpText[AIM_MEMBER_ALREADY_HAVE_20_MERCS], LAPTOP_SCREEN,
-		// MSG_BOX_FLAG_OK, NULL);
+		SendToChats(ST::string(gPlayers[i].name) + " hired " + s->name + ".");
 	}
 
-	UpdateTeamPanel();
+	UpdateTeamPanel(); // With the new merc
+
+	ResumeThread(gMainThread);
 }
 
-void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void SMInvClickCallbackPrimaryRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_INV_CLICK data;
 	int offset = bitStream->GetReadOffset();
@@ -754,19 +695,20 @@ void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* 
 
 	gRPC_InvClick = &data;
 
-	SMInvClickCallbackPrimary(NULL, 0);
+	EXECUTE_WHILE_MAIN_SUSPENDED(SMInvClickCallbackPrimary(NULL, 0));
 
 	gRPC_InvClick = NULL;
 
 	gRPC_ClientIndex = -1;
 }
 
-void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet)
+void UIHandleSoldierStanceChangeRPC(BitStream* bitStream, Packet* packet)
 {
 	RPC_DATA_STANCE_CHANGE data;
 	int offset = bitStream->GetReadOffset();
 	bool read = bitStream->ReadCompressed(data);
 	RakAssert(read);
 
-	UIHandleSoldierStanceChange(ID2Soldier(data.id), data.bNewStance);
+	EXECUTE_WHILE_MAIN_SUSPENDED(
+		UIHandleSoldierStanceChange(ID2Soldier(data.id), data.bNewStance));
 }

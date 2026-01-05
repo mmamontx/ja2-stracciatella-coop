@@ -502,7 +502,7 @@ void HandleHeliDrop( )
 			UnPauseGame();
 
 			// Select our first guy
-			INT8 ubPlayer = PlayerIndex(gNetworkOptions.peer->GetMyGUID());
+			INT8 ubPlayer = PlayerIndex(peer->GetMyGUID());
 			if (ubPlayer != -1)
 			{
 				for (int i = 0; i < MAX_MERC_IN_HELI; i++)

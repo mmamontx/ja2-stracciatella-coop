@@ -15,31 +15,34 @@
 #include "Soldier_Profile_Type.h"
 
 
-using namespace RakNet;
-
+#define COOP_DEBUG // Comment out for releases
 #define ENEMY_ENABLED
 
-#define COOP_DEBUG // Comment out for releases
+#define MAX_NUM_PLAYERS  4
 #define TEST_NUM_PLAYERS 2
-
-#define MAX_NUM_PLAYERS 3 // Enough for debugging
 
 #define KEY_RETURN 13
 
 #define IS_SERVER       (gGameOptions.fNetwork == 0)
 #define IS_CLIENT       (gGameOptions.fNetwork != 0)
-#define IS_VALID_CLIENT (IS_CLIENT && (gNetworkOptions.connected) && \
-                         (gReplicaList.Size() != 0))
+#define IS_VALID_CLIENT (IS_CLIENT && connected && \
+	(gReplicaList.Size() != 0))
 
 #define CONNECT_TIMEOUT_MS 1000
 
-#define RPC_READY ((gRPC_Events.empty() == FALSE) && gRPC_Enable)
+#define RPC_READY (gRPC_Enable && !(gRPC_Events.empty()))
 
 #define FOR_EACH_PLAYER(i) for (int i = 0; i < MAX_NUM_PLAYERS; i++)
 #define FOR_EACH_CLIENT(i) for (int i = 1; i < MAX_NUM_PLAYERS; i++)
 
 #define REPLICA_PROFILE_INDEX TOTAL_SOLDIERS
 #define REPLICA_PLAYER_INDEX  (TOTAL_SOLDIERS + NUM_PROFILES)
+
+#define EXECUTE_WHILE_MAIN_SUSPENDED(func) { do { \
+		SuspendThread(gMainThread); \
+		func; \
+		ResumeThread(gMainThread); \
+	} while (0); }
 
 /*
  * The following macroses maintain access to the shared objects:
@@ -61,14 +64,12 @@ using namespace RakNet;
 
 // Packet structures
 
-// The following fields are set in the game init options screen
-struct NETWORK_OPTIONS {
+// The following fields are initialized in the game init options screen
+struct NETWORK_OPTIONS
+{
 	ST::string name;
 	ST::string ip;
 	UINT16 port;
-	RakPeerInterface *peer;
-	// FIXME: Remove this var and obtain the status using GetConnectionState()?
-	BOOLEAN connected;
 };
 
 #define ID_USER_PACKET_CONNECT          ID_USER_PACKET_ENUM
@@ -82,9 +83,10 @@ struct NETWORK_OPTIONS {
 #define ID_USER_PACKET_GAME_OPTIONS     (ID_USER_PACKET_ENUM + 8)
 
 #define DEFINE_EMPTY_PACKET_STRUCT(name) \
-	struct name { \
+	struct name \
+	{ \
 		unsigned char id; \
-	} \
+	}
 
 DEFINE_EMPTY_PACKET_STRUCT(USER_PACKET_START);
 DEFINE_EMPTY_PACKET_STRUCT(USER_PACKET_TEAM_PANEL_DIRTY);
@@ -93,7 +95,8 @@ DEFINE_EMPTY_PACKET_STRUCT(USER_PACKET_END_TURN);
 
 #define MAX_NAME_LEN 16
 
-struct USER_PACKET_CONNECT {
+struct USER_PACKET_CONNECT
+{
 	unsigned char id;
 	char name[MAX_NAME_LEN];
 	BOOLEAN ready;
@@ -101,17 +104,20 @@ struct USER_PACKET_CONNECT {
 
 #define MAX_MESSAGE_LEN 128
 
-struct USER_PACKET_MESSAGE {
+struct USER_PACKET_MESSAGE
+{
 	unsigned char id;
 	char message[MAX_MESSAGE_LEN];
 };
 
-struct USER_PACKET_READY {
+struct USER_PACKET_READY
+{
 	unsigned char id;
 	BOOLEAN ready;
 };
 
-struct USER_PACKET_TOP_MESSAGE {
+struct USER_PACKET_TOP_MESSAGE
+{
 	unsigned char id;
 	UINT8 ubCurrentTeam;
 	UINT8 ubTopMessageType;
@@ -119,7 +125,8 @@ struct USER_PACKET_TOP_MESSAGE {
 	UINT16 usTactialTurnLimitMax;
 };
 
-struct USER_PACKET_GAME_OPTIONS {
+struct USER_PACKET_GAME_OPTIONS
+{
 	unsigned char id;
 	BOOLEAN fGunNut;
 	BOOLEAN	fSciFi;
@@ -130,7 +137,8 @@ struct USER_PACKET_GAME_OPTIONS {
 
 // Classes
 
-struct PLAYER : public Replica3 {
+struct PLAYER : public Replica3
+{
 	RakNetGUID guid;
 	RakString name;
 	BOOLEAN ready; // Ready button (on the strategic map in the very beginning)
@@ -138,121 +146,167 @@ struct PLAYER : public Replica3 {
 
 	bool operator == (const PLAYER& s) const { return guid == s.guid; }
 
-	virtual RakNet::RakString GetName(void) const { return RakNet::RakString("PLAYER"); }
+	virtual RakString GetName(void) const
+	{
+		return RakString("PLAYER");
+	}
 
-	virtual void WriteAllocationID(RakNet::Connection_RM3* destinationConnection, RakNet::BitStream* allocationIdBitstream) const {
+	virtual void WriteAllocationID(Connection_RM3* destinationConnection,
+		BitStream* allocationIdBitstream) const
+	{
 		allocationIdBitstream->Write(GetName());
 	}
 
-	void PrintStringInBitstream(RakNet::BitStream* bs)
+	void PrintStringInBitstream(BitStream* bs)
 	{
-		if (bs->GetNumberOfBitsUsed() == 0)
-			return;
-		RakNet::RakString rakString;
+		if (bs->GetNumberOfBitsUsed() == 0) return;
+		RakString rakString;
 		bs->Read(rakString);
-		//printf("Receive: %s\n", rakString.C_String());
+		//SLOGI("Receive: {}", rakString.C_String());
 	}
 
-	virtual void SerializeConstruction(RakNet::BitStream* constructionBitstream, RakNet::Connection_RM3* destinationConnection) {
-
-		constructionBitstream->Write(GetName() + RakNet::RakString(" SerializeConstruction"));
+	virtual void SerializeConstruction(BitStream* constructionBitstream,
+		Connection_RM3* destinationConnection)
+	{
+		constructionBitstream->Write(GetName() +
+			RakString(" SerializeConstruction"));
 	}
 
-	virtual bool DeserializeConstruction(RakNet::BitStream* constructionBitstream, RakNet::Connection_RM3* sourceConnection) {
+	virtual bool DeserializeConstruction(BitStream* constructionBitstream,
+		Connection_RM3* sourceConnection)
+	{
 		PrintStringInBitstream(constructionBitstream);
 		return true;
 	}
 
-	virtual void SerializeDestruction(RakNet::BitStream* destructionBitstream, RakNet::Connection_RM3* destinationConnection) {
-
-		destructionBitstream->Write(GetName() + RakNet::RakString(" SerializeDestruction"));
-
+	virtual void SerializeDestruction(BitStream* destructionBitstream,
+		Connection_RM3* destinationConnection)
+	{
+		destructionBitstream->Write(GetName() +
+			RakString(" SerializeDestruction"));
 	}
 
-	virtual bool DeserializeDestruction(RakNet::BitStream* destructionBitstream, RakNet::Connection_RM3* sourceConnection) {
+	virtual bool DeserializeDestruction(BitStream* destructionBitstream,
+		Connection_RM3* sourceConnection)
+	{
 		PrintStringInBitstream(destructionBitstream);
 		return true;
 	}
 
-	virtual void DeallocReplica(RakNet::Connection_RM3* sourceConnection) {
+	virtual void DeallocReplica(Connection_RM3* sourceConnection)
+	{
 		delete this;
 	}
 
-	/// Overloaded Replica3 function
 	virtual void OnUserReplicaPreSerializeTick(void)
 	{
 	}
 
-	virtual RM3SerializationResult Serialize(RakNet::SerializeParameters* serializeParameters) {
+	virtual RM3SerializationResult
+	Serialize(SerializeParameters* serializeParameters)
+	{
 		serializeParameters->outputBitstream[0].Write(guid);
 		serializeParameters->outputBitstream[0].Write(name);
 		serializeParameters->outputBitstream[0].Write(ready);
 		serializeParameters->outputBitstream[0].Write(endturn);
 
-		// For some reason, sometimes objects of this class aren't serialized, which
-		// causes a failed connection attempt because guid isn't replicated. So here
-		// the serialization is always forced.
+		/*
+		 * For some reason, sometimes objects of this class aren't serialized,
+		 * which causes a failed connection attempt because guid is not
+		 * replicated. So here the serialization is always forced.
+		 */
 		//return RM3SR_BROADCAST_IDENTICALLY;
 		return RM3SR_BROADCAST_IDENTICALLY_FORCE_SERIALIZATION;
 	}
 
-	virtual void Deserialize(RakNet::DeserializeParameters* deserializeParameters) {
+	virtual void Deserialize(DeserializeParameters* deserializeParameters)
+	{
 		deserializeParameters->serializationBitstream[0].Read(guid);
 		deserializeParameters->serializationBitstream[0].Read(name);
 		deserializeParameters->serializationBitstream[0].Read(ready);
 		deserializeParameters->serializationBitstream[0].Read(endturn);
 	}
 
-	virtual void SerializeConstructionRequestAccepted(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* requestingConnection) {
-		serializationBitstream->Write(GetName() + RakNet::RakString(" SerializeConstructionRequestAccepted"));
+	virtual void
+	SerializeConstructionRequestAccepted(BitStream* serializationBitstream,
+		Connection_RM3* requestingConnection)
+	{
+		serializationBitstream->Write(GetName() +
+			RakString(" SerializeConstructionRequestAccepted"));
 	}
 
-	virtual void DeserializeConstructionRequestAccepted(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* acceptingConnection) {
+	virtual void
+	DeserializeConstructionRequestAccepted(BitStream* serializationBitstream,
+		Connection_RM3* acceptingConnection)
+	{
 		PrintStringInBitstream(serializationBitstream);
 	}
 
-	virtual void SerializeConstructionRequestRejected(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* requestingConnection) {
-		serializationBitstream->Write(GetName() + RakNet::RakString(" SerializeConstructionRequestRejected"));
+	virtual void
+	SerializeConstructionRequestRejected(BitStream* serializationBitstream,
+		Connection_RM3* requestingConnection)
+	{
+		serializationBitstream->Write(GetName() +
+			RakString(" SerializeConstructionRequestRejected"));
 	}
 
-	virtual void DeserializeConstructionRequestRejected(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* rejectingConnection) {
+	virtual void
+	DeserializeConstructionRequestRejected(BitStream* serializationBitstream,
+		Connection_RM3* rejectingConnection)
+	{
 		PrintStringInBitstream(serializationBitstream);
 	}
 
-	virtual void OnPoppedConnection(RakNet::Connection_RM3* droppedConnection)
+	virtual void OnPoppedConnection(Connection_RM3* droppedConnection)
 	{
 	}
 
-	void NotifyReplicaOfMessageDeliveryStatus(RakNetGUID guid, uint32_t receiptId, bool messageArrived)
+	void NotifyReplicaOfMessageDeliveryStatus(RakNetGUID guid,
+		uint32_t receiptId, bool messageArrived)
 	{
 	}
 
-	virtual RM3ConstructionState QueryConstruction(RakNet::Connection_RM3* destinationConnection, ReplicaManager3* replicaManager3) {
-		return QueryConstruction_ServerConstruction(destinationConnection, IS_SERVER);
+	virtual RM3ConstructionState
+	QueryConstruction(Connection_RM3* destinationConnection,
+		ReplicaManager3* replicaManager3)
+	{
+		return QueryConstruction_ServerConstruction(destinationConnection,
+			IS_SERVER);
 	}
 
-	virtual bool QueryRemoteConstruction(RakNet::Connection_RM3* sourceConnection) {
-		return QueryRemoteConstruction_ServerConstruction(sourceConnection, IS_SERVER);
+	virtual bool QueryRemoteConstruction(Connection_RM3* sourceConnection)
+	{
+		return QueryRemoteConstruction_ServerConstruction(sourceConnection,
+			IS_SERVER);
 	}
 
-	virtual RM3QuerySerializationResult QuerySerialization(RakNet::Connection_RM3* destinationConnection) {
-		return QuerySerialization_ServerSerializable(destinationConnection, IS_SERVER);
+	virtual RM3QuerySerializationResult
+	QuerySerialization(Connection_RM3* destinationConnection)
+	{
+		return QuerySerialization_ServerSerializable(destinationConnection,
+			IS_SERVER);
 	}
 
-	virtual RM3ActionOnPopConnection QueryActionOnPopConnection(RakNet::Connection_RM3* droppedConnection) const {
+	virtual RM3ActionOnPopConnection
+	QueryActionOnPopConnection(Connection_RM3* droppedConnection) const
+	{
 		return QueryActionOnPopConnection_Server(droppedConnection);
 	}
 };
 
-class SampleConnection : public Connection_RM3
+class CoopConnection : public Connection_RM3
 {
 public:
-	SampleConnection(const SystemAddress& _systemAddress, RakNetGUID _guid) : Connection_RM3(_systemAddress, _guid) {}
-	virtual ~SampleConnection() {}
+
+	CoopConnection(const SystemAddress& _systemAddress, RakNetGUID _guid) :
+		Connection_RM3(_systemAddress, _guid) {}
+
+	virtual ~CoopConnection() {}
 
 	bool QueryGroupDownloadMessages(void) const { return true; }
 
-	virtual Replica3* AllocReplica(BitStream* allocationId, ReplicaManager3* replicaManager3)
+	virtual Replica3*
+	AllocReplica(BitStream* allocationId, ReplicaManager3* replicaManager3)
 	{
 		RakString typeName;
 		allocationId->Read(typeName);
@@ -261,15 +315,18 @@ public:
 		if (typeName == "PLAYER") return new PLAYER;
 		return 0;
 	}
+
 protected:
 };
 
-class ReplicaManager3Sample : public ReplicaManager3
+class CoopReplicaManager : public ReplicaManager3
 {
-	virtual Connection_RM3* AllocConnection(const SystemAddress& systemAddress, RakNetGUID rakNetGUID) const
+	virtual Connection_RM3* AllocConnection(const SystemAddress& systemAddress,
+		RakNetGUID rakNetGUID) const
 	{
-		return new SampleConnection(systemAddress, rakNetGUID);
+		return new CoopConnection(systemAddress, rakNetGUID);
 	}
+
 	virtual void DeallocConnection(Connection_RM3* connection) const
 	{
 		delete connection;
@@ -279,27 +336,31 @@ class ReplicaManager3Sample : public ReplicaManager3
 // RPC structures
 
 // AddCharacterToSquadRPC
-struct RPC_DATA_ADD_TO_SQUAD {
+struct RPC_DATA_ADD_TO_SQUAD
+{
 	SoldierID id;
 	INT8 bSquadValue;
 };
 
 // AddHistoryToPlayersLogRPC
-struct RPC_DATA_ADD_HISTORY {
+struct RPC_DATA_ADD_HISTORY
+{
 	UINT8 ubCode;
 	UINT8 ubSecondCode;
 	UINT32 uiDate;
 };
 
 // AddStrategicEventRPC
-struct RPC_DATA_ADD_STRATEGIC_EVENT {
+struct RPC_DATA_ADD_STRATEGIC_EVENT
+{
 	StrategicEventKind Kind;
 	UINT32 uiMinStamp;
 	UINT32 uiParam;
 };
 
 // AddTransactionToPlayersBookRPC
-struct RPC_DATA_ADD_TRANSACTION {
+struct RPC_DATA_ADD_TRANSACTION
+{
 	UINT8 ubCode;
 	UINT8 ubSecondCode;
 	UINT32 uiDate;
@@ -307,32 +368,38 @@ struct RPC_DATA_ADD_TRANSACTION {
 };
 
 // BeginSoldierClimbDownRoofRPC
-struct RPC_DATA_CLIMB_DOWN {
+struct RPC_DATA_CLIMB_DOWN
+{
 	SoldierID id;
 };
 
 // BeginSoldierClimbFenceRPC
-struct RPC_DATA_CLIMB_FENCE {
+struct RPC_DATA_CLIMB_FENCE
+{
 	SoldierID id;
 };
 
 // BeginSoldierClimbUpRoofRPC
-struct RPC_DATA_CLIMB_UP {
+struct RPC_DATA_CLIMB_UP
+{
 	SoldierID id;
 };
 
 // BtnStealthModeCallbackRPC
-struct RPC_DATA_STEALTH_MODE {
+struct RPC_DATA_STEALTH_MODE
+{
 	SoldierID id;
 };
 
 // ChangeWeaponModeRPC
-struct RPC_DATA_CHANGE_WEAPON_MODE {
+struct RPC_DATA_CHANGE_WEAPON_MODE
+{
 	SoldierID id;
 };
 
 // HandleItemPointerClickRPC
-struct RPC_DATA_ITEM_PTR_CLICK {
+struct RPC_DATA_ITEM_PTR_CLICK
+{
 	SoldierID id;
 	UINT8 ubHandPos;
 	SoldierID tgt_id;
@@ -341,7 +408,8 @@ struct RPC_DATA_ITEM_PTR_CLICK {
 };
 
 // HireMercRPC
-struct RPC_DATA_HIRE_MERC {
+struct RPC_DATA_HIRE_MERC
+{
 	MERC_HIRE_STRUCT h;
 	INT8 contract_type;
 	BOOLEAN fBuyEquipment;
@@ -349,7 +417,8 @@ struct RPC_DATA_HIRE_MERC {
 };
 
 // SMInvClickCallbackPrimaryRPC
-struct RPC_DATA_INV_CLICK {
+struct RPC_DATA_INV_CLICK
+{
 	SoldierID id;
 	UINT8 ubHandPos;
 	UINT8 ubCtrl;
@@ -357,7 +426,8 @@ struct RPC_DATA_INV_CLICK {
 };
 
 // UIHandleSoldierStanceChangeRPC
-struct RPC_DATA_STANCE_CHANGE {
+struct RPC_DATA_STANCE_CHANGE
+{
 	SoldierID id;
 	INT8 bNewStance;
 };
@@ -366,26 +436,31 @@ struct RPC_DATA_STANCE_CHANGE {
  * The following events are generated by the clients in HandleTacticalUI() and
  * processed by HandleEventRPC().
  */
-struct RPC_DATA_EVENT {
+struct RPC_DATA_EVENT
+{
 	UIEventKind puiNewEvent;
 	SoldierID id;
 
-	union {
+	union
+	{
 		// C_MOVE_MERC
-		struct {
+		struct
+		{
 			GridNo usMapPos;
 			BOOLEAN fUIMovementFast;
 		} c_move_merc;
 
 		// CA_MERC_SHOOT
-		struct {
+		struct
+		{
 			SoldierID tgt_id;
 			GridNo usMapPos;
 			INT8 bShownAimTime;
 		} ca_merc_shoot;
 
 		// LC_LOOK
-		struct {
+		struct
+		{
 			GridNo usMapPos;
 		} lc_look;
 	};
@@ -397,10 +472,12 @@ struct RPC_DATA_EVENT {
 // Networking
 extern NETWORK_OPTIONS gNetworkOptions;
 extern NetworkIDManager gNetworkIdManager;
+extern RakPeerInterface* peer;
+extern BOOLEAN connected;
 
 // Replication
 extern DataStructures::List<Replica3*> gReplicaList;
-extern ReplicaManager3Sample gReplicaManager;
+extern CoopReplicaManager gReplicaManager;
 extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 
 // RPCs
@@ -422,9 +499,8 @@ extern std::list<RPC_DATA_EVENT> gRPC_Events;
 // Etc.
 extern HANDLE gMainThread;
 extern HANDLE gPacketThread;
-extern HANDLE gReplicaManagerThread;
 
-extern BOOLEAN gStarted;
+extern BOOLEAN gEnableTimeCompression;
 extern BOOLEAN MPReadyButtonValue;
 extern BOOLEAN gGameOptionsReceived;
 
@@ -432,32 +508,32 @@ extern BOOLEAN gGameOptionsReceived;
 // Prototypes
 
 // Networking
-DWORD WINAPI client_packet(LPVOID lpParam);
-DWORD WINAPI replicamgr(LPVOID lpParam);
-DWORD WINAPI server_packet(LPVOID lpParam);
-unsigned char SGetPacketIdentifier(Packet* p);
+DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam);
+unsigned char PacketId(Packet* p);
+DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam);
 
 // RPCs
-void AddCharacterToSquadRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void AddHistoryToPlayersLogRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void AddStrategicEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void AddTransactionToPlayersBookRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void BeginSoldierClimbDownRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void BeginSoldierClimbFenceRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void BeginSoldierClimbUpRoofRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void BtnStealthModeCallbackRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void ChangeWeaponModeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void HandleEventRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void HandleItemPointerClickRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void HireMercRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void SMInvClickCallbackPrimaryRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
-void UIHandleSoldierStanceChangeRPC(RakNet::BitStream* bitStream, RakNet::Packet* packet);
+void AddCharacterToSquadRPC(BitStream* bitStream, Packet* packet);
+void AddHistoryToPlayersLogRPC(BitStream* bitStream, Packet* packet);
+void AddStrategicEventRPC(BitStream* bitStream, Packet* packet);
+void AddTransactionToPlayersBookRPC(BitStream* bitStream, Packet* packet);
+void BeginSoldierClimbDownRoofRPC(BitStream* bitStream, Packet* packet);
+void BeginSoldierClimbFenceRPC(BitStream* bitStream, Packet* packet);
+void BeginSoldierClimbUpRoofRPC(BitStream* bitStream, Packet* packet);
+void BtnStealthModeCallbackRPC(BitStream* bitStream, Packet* packet);
+void ChangeWeaponModeRPC(BitStream* bitStream, Packet* packet);
+void HandleEventRPC(BitStream* bitStream, Packet* packet);
+void HandleItemPointerClickRPC(BitStream* bitStream, Packet* packet);
+void HireMercRPC(BitStream* bitStream, Packet* packet);
+void SMInvClickCallbackPrimaryRPC(BitStream* bitStream, Packet* packet);
+void UIHandleSoldierStanceChangeRPC(BitStream* bitStream, Packet* packet);
 
 // Etc.
 INT8 ClientIndex(RakNetGUID guid);
 void HireRandomMercs(unsigned int n);
 UINT8 NumberOfPlayers();
 INT8 PlayerIndex(RakNetGUID guid);
+void SendToChats(ST::string message);
 void UpdateTeamPanel();
 
-#endif
+#endif // __COOP_H

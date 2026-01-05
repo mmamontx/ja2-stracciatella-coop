@@ -3298,7 +3298,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("HandleItemPointerClickRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gNetworkOptions.peer->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("HandleItemPointerClickRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
 
 		EndItemPointer();
 

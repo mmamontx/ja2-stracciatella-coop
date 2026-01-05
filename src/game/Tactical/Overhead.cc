@@ -4090,7 +4090,7 @@ void EnterCombatMode( UINT8 ubStartingTeam )
 		const SOLDIERTYPE* const sel = GetSelectedMan();
 		if (sel == NULL || sel->bOppCnt == 0)
 		{
-			INT8 player_squad = PlayerIndex(gNetworkOptions.peer->GetMyGUID());
+			INT8 player_squad = PlayerIndex(peer->GetMyGUID());
 			// OK, look through and find one....
 			FOR_EACH_IN_TEAM(s, OUR_TEAM)
 			{
@@ -4185,7 +4185,7 @@ void ExitCombatMode( )
 	if (!(IS_CLIENT)) {
 		struct USER_PACKET_MESSAGE up_broadcast;
 		up_broadcast.id = ID_USER_PACKET_END_COMBAT;
-		gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+		peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 	}
 }
 

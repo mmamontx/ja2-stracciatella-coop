@@ -732,7 +732,7 @@ void EnableDisAbleMapScreenOptionsButton( BOOLEAN fEnable )
 BOOLEAN AllowedToTimeCompress( void )
 {
 	if (IS_CLIENT) { // We are client - can't time compress
-		if (gStarted)
+		if (gEnableTimeCompression)
 			return TRUE;
 		else
 			return FALSE;

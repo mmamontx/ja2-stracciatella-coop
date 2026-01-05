@@ -362,6 +362,7 @@ struct SOLDIERTYPE : public Replica3
 
 		uiStatusFlags = 0;
 
+		//memset(inv, 0, sizeof(inv)); // Class object has its own constructor
 		pTempObject = NULL;
 		pKeyRing = NULL;
 
@@ -1362,7 +1363,7 @@ struct SOLDIERTYPE : public Replica3
 
 		serializeParameters->outputBitstream[0].Write(uiStatusFlags);
 
-		BS_ARRAY_WRITE(inv, NUM_INV_SLOTS);
+		serializeParameters->outputBitstream[0].Write(inv); // FIXME
 		//serializeParameters->outputBitstream[0].Write(pTempObject);
 		//serializeParameters->outputBitstream[0].Write(pKeyRing);
 
@@ -1855,7 +1856,7 @@ struct SOLDIERTYPE : public Replica3
 
 		deserializeParameters->serializationBitstream[0].Read(uiStatusFlags);
 
-		BS_ARRAY_READ(inv, NUM_INV_SLOTS);
+		deserializeParameters->serializationBitstream[0].Read(inv); // FIXME
 		//deserializeParameters->serializationBitstream[0].Read(pTempObject);
 		//deserializeParameters->serializationBitstream[0].Read(pKeyRing);
 

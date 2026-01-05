@@ -1449,7 +1449,7 @@ ScreenID MapScreenHandle(void)
 	INT32 iCounter = 0;
 	static const SGPSector startSector(gamepolicy(start_sector));
 
-	if (gStarted) // Trigger time compression for clients
+	if (gEnableTimeCompression) // Trigger time compression for clients
 		RequestIncreaseInTimeCompression();
 
 	//DO NOT MOVE THIS FUNCTION CALL!!!
@@ -3134,7 +3134,7 @@ static void GetMapKeyboardInput()
 				struct USER_PACKET_MESSAGE up;
 				up.id = ID_USER_PACKET_MESSAGE;
 				strcpy(up.message, IS_CLIENT ? str.c_str() : (gNetworkOptions.name + "> " + str).c_str());
-				gNetworkOptions.peer->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				peer->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 				SetInputFieldString(0, "");
 			}
@@ -6472,7 +6472,7 @@ void MPReadyButtonCallback(GUI_BUTTON* btn, INT32 reason)
 				struct USER_PACKET_READY p;
 				p.id = ID_USER_PACKET_READY;
 				p.ready = MPReadyButtonValue;
-				gNetworkOptions.peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 			} else if (!(IS_CLIENT)) { // We are server
 				struct USER_PACKET_MESSAGE up_broadcast;
 				char str[256];
@@ -6483,7 +6483,7 @@ void MPReadyButtonCallback(GUI_BUTTON* btn, INT32 reason)
 				sprintf(str, "%s is %s.", gNetworkOptions.name.c_str(), MPReadyButtonValue ? "ready" : "not ready");
 				up_broadcast.id = ID_USER_PACKET_MESSAGE;
 				strcpy(up_broadcast.message, str);
-				gNetworkOptions.peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
 			}

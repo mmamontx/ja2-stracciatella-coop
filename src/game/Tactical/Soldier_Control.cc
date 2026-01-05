@@ -5189,7 +5189,7 @@ void BeginSoldierClimbUpRoof(SOLDIERTYPE* const s)
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("BeginSoldierClimbUpRoofRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gNetworkOptions.peer->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("BeginSoldierClimbUpRoofRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
 	} else {
 		UINT8 direction;
 		if (!FindHigherLevel(s, &direction)) return;
@@ -5232,7 +5232,7 @@ void BeginSoldierClimbFence(SOLDIERTYPE* const s)
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("BeginSoldierClimbFenceRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gNetworkOptions.peer->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("BeginSoldierClimbFenceRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
 	} else {
 		UINT8 direction;
 		if (!FindFenceJumpDirection(s, &direction)) return;
@@ -6225,7 +6225,7 @@ void BeginSoldierClimbDownRoof(SOLDIERTYPE* const s)
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("BeginSoldierClimbDownRoofRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gNetworkOptions.peer->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("BeginSoldierClimbDownRoofRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
 	} else {
 		UINT8 direction;
 		if (!FindLowerLevel(s, &direction)) return;

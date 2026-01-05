@@ -10,10 +10,10 @@
 using namespace RakNet;
 
 #define BS_ARRAY_WRITE(array, size) \
-    for (int i = 0; i < size; i++) \
+	for (int i = 0; i < size; i++) \
 		serializeParameters->outputBitstream[0].Write(array[i])
 #define BS_ARRAY_READ(array, size) \
-    for (int i = 0; i < size; i++) \
+	for (int i = 0; i < size; i++) \
 		deserializeParameters->serializationBitstream[0].Read(array[i])
 
 #include <string_theory/string>

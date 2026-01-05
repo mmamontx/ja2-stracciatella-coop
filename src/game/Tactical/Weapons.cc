@@ -3758,7 +3758,7 @@ void ChangeWeaponMode(SOLDIERTYPE* const s)
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("ChangeWeaponModeRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gNetworkOptions.peer->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("ChangeWeaponModeRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
 
 		return;
 	}

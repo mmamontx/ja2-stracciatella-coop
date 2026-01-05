@@ -464,19 +464,16 @@ void NetworkShutdown(void)
 {
 	if (!bNetworkInitialized) return;
 
-	// FIXME: Handle MSVC warning C6258?
 	if (gPacketThread) TerminateThread(gPacketThread, 0);
 	bClientThreadCreated = FALSE;
-
-	if (gReplicaManagerThread) TerminateThread(gReplicaManagerThread, 0);
 
 	gReplicaManager.Clear();
 	gReplicaList.Clear(TRUE, NULL, 0);
 	gNetworkIdManager.Clear();
 
-	if (gNetworkOptions.connected) {
-		gNetworkOptions.peer->Shutdown(1000, 0);
-		gNetworkOptions.connected = FALSE;
+	if (connected) {
+		peer->Shutdown(1000, 0);
+		connected = FALSE;
 	}
 
 	bNetworkInitialized = FALSE;
@@ -486,10 +483,10 @@ static void NetworkInit()
 {
 	if (bNetworkInitialized) return;
 
-	gNetworkOptions.peer = RakPeerInterface::GetInstance();
+	peer = RakPeerInterface::GetInstance();
 
 	// Register RPC
-	gNetworkOptions.peer->AttachPlugin(&gRPC);
+	peer->AttachPlugin(&gRPC);
 
 	gRPC.RegisterSlot("HandleEventRPC", HandleEventRPC, 0);
 
@@ -517,14 +514,12 @@ static void NetworkInit()
 
 	if (IS_SERVER)
 	{
-		gReplicaManagerThread = CreateThread(NULL, 0, replicamgr, NULL, 0, NULL);
-
-		gNetworkOptions.peer->Startup(MAX_NUM_PLAYERS - 1, &SocketDescriptor(gNetworkOptions.port, 0), 1);
-		gNetworkOptions.peer->AttachPlugin(&gReplicaManager);
+		peer->Startup(MAX_NUM_PLAYERS - 1, &SocketDescriptor(gNetworkOptions.port, 0), 1);
+		peer->AttachPlugin(&gReplicaManager);
 		gReplicaManager.SetNetworkIDManager(&gNetworkIdManager);
-		gNetworkOptions.peer->SetMaximumIncomingConnections(MAX_NUM_PLAYERS - 1);
+		peer->SetMaximumIncomingConnections(MAX_NUM_PLAYERS - 1);
 
-		gPlayers[0].guid = gNetworkOptions.peer->GetMyGUID();
+		gPlayers[0].guid = peer->GetMyGUID();
 		gPlayers[0].name = gNetworkOptions.name.c_str();
 		gPlayers[0].ready = 0;
 		gPlayers[0].endturn = FALSE;
@@ -538,17 +533,17 @@ static void NetworkInit()
 		for (int i = 0; i < MAX_NUM_PLAYERS; i++)
 			gReplicaManager.Reference(&(gPlayers[i]));
 
-		gNetworkOptions.connected = TRUE; // Always TRUE for server
+		connected = TRUE; // Always TRUE for server
 
-		gPacketThread = CreateThread(NULL, 0, server_packet, NULL, 0, NULL);
+		gPacketThread = CreateThread(NULL, 0, ServerProcessesPacketsHere, NULL, 0, NULL);
 	}
 	else
 	{
-		gNetworkOptions.peer->Startup(1, &SocketDescriptor(), 1);
-		gNetworkOptions.peer->AttachPlugin(&gReplicaManager);
+		peer->Startup(1, &SocketDescriptor(), 1);
+		peer->AttachPlugin(&gReplicaManager);
 		gReplicaManager.SetNetworkIDManager(&gNetworkIdManager);
 
-		gNetworkOptions.connected = FALSE;
+		connected = FALSE;
 	}
 
 	bNetworkInitialized = TRUE;
@@ -556,15 +551,15 @@ static void NetworkInit()
 
 static void ConnectToHost(void)
 {
-	if (gNetworkOptions.connected) return;
+	if (connected) return;
 
 	if (!bNetworkInitialized) NetworkInit();
 
-	gNetworkOptions.peer->Connect(gNetworkOptions.ip.c_str(), gNetworkOptions.port, 0, 0);
+	peer->Connect(gNetworkOptions.ip.c_str(), gNetworkOptions.port, 0, 0);
 
 	if (!(bClientThreadCreated))
 	{
-		gPacketThread = CreateThread(NULL, 0, client_packet, NULL, 0, NULL);
+		gPacketThread = CreateThread(NULL, 0, ClientProcessesPacketsHere, NULL, 0, NULL);
 		bClientThreadCreated = TRUE;
 	}
 }
@@ -597,10 +592,10 @@ static void HandleGIOScreen(void)
 					do {
 						Sleep(period);
 						t += period;
-					} while ((!(gNetworkOptions.connected)) && (t < CONNECT_TIMEOUT_MS));
-					if (!(gNetworkOptions.connected))
+					} while ((!(connected)) && (t < CONNECT_TIMEOUT_MS));
+					if (!(connected))
 					{
-						SLOGI("gNetworkOptions.connected == 0");
+						SLOGI("connected == 0");
 						NetworkShutdown();
 						break; // TODO: Display a message?
 					}
@@ -609,7 +604,7 @@ static void HandleGIOScreen(void)
 					p.id = ID_USER_PACKET_CONNECT;
 					p.ready = 0;
 					strcpy(p.name, gNetworkOptions.name.c_str());
-					gNetworkOptions.peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+					peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 					// Wait until the objects are replicated
 					t = 0;
@@ -629,8 +624,8 @@ static void HandleGIOScreen(void)
 					do {
 						Sleep(period);
 						t += period;
-					} while ((ClientIndex(gNetworkOptions.peer->GetMyGUID()) == -1) && (t < CONNECT_TIMEOUT_MS));
-					if (ClientIndex(gNetworkOptions.peer->GetMyGUID()) == -1)
+					} while ((ClientIndex(peer->GetMyGUID()) == -1) && (t < CONNECT_TIMEOUT_MS));
+					if (ClientIndex(peer->GetMyGUID()) == -1)
 					{
 						SLOGI("ClientIndex() == -1");
 						NetworkShutdown();

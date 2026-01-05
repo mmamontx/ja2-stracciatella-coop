@@ -366,7 +366,7 @@ void ReStartingGame()
 	gRPC_Events.clear();
 
 	// Etc.
-	gStarted = FALSE;
+	gEnableTimeCompression = FALSE;
 	gGameOptionsReceived = FALSE;
 	MPReadyButtonValue = FALSE;
 }

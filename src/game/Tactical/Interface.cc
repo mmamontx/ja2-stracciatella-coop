@@ -1892,7 +1892,7 @@ static void CreateTopMessage(void)
 		up.ubTopMessageType = gTacticalStatus.ubTopMessageType;
 		up.usTactialTurnLimitCounter = gTacticalStatus.usTactialTurnLimitCounter;
 		up.usTactialTurnLimitMax = gTacticalStatus.usTactialTurnLimitMax;
-		gNetworkOptions.peer->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+		peer->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 	}
 }
 
