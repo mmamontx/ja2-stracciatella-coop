@@ -3127,7 +3127,7 @@ static void GetMapKeyboardInput()
 				ST::string str = GetStringFromField(0);
 				if (str.empty()) return;
 
-				if (!(IS_CLIENT)) // If we are server show it for ourselves
+				if (IS_SERVER) // If we are server show it for ourselves
 					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gNetworkOptions.name + "> " + str);
 
 				// Sending the message to others

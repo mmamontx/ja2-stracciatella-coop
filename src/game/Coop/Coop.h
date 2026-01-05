@@ -533,7 +533,7 @@ INT8 ClientIndex(RakNetGUID guid);
 void HireRandomMercs(unsigned int n);
 UINT8 NumberOfPlayers();
 INT8 PlayerIndex(RakNetGUID guid);
-void SendToChats(ST::string message);
+void SendToChat(ST::string message, BOOLEAN broadcast);
 void UpdateTeamPanel();
 
 #endif // __COOP_H

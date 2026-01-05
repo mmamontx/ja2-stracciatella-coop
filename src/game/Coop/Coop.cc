@@ -183,19 +183,19 @@ unsigned char PacketId(Packet* p)
 	return p->data[0];
 }
 
-void SendToChats(ST::string message)
+void SendToChat(ST::string message, BOOLEAN broadcast)
 {
 	struct USER_PACKET_MESSAGE up_broadcast;
 
 	ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, message);
 
-	if (IS_SERVER && (NumberOfPlayers() > 1))
+	if (broadcast && (NumberOfPlayers() > 1))
 	{
 		// Broadcasting the message to the clients
 		up_broadcast.id = ID_USER_PACKET_MESSAGE;
 		strcpy(up_broadcast.message, message.c_str());
-		peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
-			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+		peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY,
+			RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 	}
 }
 
@@ -223,8 +223,8 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 					{
 						gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;
 
-						SendToChats((ST::string)(gPlayers[i].name) +
-							" has disconnected.");
+						SendToChat((ST::string)(gPlayers[i].name) +
+							" has disconnected.", TRUE);
 
 						break;
 					}
@@ -265,7 +265,8 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 					gPlayers[first_free].name = up->name;
 					gPlayers[first_free].ready = up->ready;
 
-					SendToChats((ST::string)(up->name) + " has connected.");
+					SendToChat((ST::string)(up->name) + " has connected.",
+						TRUE);
 
 					UpdateTeamPanel(); // With the connected player
 
@@ -295,8 +296,8 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 				{
 					if (gPlayers[i].guid == p->guid)
 					{
-						SendToChats((ST::string)gPlayers[i].name + "> " +
-							(ST::string)up->message);
+						SendToChat((ST::string)gPlayers[i].name + "> " +
+							(ST::string)up->message, TRUE);
 
 						break;
 					}
@@ -318,9 +319,9 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 					{
 						gPlayers[i].ready = up->ready;
 
-						SendToChats((ST::string)gPlayers[i].name +
+						SendToChat((ST::string)gPlayers[i].name +
 							(gPlayers[i].ready ? " is ready." :
-								" is not ready anymore."));
+								" is not ready anymore."), TRUE);
 
 						break;
 					}
@@ -353,10 +354,10 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 							gPlayers[i].endturn = true;
 							finished++;
 
-							SendToChats(ST::string(gPlayers[i].name) +
+							SendToChat(ST::string(gPlayers[i].name) +
 								" has finished his/her turn. " +
 								std::to_string(finished) + "/" +
-								std::to_string(n) + " total.");
+								std::to_string(n) + " total.", TRUE);
 						}
 
 						break;
@@ -404,7 +405,7 @@ DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam)
 			case ID_CONNECTION_REQUEST_ACCEPTED:
 				connected = TRUE;
 
-				SendToChats((ST::string)"Connected");
+				SendToChat((ST::string)"Connected", FALSE);
 
 				break;
 			case ID_DISCONNECTION_NOTIFICATION:
@@ -423,7 +424,7 @@ DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam)
 				struct USER_PACKET_MESSAGE* up;
 				up = (struct USER_PACKET_MESSAGE*)p->data;
 
-				SendToChats((ST::string)(up->message));
+				SendToChat((ST::string)(up->message), FALSE);
 
 				break;
 			}
@@ -676,7 +677,8 @@ void HireMercRPC(BitStream* bitStream, Packet* packet)
 		INT8 i = ClientIndex(packet->guid);
 		s->ubPlayer = i;
 
-		SendToChats(ST::string(gPlayers[i].name) + " hired " + s->name + ".");
+		SendToChat(ST::string(gPlayers[i].name) + " has hired " + s->name +
+			".", TRUE);
 	}
 
 	UpdateTeamPanel(); // With the new merc
