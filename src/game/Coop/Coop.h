@@ -16,21 +16,22 @@
 
 
 #define COOP_DEBUG // Comment out for releases
-#define ENEMY_ENABLED
+#define COOP_DEBUG_NUM_MERCS_TOTAL      4
+#define COOP_DEBUG_NUM_MERCS_PER_PLAYER 2
 
-#define MAX_NUM_PLAYERS  4
-#define TEST_NUM_PLAYERS 2
+#define ENEMY_ENABLED
 
 #define KEY_RETURN 13
 
+#define MAX_NUM_PLAYERS 4
+
+#define TIMEOUT_MS 1000
+
 #define IS_SERVER       (gGameOptions.fNetwork == 0)
 #define IS_CLIENT       (gGameOptions.fNetwork != 0)
-#define IS_VALID_CLIENT (IS_CLIENT && connected && \
-	(gReplicaList.Size() != 0))
+#define IS_VALID_CLIENT (IS_CLIENT && gConnected && (gReplicaList.Size() != 0))
 
-#define CONNECT_TIMEOUT_MS 1000
-
-#define RPC_READY (gRPC_Enable && !(gRPC_Events.empty()))
+#define RPC_EVENT_READY (gRPC_Enable && !(gRPC_Events.empty()))
 
 #define FOR_EACH_PLAYER(i) for (int i = 0; i < MAX_NUM_PLAYERS; i++)
 #define FOR_EACH_CLIENT(i) for (int i = 1; i < MAX_NUM_PLAYERS; i++)
@@ -56,13 +57,11 @@
     ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->ready : \
     gPlayers[i].ready)
 #define PLAYER_NAME(i) (IS_VALID_CLIENT ? \
-    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->name.C_String() : \
-    gPlayers[i].name.C_String())
+    ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->name.c_str() : \
+    gPlayers[i].name.c_str())
 #define PLAYER_GUID(i) (IS_VALID_CLIENT ? \
     ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->guid : \
     gPlayers[i].guid)
-
-// Packet structures
 
 // The following fields are initialized in the game init options screen
 struct NETWORK_OPTIONS
@@ -135,12 +134,11 @@ struct USER_PACKET_GAME_OPTIONS
 	UINT8	ubGameSaveMode;
 };
 
-// Classes
-
 struct PLAYER : public Replica3
 {
 	RakNetGUID guid;
-	RakString name;
+	ST::string name;
+	RakString rname;
 	BOOLEAN ready; // Ready button (on the strategic map in the very beginning)
 	BOOLEAN endturn;
 
@@ -202,29 +200,40 @@ struct PLAYER : public Replica3
 	{
 	}
 
+	void PreSerialize()
+	{
+		rname = name.c_str();
+	}
+
+	void PostDeserialize()
+	{
+		name = rname;
+	}
+
 	virtual RM3SerializationResult
 	Serialize(SerializeParameters* serializeParameters)
 	{
+		// If we are a client we don't serialize the objects back to the server
+		if (gGameOptions.fNetwork) return RM3SR_DO_NOT_SERIALIZE;
+
+		PreSerialize();
+
 		serializeParameters->outputBitstream[0].Write(guid);
-		serializeParameters->outputBitstream[0].Write(name);
+		serializeParameters->outputBitstream[0].Write(rname);
 		serializeParameters->outputBitstream[0].Write(ready);
 		serializeParameters->outputBitstream[0].Write(endturn);
 
-		/*
-		 * For some reason, sometimes objects of this class aren't serialized,
-		 * which causes a failed connection attempt because guid is not
-		 * replicated. So here the serialization is always forced.
-		 */
-		//return RM3SR_BROADCAST_IDENTICALLY;
-		return RM3SR_BROADCAST_IDENTICALLY_FORCE_SERIALIZATION;
+		return RM3SR_BROADCAST_IDENTICALLY;
 	}
 
 	virtual void Deserialize(DeserializeParameters* deserializeParameters)
 	{
 		deserializeParameters->serializationBitstream[0].Read(guid);
-		deserializeParameters->serializationBitstream[0].Read(name);
+		deserializeParameters->serializationBitstream[0].Read(rname);
 		deserializeParameters->serializationBitstream[0].Read(ready);
 		deserializeParameters->serializationBitstream[0].Read(endturn);
+
+		PostDeserialize();
 	}
 
 	virtual void
@@ -332,8 +341,6 @@ class CoopReplicaManager : public ReplicaManager3
 		delete connection;
 	}
 };
-
-// RPC structures
 
 // AddCharacterToSquadRPC
 struct RPC_DATA_ADD_TO_SQUAD
@@ -467,52 +474,49 @@ struct RPC_DATA_EVENT
 };
 
 
-// Externs
-
 // Networking
-extern NETWORK_OPTIONS gNetworkOptions;
+
+extern BOOLEAN gConnected;
 extern NetworkIDManager gNetworkIdManager;
-extern RakPeerInterface* peer;
-extern BOOLEAN connected;
+extern NETWORK_OPTIONS gNetworkOptions;
+extern RakPeerInterface* gPeerInterface;
 
 // Replication
+
+extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 extern DataStructures::List<Replica3*> gReplicaList;
 extern CoopReplicaManager gReplicaManager;
-extern struct PLAYER gPlayers[MAX_NUM_PLAYERS];
 
 // RPCs
-extern RPC4 gRPC;
 
+extern RPC4 gRPC;
 extern BOOLEAN gRPC_Enable;
 extern BOOLEAN gRPC_Squad;
-
+extern std::list<RPC_DATA_EVENT> gRPC_Events;
 // Item RPCs
+extern INT8 gRPC_ClientIndex;
 extern RPC_DATA_INV_CLICK* gRPC_InvClick;
+extern RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick;
 extern OBJECTTYPE* gpItemPointerRPC[MAX_NUM_PLAYERS];
 extern SOLDIERTYPE* gpItemPointerSoldierRPC[MAX_NUM_PLAYERS];
-extern INT8 gRPC_ClientIndex;
-
-extern RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick;
-
-extern std::list<RPC_DATA_EVENT> gRPC_Events;
 
 // Etc.
+
+extern BOOLEAN gEnableTimeCompression;
+extern BOOLEAN gGameOptionsReceived;
+extern BOOLEAN gStrategicReadyButtonValue;
 extern HANDLE gMainThread;
 extern HANDLE gPacketThread;
 
-extern BOOLEAN gEnableTimeCompression;
-extern BOOLEAN MPReadyButtonValue;
-extern BOOLEAN gGameOptionsReceived;
-
-
-// Prototypes
 
 // Networking
-DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam);
+
 unsigned char PacketId(Packet* p);
 DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam);
+DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam);
 
 // RPCs
+
 void AddCharacterToSquadRPC(BitStream* bitStream, Packet* packet);
 void AddHistoryToPlayersLogRPC(BitStream* bitStream, Packet* packet);
 void AddStrategicEventRPC(BitStream* bitStream, Packet* packet);
@@ -529,10 +533,11 @@ void SMInvClickCallbackPrimaryRPC(BitStream* bitStream, Packet* packet);
 void UIHandleSoldierStanceChangeRPC(BitStream* bitStream, Packet* packet);
 
 // Etc.
+
 INT8 ClientIndex(RakNetGUID guid);
+INT8 PlayerIndex(RakNetGUID guid);
 void HireRandomMercs(unsigned int n);
 UINT8 NumberOfPlayers();
-INT8 PlayerIndex(RakNetGUID guid);
 void SendToChat(ST::string message, BOOLEAN broadcast);
 void UpdateTeamPanel();
 

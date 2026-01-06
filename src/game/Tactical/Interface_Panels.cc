@@ -1632,7 +1632,7 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("SMInvClickCallbackPrimaryRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("SMInvClickCallbackPrimaryRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
 	}
 
 	// FIXME: Propagate?
@@ -2176,7 +2176,7 @@ static void BtnStealthModeCallback(GUI_BUTTON* btn, UINT32 reason)
 
 			bs.WriteCompressed(data);
 
-			gRPC.Signal("BtnStealthModeCallbackRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
+			gRPC.Signal("BtnStealthModeCallbackRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
 		}
 	}
 }

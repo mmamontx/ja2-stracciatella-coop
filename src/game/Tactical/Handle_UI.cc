@@ -526,7 +526,7 @@ ScreenID HandleTacticalUI(void)
 
 				bs.WriteCompressed(data);
 
-				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
+				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
 
 				break;
 			case C_WAIT_FOR_CONFIRM:
@@ -544,7 +544,7 @@ ScreenID HandleTacticalUI(void)
 
 				bs.WriteCompressed(data);
 
-				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
+				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
 
 				break;
 			case HC_ON_TERRAIN: // The hand cursor is activated
@@ -572,7 +572,7 @@ ScreenID HandleTacticalUI(void)
 
 				bs.WriteCompressed(data);
 
-				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
+				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
 
 				break;
 			case LU_ENDUILOCK:
@@ -1192,7 +1192,7 @@ ScreenID UIHandleEndTurn(UI_EVENT* pUIEvent)
 	{
 		struct USER_PACKET_END_TURN p;
 		p.id = ID_USER_PACKET_END_TURN;
-		peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+		gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 		return GAME_SCREEN;
 	}
 	else
@@ -1212,10 +1212,10 @@ ScreenID UIHandleEndTurn(UI_EVENT* pUIEvent)
 			finished++;
 
 			// Broadcasting to the clients
-			sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[0].name.C_String(), finished, n);
+			sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[0].name.c_str(), finished, n);
 			up_broadcast.id = ID_USER_PACKET_MESSAGE;
 			strcpy(up_broadcast.message, str);
-			peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+			gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 			ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
 		}
@@ -1338,7 +1338,7 @@ static ScreenID UIHandleSelectMerc(UI_EVENT* pUIEvent)
 	if (gUIFullTarget != NULL)
 	{
 		// Disallow selecting mercs owned by other players
-		if (gUIFullTarget->ubPlayer != PlayerIndex(peer->GetMyGUID()))
+		if (gUIFullTarget->ubPlayer != PlayerIndex(gPeerInterface->GetMyGUID()))
 		{
 			return(GAME_SCREEN);
 		}
@@ -1788,7 +1788,7 @@ static ScreenID UIHandleCMoveMerc(UI_EVENT* pUIEvent)
 	INT16 sIntTileGridNo;
 	BOOLEAN fOldFastMove;
 	RPC_DATA_EVENT data;
-	bool fRPC = RPC_READY;
+	bool fRPC = RPC_EVENT_READY;
 
 	SOLDIERTYPE* sel;
 	if (fRPC) {
@@ -2451,7 +2451,7 @@ static void AttackRequesterCallback(MessageBoxReturnValue const bExitValue)
 static ScreenID UIHandleCAMercShoot(UI_EVENT* pUIEvent)
 {
 	RPC_DATA_EVENT data;
-	bool fRPC = RPC_READY;
+	bool fRPC = RPC_EVENT_READY;
 
 	SOLDIERTYPE* sel;
 	if (fRPC) {
@@ -3014,7 +3014,7 @@ void UIHandleSoldierStanceChange(SOLDIERTYPE* s, INT8 bNewStance)
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("UIHandleSoldierStanceChangeRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("UIHandleSoldierStanceChangeRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
 
 		// FIXME: Update the stance in the bottom menu of the client
 
@@ -4080,7 +4080,7 @@ static BOOLEAN MakeSoldierTurn(SOLDIERTYPE* const pSoldier, const GridNo pos)
 static ScreenID UIHandleLCLook(UI_EVENT* pUIEvent)
 {
 	RPC_DATA_EVENT data;
-	bool fRPC = RPC_READY;
+	bool fRPC = RPC_EVENT_READY;
 
 	if (fRPC) {
 		data = gRPC_Events.front();

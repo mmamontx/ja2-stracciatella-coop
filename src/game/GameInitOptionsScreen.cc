@@ -471,9 +471,9 @@ void NetworkShutdown(void)
 	gReplicaList.Clear(TRUE, NULL, 0);
 	gNetworkIdManager.Clear();
 
-	if (connected) {
-		peer->Shutdown(1000, 0);
-		connected = FALSE;
+	if (gConnected) {
+		gPeerInterface->Shutdown(1000, 0);
+		gConnected = FALSE;
 	}
 
 	bNetworkInitialized = FALSE;
@@ -483,10 +483,10 @@ static void NetworkInit()
 {
 	if (bNetworkInitialized) return;
 
-	peer = RakPeerInterface::GetInstance();
+	gPeerInterface = RakPeerInterface::GetInstance();
 
 	// Register RPC
-	peer->AttachPlugin(&gRPC);
+	gPeerInterface->AttachPlugin(&gRPC);
 
 	gRPC.RegisterSlot("HandleEventRPC", HandleEventRPC, 0);
 
@@ -514,13 +514,13 @@ static void NetworkInit()
 
 	if (IS_SERVER)
 	{
-		peer->Startup(MAX_NUM_PLAYERS - 1, &SocketDescriptor(gNetworkOptions.port, 0), 1);
-		peer->AttachPlugin(&gReplicaManager);
+		gPeerInterface->Startup(MAX_NUM_PLAYERS - 1, &SocketDescriptor(gNetworkOptions.port, 0), 1);
+		gPeerInterface->AttachPlugin(&gReplicaManager);
 		gReplicaManager.SetNetworkIDManager(&gNetworkIdManager);
-		peer->SetMaximumIncomingConnections(MAX_NUM_PLAYERS - 1);
+		gPeerInterface->SetMaximumIncomingConnections(MAX_NUM_PLAYERS - 1);
 
-		gPlayers[0].guid = peer->GetMyGUID();
-		gPlayers[0].name = gNetworkOptions.name.c_str();
+		gPlayers[0].guid = gPeerInterface->GetMyGUID();
+		gPlayers[0].name = gNetworkOptions.name;
 		gPlayers[0].ready = 0;
 		gPlayers[0].endturn = FALSE;
 
@@ -533,17 +533,17 @@ static void NetworkInit()
 		for (int i = 0; i < MAX_NUM_PLAYERS; i++)
 			gReplicaManager.Reference(&(gPlayers[i]));
 
-		connected = TRUE; // Always TRUE for server
+		gConnected = TRUE; // Always TRUE for server
 
 		gPacketThread = CreateThread(NULL, 0, ServerProcessesPacketsHere, NULL, 0, NULL);
 	}
 	else
 	{
-		peer->Startup(1, &SocketDescriptor(), 1);
-		peer->AttachPlugin(&gReplicaManager);
+		gPeerInterface->Startup(1, &SocketDescriptor(), 1);
+		gPeerInterface->AttachPlugin(&gReplicaManager);
 		gReplicaManager.SetNetworkIDManager(&gNetworkIdManager);
 
-		connected = FALSE;
+		gConnected = FALSE;
 	}
 
 	bNetworkInitialized = TRUE;
@@ -551,11 +551,11 @@ static void NetworkInit()
 
 static void ConnectToHost(void)
 {
-	if (connected) return;
+	if (gConnected) return;
 
 	if (!bNetworkInitialized) NetworkInit();
 
-	peer->Connect(gNetworkOptions.ip.c_str(), gNetworkOptions.port, 0, 0);
+	gPeerInterface->Connect(gNetworkOptions.ip.c_str(), gNetworkOptions.port, 0, 0);
 
 	if (!(bClientThreadCreated))
 	{
@@ -592,10 +592,10 @@ static void HandleGIOScreen(void)
 					do {
 						Sleep(period);
 						t += period;
-					} while ((!(connected)) && (t < CONNECT_TIMEOUT_MS));
-					if (!(connected))
+					} while ((!(gConnected)) && (t < TIMEOUT_MS));
+					if (!(gConnected))
 					{
-						SLOGI("connected == 0");
+						SLOGI("gConnected == 0");
 						NetworkShutdown();
 						break; // TODO: Display a message?
 					}
@@ -604,14 +604,14 @@ static void HandleGIOScreen(void)
 					p.id = ID_USER_PACKET_CONNECT;
 					p.ready = 0;
 					strcpy(p.name, gNetworkOptions.name.c_str());
-					peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+					gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 					// Wait until the objects are replicated
 					t = 0;
 					do {
 						Sleep(period);
 						t += period;
-					} while ((gReplicaList.Size() == 0) && (t < CONNECT_TIMEOUT_MS));
+					} while ((gReplicaList.Size() == 0) && (t < TIMEOUT_MS));
 					if (gReplicaList.Size() == 0)
 					{
 						SLOGI("gReplicaList.Size() == 0");
@@ -624,8 +624,8 @@ static void HandleGIOScreen(void)
 					do {
 						Sleep(period);
 						t += period;
-					} while ((ClientIndex(peer->GetMyGUID()) == -1) && (t < CONNECT_TIMEOUT_MS));
-					if (ClientIndex(peer->GetMyGUID()) == -1)
+					} while ((ClientIndex(gPeerInterface->GetMyGUID()) == -1) && (t < TIMEOUT_MS));
+					if (ClientIndex(gPeerInterface->GetMyGUID()) == -1)
 					{
 						SLOGI("ClientIndex() == -1");
 						NetworkShutdown();
@@ -637,7 +637,7 @@ static void HandleGIOScreen(void)
 					do {
 						Sleep(period);
 						t += period;
-					} while ((!gGameOptionsReceived) && (t < CONNECT_TIMEOUT_MS));
+					} while ((!gGameOptionsReceived) && (t < TIMEOUT_MS));
 					if (!gGameOptionsReceived)
 					{
 						SLOGI("!gGameOptionsReceived");

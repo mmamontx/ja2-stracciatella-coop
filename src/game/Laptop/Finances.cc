@@ -226,7 +226,7 @@ void AddTransactionToPlayersBook(UINT8 ubCode, UINT8 ubSecondCode, UINT32 uiDate
 
 		// Broadcast this transaction to the clients
 		gRPC.Signal("AddTransactionToPlayersBookRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
-			peer->GetMyGUID(), true, false);
+			gPeerInterface->GetMyGUID(), true, false);
 	}
 }
 

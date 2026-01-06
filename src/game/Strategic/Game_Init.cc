@@ -368,5 +368,5 @@ void ReStartingGame()
 	// Etc.
 	gEnableTimeCompression = FALSE;
 	gGameOptionsReceived = FALSE;
-	MPReadyButtonValue = FALSE;
+	gStrategicReadyButtonValue = FALSE;
 }

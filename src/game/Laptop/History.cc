@@ -134,7 +134,7 @@ void AddHistoryToPlayersLog(const UINT8 ubCode, const UINT8 ubSecondCode, const 
 
 		// Broadcast this transaction to the clients
 		gRPC.Signal("AddHistoryToPlayersLogRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
-			peer->GetMyGUID(), true, false);
+			gPeerInterface->GetMyGUID(), true, false);
 	}
 }
 

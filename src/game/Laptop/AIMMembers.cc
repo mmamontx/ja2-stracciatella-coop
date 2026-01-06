@@ -1151,7 +1151,7 @@ static void BtnAuthorizeButtonCallback(GUI_BUTTON *btn, UINT32 reason)
 					{
 						struct USER_PACKET_MESSAGE up_broadcast;
 						up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
-						peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+						gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 					}
 				}
 			}
@@ -1241,7 +1241,7 @@ static INT8 AimMemberHireMerc(void)
 		bs.WriteCompressed(data);
 
 		gRPC.Signal("HireMercRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
-			peer->GetSystemAddressFromIndex(0), false, false);
+			gPeerInterface->GetSystemAddressFromIndex(0), false, false);
 
 		return TRUE;
 	}
@@ -1276,7 +1276,7 @@ static INT8 AimMemberHireMerc(void)
 		sprintf(str, "%s hired %s.", gNetworkOptions.name.c_str(), s->name.c_str());
 		strcpy(up_broadcast.message, str);
 
-		peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
+		gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast),
 			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 		// FIXME: The line below doesn't (always?) show the message in the host chat

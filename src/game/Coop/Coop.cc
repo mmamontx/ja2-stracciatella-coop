@@ -19,28 +19,27 @@
 #include "Weapons.h"
 
 
-// Global variables
-
 // Networking
-NETWORK_OPTIONS gNetworkOptions;
+
+BOOLEAN gConnected;
 NetworkIDManager gNetworkIdManager;
-RakPeerInterface* peer;
-BOOLEAN connected;
+NETWORK_OPTIONS gNetworkOptions;
+RakPeerInterface* gPeerInterface;
 
 // Replication
 
-// The following list holds all the objects shared by the server
-DataStructures::List<Replica3*> gReplicaList;
-CoopReplicaManager gReplicaManager;
 /*
  * The following array is maintained by the server only. The clients use its
  * replicated copy inside gReplicaList.
  */
 struct PLAYER gPlayers[MAX_NUM_PLAYERS];
+// The following list holds all the objects shared by the server
+DataStructures::List<Replica3*> gReplicaList;
+CoopReplicaManager gReplicaManager;
 
 // RPCs
-RPC4 gRPC; // Single RPC plugin handle
 
+RPC4 gRPC; // Single RPC plugin handle
 /*
  * In HandleTacticalUI() the server uses this variable to turn on remote events
  * when there is no local events for processing.
@@ -51,30 +50,26 @@ BOOLEAN gRPC_Enable = TRUE;
  * being executed as an RPC.
  */
 BOOLEAN gRPC_Squad = FALSE;
-
+// Events processed by the server in HandleTacticalUI()
+std::list<RPC_DATA_EVENT> gRPC_Events;
 /*
  * Item RPCs:
  *
  * 1. gRPC_InvClick is used when clients click on an item in the inventory.
- *    gpItemPointerRPC and gpItemPointerSoldierRPC keep pointers to the picked
- *    item and the merc, who picks it (in whose inventory it has been located).
  *
  * 2. gRPC_ItemPointerClick is used when clients click somewhere with an item
  *    held in their cursor.
+ *
+ * gpItemPointerRPC and gpItemPointerSoldierRPC keep pointers to the picked
+ * item and the merc, who picks it (in whose inventory it has been located).
+ *
+ * gRPC_ClientIndex indicates the client, who is executing an RPC.
  */
+INT8 gRPC_ClientIndex = -1;
 RPC_DATA_INV_CLICK* gRPC_InvClick = NULL;
+RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick = NULL;
 OBJECTTYPE* gpItemPointerRPC[MAX_NUM_PLAYERS] = { NULL };
 SOLDIERTYPE* gpItemPointerSoldierRPC[MAX_NUM_PLAYERS] = { NULL };
-INT8 gRPC_ClientIndex = -1;
-
-RPC_DATA_ITEM_PTR_CLICK* gRPC_ItemPointerClick = NULL;
-
-// Events processed by the server in HandleTacticalUI()
-std::list<RPC_DATA_EVENT> gRPC_Events;
-
-// Handles for suspending and terminating the threads
-HANDLE gMainThread;
-HANDLE gPacketThread;
 
 // Etc.
 
@@ -83,96 +78,12 @@ HANDLE gPacketThread;
  * tactical map.
  */
 BOOLEAN gEnableTimeCompression = FALSE;
-BOOLEAN MPReadyButtonValue = FALSE;
 BOOLEAN gGameOptionsReceived = FALSE;
+BOOLEAN gStrategicReadyButtonValue = FALSE;
+// Handles for suspending and terminating the threads
+HANDLE gMainThread;
+HANDLE gPacketThread;
 
-
-INT8 ClientIndex(RakNetGUID guid)
-{
-	FOR_EACH_CLIENT(i)
-	{
-		if (PLAYER_GUID(i) == guid) return i;
-	}
-
-	return -1;
-}
-
-INT8 PlayerIndex(RakNetGUID guid)
-{
-	FOR_EACH_PLAYER(i)
-	{
-		if (PLAYER_GUID(i) == guid) return i;
-	}
-
-	return -1;
-}
-
-UINT8 NumberOfPlayers()
-{
-	UINT8 n = 1;
-
-	FOR_EACH_CLIENT(i)
-	{
-		if (PLAYER_GUID(i) != UNASSIGNED_RAKNET_GUID) n++;
-	}
-
-	return n;
-}
-
-void UpdateTeamPanel()
-{
-	fDrawCharacterList = TRUE;
-	fTeamPanelDirty = TRUE;
-	ReBuildCharactersList();
-
-	if (IS_SERVER && (NumberOfPlayers() > 1)) // Tell others
-	{
-		struct USER_PACKET_MESSAGE up_broadcast;
-		up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
-		peer->Send((char*)&up_broadcast, sizeof(up_broadcast),
-			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-	}
-}
-
-// For debugging purposes (so we don't have to hire mercs manually everytime)
-void HireRandomMercs(unsigned int n)
-{
-	struct MERC_HIRE_STRUCT h;
-	SOLDIERTYPE* s;
-	int id_random;
-
-	srand((unsigned)time(NULL));
-
-	for (int i = 0; i < n; i++)
-	{
-		do
-		{
-			id_random = rand() % 40; // 40 AIM mercs
-		}
-		while (gMercProfiles[id_random].bMercStatus < 0); // Prevent repeats
-
-		h = MERC_HIRE_STRUCT{};
-
-		h.ubProfileID = id_random;
-		h.sSector = g_merc_arrive_sector;
-		h.fUseLandingZoneForArrival = TRUE;
-		h.ubInsertionCode = INSERTION_CODE_ARRIVING_GAME;
-		h.iTotalContractLength = 1;
-		h.fCopyProfileItemsOver = TRUE;
-		h.uiTimeTillMercArrives = GetMercArrivalTimeOfDay();
-		h.bWhatKindOfMerc = MERC_TYPE__AIM_MERC;
-
-		gMercProfiles[id_random].ubMiscFlags
-			|= PROFILE_MISC_FLAG_ALREADY_USED_ITEMS;
-
-		HireMerc(h);
-
-		s = FindSoldierByProfileID(id_random);
-		s->ubPlayer = i % TEST_NUM_PLAYERS;
-	}
-
-	UpdateTeamPanel(); // With the new merc(s)
-}
 
 unsigned char PacketId(Packet* p)
 {
@@ -181,22 +92,6 @@ unsigned char PacketId(Packet* p)
 	if (p->data[0] == ID_TIMESTAMP)	return p->data[sizeof(unsigned long) + 1];
 
 	return p->data[0];
-}
-
-void SendToChat(ST::string message, BOOLEAN broadcast)
-{
-	struct USER_PACKET_MESSAGE up_broadcast;
-
-	ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, message);
-
-	if (broadcast && (NumberOfPlayers() > 1))
-	{
-		// Broadcasting the message to the clients
-		up_broadcast.id = ID_USER_PACKET_MESSAGE;
-		strcpy(up_broadcast.message, message.c_str());
-		peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY,
-			RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-	}
 }
 
 DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
@@ -208,7 +103,7 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 	{
 		while (TRUE)
 		{
-			p = peer->Receive();
+			p = gPeerInterface->Receive();
 			if (p == NULL) break;
 
 			id = PacketId(p);
@@ -223,8 +118,8 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 					{
 						gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;
 
-						SendToChat((ST::string)(gPlayers[i].name) +
-							" has disconnected.", TRUE);
+						SendToChat(gPlayers[i].name + " has disconnected.",
+							TRUE);
 
 						break;
 					}
@@ -280,7 +175,7 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 					up_gops.fTurnTimeLimit = gGameOptions.fTurnTimeLimit;
 					up_gops.ubGameSaveMode = gGameOptions.ubGameSaveMode;
 
-					peer->Send((char*)&up_gops,
+					gPeerInterface->Send((char*)&up_gops,
 						sizeof(up_gops), MEDIUM_PRIORITY, RELIABLE, 0, p->guid,
 						false);
 				} // Otherwise - ignore
@@ -296,7 +191,7 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 				{
 					if (gPlayers[i].guid == p->guid)
 					{
-						SendToChat((ST::string)gPlayers[i].name + "> " +
+						SendToChat(gPlayers[i].name + "> " +
 							(ST::string)up->message, TRUE);
 
 						break;
@@ -319,9 +214,9 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 					{
 						gPlayers[i].ready = up->ready;
 
-						SendToChat((ST::string)gPlayers[i].name +
+						SendToChat(gPlayers[i].name +
 							(gPlayers[i].ready ? " is ready." :
-								" is not ready anymore."), TRUE);
+							" is not ready anymore."), TRUE);
 
 						break;
 					}
@@ -354,7 +249,7 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 							gPlayers[i].endturn = true;
 							finished++;
 
-							SendToChat(ST::string(gPlayers[i].name) +
+							SendToChat(gPlayers[i].name +
 								" has finished his/her turn. " +
 								std::to_string(finished) + "/" +
 								std::to_string(n) + " total.", TRUE);
@@ -377,7 +272,7 @@ DWORD WINAPI ServerProcessesPacketsHere(LPVOID lpParam)
 				break;
 			}
 
-			peer->DeallocatePacket(p);
+			gPeerInterface->DeallocatePacket(p);
 		}
 
 		Sleep(1); // 1 ms
@@ -395,7 +290,7 @@ DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam)
 	{
 		while (TRUE)
 		{
-			p = peer->Receive();
+			p = gPeerInterface->Receive();
 			if (p == NULL) break;
 
 			id = PacketId(p);
@@ -403,7 +298,7 @@ DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam)
 			switch (id)
 			{
 			case ID_CONNECTION_REQUEST_ACCEPTED:
-				connected = TRUE;
+				gConnected = TRUE;
 
 				SendToChat((ST::string)"Connected", FALSE);
 
@@ -486,7 +381,7 @@ DWORD WINAPI ClientProcessesPacketsHere(LPVOID lpParam)
 				break;
 			}
 
-			peer->DeallocatePacket(p);
+			gPeerInterface->DeallocatePacket(p);
 		};
 
 		Sleep(1); // 1 ms
@@ -677,8 +572,7 @@ void HireMercRPC(BitStream* bitStream, Packet* packet)
 		INT8 i = ClientIndex(packet->guid);
 		s->ubPlayer = i;
 
-		SendToChat(ST::string(gPlayers[i].name) + " has hired " + s->name +
-			".", TRUE);
+		SendToChat(gPlayers[i].name + " has hired " + s->name + ".", TRUE);
 	}
 
 	UpdateTeamPanel(); // With the new merc
@@ -713,4 +607,107 @@ void UIHandleSoldierStanceChangeRPC(BitStream* bitStream, Packet* packet)
 
 	EXECUTE_WHILE_MAIN_SUSPENDED(
 		UIHandleSoldierStanceChange(ID2Soldier(data.id), data.bNewStance));
+}
+
+INT8 ClientIndex(RakNetGUID guid)
+{
+	FOR_EACH_CLIENT(i)
+	{
+		if (PLAYER_GUID(i) == guid) return i;
+	}
+
+	return -1;
+}
+
+INT8 PlayerIndex(RakNetGUID guid)
+{
+	FOR_EACH_PLAYER(i)
+	{
+		if (PLAYER_GUID(i) == guid) return i;
+	}
+
+	return -1;
+}
+
+// For debugging purposes (so we don't have to hire mercs manually everytime)
+void HireRandomMercs(unsigned int n)
+{
+	struct MERC_HIRE_STRUCT h;
+	SOLDIERTYPE* s;
+	int id_random;
+
+	srand((unsigned)time(NULL));
+
+	for (int i = 0; i < n; i++)
+	{
+		do
+		{
+			id_random = rand() % 40; // 40 AIM mercs
+		}
+		while (gMercProfiles[id_random].bMercStatus < 0); // Prevent repeats
+
+		h = MERC_HIRE_STRUCT{};
+
+		h.ubProfileID = id_random;
+		h.sSector = g_merc_arrive_sector;
+		h.fUseLandingZoneForArrival = TRUE;
+		h.ubInsertionCode = INSERTION_CODE_ARRIVING_GAME;
+		h.iTotalContractLength = 1;
+		h.fCopyProfileItemsOver = TRUE;
+		h.uiTimeTillMercArrives = GetMercArrivalTimeOfDay();
+		h.bWhatKindOfMerc = MERC_TYPE__AIM_MERC;
+
+		gMercProfiles[id_random].ubMiscFlags
+			|= PROFILE_MISC_FLAG_ALREADY_USED_ITEMS;
+
+		HireMerc(h);
+
+		s = FindSoldierByProfileID(id_random);
+		s->ubPlayer = (i / COOP_DEBUG_NUM_MERCS_PER_PLAYER);
+	}
+
+	UpdateTeamPanel(); // With the new merc(s)
+}
+
+UINT8 NumberOfPlayers()
+{
+	UINT8 n = 1;
+
+	FOR_EACH_CLIENT(i)
+	{
+		if (PLAYER_GUID(i) != UNASSIGNED_RAKNET_GUID) n++;
+	}
+
+	return n;
+}
+
+void SendToChat(ST::string message, BOOLEAN broadcast)
+{
+	struct USER_PACKET_MESSAGE up_broadcast;
+
+	ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, message);
+
+	if (broadcast && IS_SERVER && (NumberOfPlayers() > 1))
+	{
+		// Broadcasting the message to the clients
+		up_broadcast.id = ID_USER_PACKET_MESSAGE;
+		strcpy(up_broadcast.message, message.c_str());
+		gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast),
+			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+	}
+}
+
+void UpdateTeamPanel()
+{
+	fDrawCharacterList = TRUE;
+	fTeamPanelDirty = TRUE;
+	ReBuildCharactersList();
+
+	if (IS_SERVER && (NumberOfPlayers() > 1)) // Tell others
+	{
+		struct USER_PACKET_MESSAGE up_broadcast;
+		up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
+		gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast),
+			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+	}
 }

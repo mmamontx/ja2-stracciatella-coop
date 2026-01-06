@@ -214,7 +214,7 @@ BOOLEAN AddCharacterToSquad(SOLDIERTYPE* const s, INT8 const bSquadValue)
 
 			bs.WriteCompressed(data);
 
-			gRPC.Signal("AddCharacterToSquadRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetMyGUID(), true, false);
+			gRPC.Signal("AddCharacterToSquadRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetMyGUID(), true, false);
 		}
 
 		return TRUE;

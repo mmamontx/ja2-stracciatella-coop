@@ -1744,7 +1744,7 @@ ScreenID MapScreenHandle(void)
 		{
 			if (!gfAtLeastOneMercWasHired)
 			{
-				HireRandomMercs(TEST_NUM_PLAYERS);
+				HireRandomMercs(COOP_DEBUG_NUM_MERCS_TOTAL);
 			}
 		}
 #endif
@@ -3134,7 +3134,7 @@ static void GetMapKeyboardInput()
 				struct USER_PACKET_MESSAGE up;
 				up.id = ID_USER_PACKET_MESSAGE;
 				strcpy(up.message, IS_CLIENT ? str.c_str() : (gNetworkOptions.name + "> " + str).c_str());
-				peer->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				gPeerInterface->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 				SetInputFieldString(0, "");
 			}
@@ -6466,24 +6466,24 @@ void MPReadyButtonCallback(GUI_BUTTON* btn, INT32 reason)
 		btn->uiFlags |= (BUTTON_CLICKED_ON);
 	} else if (reason & MSYS_CALLBACK_REASON_LBUTTON_UP) {
 		if (iIndex == 1) {
-			MPReadyButtonValue = !MPReadyButtonValue;
+			gStrategicReadyButtonValue = !gStrategicReadyButtonValue;
 
 			if (IS_CLIENT) { // We are client - sending ready status message to the server
 				struct USER_PACKET_READY p;
 				p.id = ID_USER_PACKET_READY;
-				p.ready = MPReadyButtonValue;
-				peer->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				p.ready = gStrategicReadyButtonValue;
+				gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 			} else if (!(IS_CLIENT)) { // We are server
 				struct USER_PACKET_MESSAGE up_broadcast;
 				char str[256];
 
-				gPlayers[0].ready = MPReadyButtonValue;
+				gPlayers[0].ready = gStrategicReadyButtonValue;
 
 				// Broadcasting that the server (name) is ready (or not ready)
-				sprintf(str, "%s is %s.", gNetworkOptions.name.c_str(), MPReadyButtonValue ? "ready" : "not ready");
+				sprintf(str, "%s is %s.", gNetworkOptions.name.c_str(), gStrategicReadyButtonValue ? "ready" : "not ready");
 				up_broadcast.id = ID_USER_PACKET_MESSAGE;
 				strcpy(up_broadcast.message, str);
-				peer->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
 			}
