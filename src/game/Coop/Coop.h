@@ -25,10 +25,10 @@
 
 #define MAX_NUM_PLAYERS 4
 
-#define TIMEOUT_MS 1000
+#define TIMEOUT_MS 2000
 
-#define IS_SERVER       (gGameOptions.fNetwork == 0)
-#define IS_CLIENT       (gGameOptions.fNetwork != 0)
+#define IS_SERVER       (gGameOptions.fNetworkClient == FALSE)
+#define IS_CLIENT       (gGameOptions.fNetworkClient == TRUE)
 #define IS_VALID_CLIENT (IS_CLIENT && gConnected && (gReplicaList.Size() != 0))
 
 #define RPC_EVENT_READY (gRPC_Enable && !(gRPC_Events.empty()))
@@ -39,11 +39,47 @@
 #define REPLICA_PROFILE_INDEX TOTAL_SOLDIERS
 #define REPLICA_PLAYER_INDEX  (TOTAL_SOLDIERS + NUM_PROFILES)
 
-#define EXECUTE_WHILE_MAIN_SUSPENDED(func) { do { \
+#define CURRENT_AP (gRPC_ItemPointerClick ? \
+	gRPC_ItemPointerClick->sCurrentActionPoints : gsCurrentActionPoints)
+#define FULL_TARGET (gRPC_ItemPointerClick ? \
+	ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget)
+#define ITEM_PTR (gRPC_ItemPointerClick ? \
+	gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer)
+#define ITEM_PTR_SOLDIER (gRPC_ItemPointerClick ? \
+	gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)
+#define ITEM_PTR_SRC_SLOT (gRPC_ItemPointerClick ? \
+	gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot)
+
+#define INV_CLICK_CURRENT_MERC (gRPC_InvClick ? \
+	ID2Soldier(gRPC_InvClick->id) : gpSMCurrentMerc)
+#define INV_CLICK_HAND_POS (gRPC_InvClick ? \
+	gRPC_InvClick->ubHandPos : uiHandPos)
+#define INV_CLICK_ITEM_PTR (gRPC_InvClick ? \
+	gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer)
+#define INV_CLICK_ITEM_PTR_SOLDIER (gRPC_InvClick ? \
+	gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)
+#define INV_CLICK_SM_CURRENT_MERC (gRPC_InvClick ? \
+	pSMCurrentMercRPC : gpSMCurrentMerc)
+
+#define EXECUTE_WHILE_MAIN_SUSPENDED(func) do { \
 		SuspendThread(gMainThread); \
 		func; \
 		ResumeThread(gMainThread); \
-	} while (0); }
+	} while (0);
+
+#define WAIT_WHILE_COND_ELSE_NET_SHUTDOWN(cond, timeout, failure_msg) do { \
+	UINT16 elapsed_time = 0; \
+	do { \
+		Sleep(1); \
+		elapsed_time += 1; \
+	} while ((cond) && (elapsed_time < timeout)); \
+	if (cond) \
+	{ \
+		SLOGW(failure_msg); \
+		NetworkShutdown(); \
+		break; \
+	} \
+} while (0);
 
 /*
  * The following macroses maintain access to the shared objects:
@@ -214,7 +250,7 @@ struct PLAYER : public Replica3
 	Serialize(SerializeParameters* serializeParameters)
 	{
 		// If we are a client we don't serialize the objects back to the server
-		if (gGameOptions.fNetwork) return RM3SR_DO_NOT_SERIALIZE;
+		if (gGameOptions.fNetworkClient) return RM3SR_DO_NOT_SERIALIZE;
 
 		PreSerialize();
 

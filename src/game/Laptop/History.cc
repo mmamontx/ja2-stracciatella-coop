@@ -123,7 +123,7 @@ void AddHistoryToPlayersLog(const UINT8 ubCode, const UINT8 ubSecondCode, const 
 	if (IS_SERVER)
 	{
 		RPC_DATA_ADD_HISTORY data_broadcast;
-		RakNet::BitStream bs;
+		BitStream bs;
 
 		data_broadcast.ubCode = ubCode;
 		data_broadcast.ubSecondCode = ubSecondCode;
@@ -133,8 +133,8 @@ void AddHistoryToPlayersLog(const UINT8 ubCode, const UINT8 ubSecondCode, const 
 		bs.WriteCompressed(data_broadcast);
 
 		// Broadcast this transaction to the clients
-		gRPC.Signal("AddHistoryToPlayersLogRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
-			gPeerInterface->GetMyGUID(), true, false);
+		gRPC.Signal("AddHistoryToPlayersLogRPC", &bs, HIGH_PRIORITY,
+			RELIABLE_ORDERED, 0, gPeerInterface->GetMyGUID(), true, false);
 	}
 }
 

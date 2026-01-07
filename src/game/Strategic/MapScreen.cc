@@ -56,7 +56,6 @@
 #include "Queen_Command.h"
 #include "Quests.h"
 #include "Radar_Screen.h"
-#include "RakNet/MessageIdentifiers.h"
 #include "Render_Dirty.h"
 #include "RenderWorld.h"
 #include "SAM_Sites.h"
@@ -85,22 +84,21 @@
 
 #include <string_theory/format>
 
-using namespace RakNet;
+#define COOP_STRATEGIC_BTN_NUM          2
 
-#define NUM_MP_BUTTONS 2
+#define COOP_STRATEGIC_BTN_Y            (STD_SCREEN_Y + 162 + 106 - 2)
+#define COOP_STRATEGIC_TEXT_Y           (COOP_STRATEGIC_BTN_Y + 18)
 
-#define MP_BTN_Y            (STD_SCREEN_Y + 162 + 106 - 2)
-#define MP_TEXT_Y           (MP_BTN_Y + 18)
+#define COOP_STRATEGIC_BTN_PLAYER_X     12
+#define COOP_STRATEGIC_BTN_READY_X      93
 
-#define MP_BTN_PLAYER_X     12
-#define MP_BTN_READY_X      93
+#define COOP_STRATEGIC_BTN_PLAYER_WIDTH 75
+#define COOP_STRATEGIC_BTN_READY_WIDTH  89
 
-#define MP_BTN_PLAYER_WIDTH 75
-#define MP_BTN_READY_WIDTH  89
-
-BUTTON_PICS *giMapMPButtonImage[NUM_MP_BUTTONS];
-INT gMapMPButtonsX[NUM_MP_BUTTONS] = {MP_BTN_PLAYER_X, MP_BTN_READY_X};
-GUIButtonRef giMapMPButton[NUM_MP_BUTTONS];
+BUTTON_PICS *giCoopStrategicButtonImage[COOP_STRATEGIC_BTN_NUM];
+INT gCoopStrategicButtonsX[COOP_STRATEGIC_BTN_NUM] =
+	{COOP_STRATEGIC_BTN_PLAYER_X, COOP_STRATEGIC_BTN_READY_X};
+GUIButtonRef giCoopStrategicButton[COOP_STRATEGIC_BTN_NUM];
 
 #define MAX_SORT_METHODS					6
 
@@ -357,7 +355,6 @@ namespace {
 cache_key_t const guiSleepIcon { INTERFACEDIR "/sleepicon.sti" };
 cache_key_t const guiCHARINFO { INTERFACEDIR "/charinfo.sti" };
 //cache_key_t const guiCHARLIST { INTERFACEDIR "/newgoldpiece3.sti" };
-// A custom panel that includes the list of players
 cache_key_t const guiCHARLIST{ INTERFACEDIR "/newgoldpiece3coop.sti" };
 cache_key_t const guiMAPINV { INTERFACEDIR "/mapinv.sti" };
 cache_key_t const guiULICONS { INTERFACEDIR "/top_left_corner_icons.sti" };
@@ -1242,11 +1239,10 @@ static void LoadCharacters(void)
 
 static void EnableDisableTeamListRegionsAndHelpText(void);
 
-static void DisplayPlayerList()
+static void DisplayPlayersList()
 {
 	int i;
-	// All TRUE can't happen at the connection since at least our status is FALSE.
-	// This will always trigger the initial drawing.
+	// The following initial values always trigger the initial drawing
 	static BOOLEAN prev_ready[MAX_NUM_PLAYERS] = { TRUE };
 
 	SetFontDestBuffer(guiSAVEBUFFER);
@@ -1257,36 +1253,36 @@ static void DisplayPlayerList()
 	UINT16 x = NAME_X + 1;
 
 	UINT8 n = NumberOfPlayers();
-	if (IS_CLIENT && (n < 2)) {
-		SLOGI("NumberOfPlayers() = {} < 2", n);
-	}
 
 	UINT8 line = 0;
-	FOR_EACH_PLAYER(i) {
-		if (PLAYER_GUID(i) == UNASSIGNED_RAKNET_GUID) {
-			continue;
-		} else if (prev_ready[i] != PLAYER_READY(i)) {
+	FOR_EACH_PLAYER(i)
+	{
+		if (PLAYER_GUID(i) == UNASSIGNED_RAKNET_GUID) continue;
+
+		if (prev_ready[i] != PLAYER_READY(i))
+		{
 			prev_ready[i] = PLAYER_READY(i);
 			fTeamPanelDirty = TRUE;
 		}
 
 		// Display player name
 		SetFontForeground(FONT_YELLOW);
-		DrawStringCentered(PLAYER_NAME(i), x, MP_TEXT_Y + line * (Y_SIZE + Y_OFFSET),
-			MP_BTN_PLAYER_WIDTH, Y_SIZE, MAP_SCREEN_FONT);
+		DrawStringCentered(PLAYER_NAME(i), x,
+			COOP_STRATEGIC_TEXT_Y + line * (Y_SIZE + Y_OFFSET),
+			COOP_STRATEGIC_BTN_PLAYER_WIDTH, Y_SIZE, MAP_SCREEN_FONT);
 
 		// Display ready status
 		SetFontForeground(PLAYER_READY(i) ? FONT_GREEN : FONT_RED);
 		DrawStringCentered(PLAYER_READY(i) ? "YES" : "NO",
-			x + MP_BTN_PLAYER_WIDTH + 6, MP_TEXT_Y + line * (Y_SIZE + Y_OFFSET),
-			MP_BTN_READY_WIDTH, Y_SIZE, MAP_SCREEN_FONT);
+			x + COOP_STRATEGIC_BTN_PLAYER_WIDTH + 6,
+			COOP_STRATEGIC_TEXT_Y + line * (Y_SIZE + Y_OFFSET),
+			COOP_STRATEGIC_BTN_READY_WIDTH, Y_SIZE, MAP_SCREEN_FONT);
 
 		line++;
 	}
 
 	SetFontDestBuffer(FRAME_BUFFER);
 }
-
 
 static void DisplayCharacterList(void)
 {
@@ -1449,8 +1445,10 @@ ScreenID MapScreenHandle(void)
 	INT32 iCounter = 0;
 	static const SGPSector startSector(gamepolicy(start_sector));
 
-	if (gEnableTimeCompression) // Trigger time compression for clients
+	if (IS_CLIENT && gEnableTimeCompression)
+	{
 		RequestIncreaseInTimeCompression();
+	}
 
 	//DO NOT MOVE THIS FUNCTION CALL!!!
 	//This determines if the help screen should be active
@@ -1480,7 +1478,7 @@ ScreenID MapScreenHandle(void)
 		// handle the sort buttons
 		AddTeamPanelSortButtonsForMapScreen( );
 
-		AddMPButtonsForMapScreen();
+		AddCoopButtonsForMapScreen( );
 
 		// load bottom graphics
 		LoadMapScreenInterfaceBottom( );
@@ -1520,7 +1518,8 @@ ScreenID MapScreenHandle(void)
 		SetTextInputCursor(CUROSR_IBEAM_WHITE);
 		SetTextInputFont(FONT12ARIALFIXEDWIDTH);
 		Set16BPPTextFieldColor(Get16BPPColor(FROMRGB(0, 0, 0)));
-		SetBevelColors(Get16BPPColor(FROMRGB(136, 138, 135)), Get16BPPColor(FROMRGB(24, 61, 81)));
+		SetBevelColors(Get16BPPColor(FROMRGB(136, 138, 135)),
+			Get16BPPColor(FROMRGB(24, 61, 81)));
 		SetTextInputRegularColors(FONT_WHITE, 2);
 		SetTextInputHilitedColors(2, FONT_WHITE, FONT_WHITE);
 		SetCursorColor(Get16BPPColor(FROMRGB(255, 255, 255)));
@@ -1740,7 +1739,8 @@ ScreenID MapScreenHandle(void)
 	else
 	{
 #ifdef COOP_DEBUG
-		if (IS_SERVER) // Create new objects for server only - for clients they are replicated
+		// Create new objects for server only - for clients they are replicated
+		if (IS_SERVER)
 		{
 			if (!gfAtLeastOneMercWasHired)
 			{
@@ -1890,7 +1890,7 @@ ScreenID MapScreenHandle(void)
 			fDrawCharacterList = FALSE;
 		}
 
-		DisplayPlayerList();
+		DisplayPlayersList();
 	}
 
 
@@ -3123,18 +3123,12 @@ static void GetMapKeyboardInput()
 	{
 		if (!HandleTextInput(&InputEvent) && (InputEvent.usEvent == KEY_DOWN))
 		{
-			if (InputEvent.usParam == KEY_RETURN) {
+			if (InputEvent.usParam == KEY_RETURN)
+			{
 				ST::string str = GetStringFromField(0);
 				if (str.empty()) return;
 
-				if (IS_SERVER) // If we are server show it for ourselves
-					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gNetworkOptions.name + "> " + str);
-
-				// Sending the message to others
-				struct USER_PACKET_MESSAGE up;
-				up.id = ID_USER_PACKET_MESSAGE;
-				strcpy(up.message, IS_CLIENT ? str.c_str() : (gNetworkOptions.name + "> " + str).c_str());
-				gPeerInterface->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				SendToChat(gNetworkOptions.name + "> " + str, TRUE);
 
 				SetInputFieldString(0, "");
 			}
@@ -3215,7 +3209,7 @@ void EndMapScreen( BOOLEAN fDuringFade )
 	// remove team panel sort button
 	RemoveTeamPanelSortButtonsForMapScreen( );
 
-	RemoveMPButtonsForMapScreen();
+	RemoveCoopButtonsForMapScreen( );
 
 	// for th merc insurance help text
 	CreateDestroyInsuranceMouseRegionForMercs( FALSE );
@@ -3372,9 +3366,7 @@ void EndMapScreen( BOOLEAN fDuringFade )
 	// cancel request if we somehow leave first
 	gfRequestGiveSkyriderNewDestination = FALSE;
 
-	if (guiPendingScreen == MAINMENU_SCREEN) {
-		ReStartingGame();
-	}
+	if (guiPendingScreen == MAINMENU_SCREEN) ReStartingGame();
 }
 
 static SGPSector GetSectorAtXY(INT16 relX, INT16 relY)
@@ -5108,7 +5100,7 @@ static void RenderTeamRegionBackground()
 		BltVideoObject(guiSAVEBUFFER, guiCHARLIST, 0, PLAYER_INFO_X, PLAYER_INFO_Y);
 		HandleHighLightingOfLinesInTeamPanel();
 		DisplayCharacterList();
-		DisplayPlayerList();
+		DisplayPlayersList();
 		DisplayIconsForMercsAsleep();
 	}
 	else
@@ -6458,34 +6450,39 @@ static void AddTeamPanelSortButtonsForMapScreen(void)
 }
 
 
-void MPReadyButtonCallback(GUI_BUTTON* btn, INT32 reason)
+void CoopStrategicReadyButtonCallback(GUI_BUTTON* btn, INT32 reason)
 {
 	int iIndex = btn->GetUserData();
 
-	if (reason & MSYS_CALLBACK_REASON_LBUTTON_DWN) {
+	if (reason & MSYS_CALLBACK_REASON_LBUTTON_DWN)
+	{
 		btn->uiFlags |= (BUTTON_CLICKED_ON);
-	} else if (reason & MSYS_CALLBACK_REASON_LBUTTON_UP) {
-		if (iIndex == 1) {
-			gStrategicReadyButtonValue = !gStrategicReadyButtonValue;
+	}
+	else
+	{
+		if (reason & MSYS_CALLBACK_REASON_LBUTTON_UP)
+		{
+			if (iIndex == 1)
+			{
+				gStrategicReadyButtonValue = !gStrategicReadyButtonValue;
 
-			if (IS_CLIENT) { // We are client - sending ready status message to the server
-				struct USER_PACKET_READY p;
-				p.id = ID_USER_PACKET_READY;
-				p.ready = gStrategicReadyButtonValue;
-				gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-			} else if (!(IS_CLIENT)) { // We are server
-				struct USER_PACKET_MESSAGE up_broadcast;
-				char str[256];
+				if (IS_CLIENT)
+				{
+					struct USER_PACKET_READY p;
+					p.id = ID_USER_PACKET_READY;
+					p.ready = gStrategicReadyButtonValue;
+					gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY,
+						RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+				}
+				else
+				{
+					gPlayers[0].ready = gStrategicReadyButtonValue;
 
-				gPlayers[0].ready = gStrategicReadyButtonValue;
-
-				// Broadcasting that the server (name) is ready (or not ready)
-				sprintf(str, "%s is %s.", gNetworkOptions.name.c_str(), gStrategicReadyButtonValue ? "ready" : "not ready");
-				up_broadcast.id = ID_USER_PACKET_MESSAGE;
-				strcpy(up_broadcast.message, str);
-				gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-
-				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
+					char str[256];
+					sprintf(str, "%s is %s.", gNetworkOptions.name.c_str(),
+						gStrategicReadyButtonValue ? "ready" : "not ready");
+					SendToChat(str, TRUE);
+				}
 			}
 		}
 	}
@@ -6494,20 +6491,24 @@ void MPReadyButtonCallback(GUI_BUTTON* btn, INT32 reason)
 }
 
 
-void AddMPButtonsForMapScreen(void)
+void AddCoopButtonsForMapScreen(void)
 {
-	int iImageIndex[NUM_MP_BUTTONS] = {0, 5};
-	int iPressedIndex[NUM_MP_BUTTONS] = {0, 6};
+	int iImageIndex[COOP_STRATEGIC_BTN_NUM] = {0, 5};
+	int iPressedIndex[COOP_STRATEGIC_BTN_NUM] = {0, 6};
 
-	for (int iCounter = 0; iCounter < NUM_MP_BUTTONS; iCounter++)
+	for (int i = 0; i < COOP_STRATEGIC_BTN_NUM; i++)
 	{
-		giMapMPButtonImage[iCounter] = LoadButtonImage("INTERFACE\\MPGOLDPIECEBUTTONS.sti",
-			-1, iImageIndex[iCounter], -1, iPressedIndex[iCounter], -1);
+		giCoopStrategicButtonImage[i] =
+			LoadButtonImage("INTERFACE\\MPGOLDPIECEBUTTONS.sti", -1,
+				iImageIndex[i], -1, iPressedIndex[i], -1);
 
-		giMapMPButton[iCounter] = QuickCreateButton(giMapMPButtonImage[iCounter], STD_SCREEN_X + gMapMPButtonsX[iCounter],
-			(INT16)(MP_BTN_Y), MSYS_PRIORITY_HIGHEST - 5, (GUI_CALLBACK)MPReadyButtonCallback);
+		giCoopStrategicButton[i] =
+			QuickCreateButton(giCoopStrategicButtonImage[i],
+				STD_SCREEN_X + gCoopStrategicButtonsX[i],
+				COOP_STRATEGIC_BTN_Y, MSYS_PRIORITY_HIGHEST - 5,
+				(GUI_CALLBACK)CoopStrategicReadyButtonCallback);
 
-		giMapMPButton[iCounter]->SetUserData(iCounter);
+		giCoopStrategicButton[i]->SetUserData(i);
 	}
 }
 
@@ -6705,13 +6706,13 @@ static void RemoveTeamPanelSortButtonsForMapScreen()
 }
 
 
-void RemoveMPButtonsForMapScreen(void)
+void RemoveCoopButtonsForMapScreen(void)
 {
-	for (int iCounter = 0; iCounter < NUM_MP_BUTTONS; iCounter++) {
-		UnloadButtonImage(giMapMPButtonImage[iCounter]);
+	for (int i = 0; i < COOP_STRATEGIC_BTN_NUM; i++)
+	{
+		UnloadButtonImage(giCoopStrategicButtonImage[i]);
 
-		if (iCounter < NUM_MP_BUTTONS)
-			RemoveButton(giMapMPButton[iCounter]);
+		RemoveButton(giCoopStrategicButton[i]);
 	}
 }
 

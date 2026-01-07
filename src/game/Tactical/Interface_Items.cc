@@ -2847,11 +2847,13 @@ void BeginItemPointer( SOLDIERTYPE *pSoldier, UINT8 ubHandPos )
 		{
 			InternalBeginItemPointer( pSoldier, &pObject, ubHandPos );
 		}
-		// If we're the server handling an RPC don't put the item into the cursor:
-		// just store the item pointers for later use, and redraw the interface to
-		// reflect the remote pickup.
 		else
 		{
+			/*
+			 * If we're the server handling an RPC don't put the item into the
+			 * cursor - just store the item pointers for later use, and redraw
+			 * the interface to reflect the remote pickup.
+			 */
 			gpItemPointerRPC[gRPC_ClientIndex] = new OBJECTTYPE{pObject};
 			gpItemPointerSoldierRPC[gRPC_ClientIndex] = pSoldier;
 
@@ -2918,7 +2920,13 @@ void EndItemPointer( )
 	else
 	{
 		gpItemPointerRPC[gRPC_ClientIndex] = NULL;
-		//gpItemPointerSoldierRPC[gRPC_ClientIndex] = NULL; // FIXME: It causes a crash because it becomes NULL before it is used in HandleItemPointerClick() when the item is dropped
+		/*
+		 * NB: The following line causes a crash on attempting to drop the item
+		 *     because the pointer below becomes NULL before it is used in
+		 *     HandleItemPointerClick(). However, it seems that simply
+		 *     commenting this line out does not affect anything.
+		 */
+		//gpItemPointerSoldierRPC[gRPC_ClientIndex] = NULL;
 	}
 }
 
@@ -3093,11 +3101,11 @@ void DrawItemTileCursor( )
 			// If we are tossing...
 			if (  (sDist <= 1 && gfUIMouseOnValidCatcher == 0) || gfUIMouseOnValidCatcher == 4 )
 			{
-				gsCurrentActionPoints = AP_PICKUP_ITEM; // TODO: Is this supposed to be somehow propagated back to the client?
+				gsCurrentActionPoints = AP_PICKUP_ITEM;
 			}
 			else
 			{
-				gsCurrentActionPoints = AP_TOSS_ITEM; // TODO: Is this supposed to be somehow propagated back to the client?
+				gsCurrentActionPoints = AP_TOSS_ITEM;
 			}
 
 		}
@@ -3142,7 +3150,7 @@ void DrawItemTileCursor( )
 						sAPCost = GetAPsToGiveItem( gpItemPointerSoldier, sActionGridNo );
 					}
 
-					gsCurrentActionPoints = sAPCost; // TODO: Is this supposed to be somehow propagated back to the client?
+					gsCurrentActionPoints = sAPCost;
 				}
 
 				// Set value
@@ -3270,7 +3278,6 @@ static bool IsValidAmmoToReloadRobot(SOLDIERTYPE const& s, OBJECTTYPE const& amm
 }
 
 
-// FIXME: This function became a ternary hell in multiplayer - TBD think how to share local and RPC logic in a more elegant fashion
 BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 {
 	// Determine what to do
@@ -3287,18 +3294,23 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	if (IS_CLIENT)
 	{
 		RPC_DATA_ITEM_PTR_CLICK data;
-		RakNet::BitStream bs;
+		BitStream bs;
 
 		data.id = Soldier2ID(gpItemPointerSoldier);
 		data.ubHandPos = gbItemPointerSrcSlot;
-		// If the cursor is over a person - ensure that his position is passed (instead of an adjacent tile)
+		/*
+		 * If the cursor is over a person, ensure that it is his position
+		 * passed - instead of an adjacent tile behind him.
+		 */
 		data.usMapPos = gUIFullTarget ? (gUIFullTarget->sGridNo) : usMapPos;
 		data.tgt_id = Soldier2ID(gUIFullTarget);
 		data.sCurrentActionPoints = gsCurrentActionPoints;
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("HandleItemPointerClickRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("HandleItemPointerClickRPC", &bs, HIGH_PRIORITY,
+			RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0),
+			false, false);
 
 		EndItemPointer();
 
@@ -3317,24 +3329,25 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	}
 
 	// Don't allow if our soldier is a # of things...
-	if ( AM_AN_EPC( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier) ) || (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->bLife < OKLIFE || (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->bOverTerrainType == DEEP_WATER )
+	if ( AM_AN_EPC( ITEM_PTR_SOLDIER ) || ITEM_PTR_SOLDIER->bLife < OKLIFE ||
+		ITEM_PTR_SOLDIER->bOverTerrainType == DEEP_WATER )
 	{
 		return( FALSE );
 	}
 
 	// This implies we have no path....
-	if ( (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->sCurrentActionPoints : gsCurrentActionPoints) == 0 )
+	if ( CURRENT_AP == 0 )
 	{
 		ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_UI_FEEDBACK, TacticalStr[ NO_PATH ] );
 		return( FALSE );
 	}
 
-	if ((gRPC_ItemPointerClick ? ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget) != NULL)
+	if (FULL_TARGET != NULL)
 	{
 		// Force mouse position to guy...
-		usMapPos = (gRPC_ItemPointerClick ? ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget)->sGridNo;
+		usMapPos = FULL_TARGET->sGridNo;
 
-		if (gAnimControl[(gRPC_ItemPointerClick ? ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget)->usAnimState].uiFlags & ANIM_MOVING)
+		if (gAnimControl[FULL_TARGET->usAnimState].uiFlags & ANIM_MOVING)
 		{
 			return( FALSE );
 		}
@@ -3342,9 +3355,9 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	}
 
 	// Check if we have APs....
-	if ( !EnoughPoints( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->sCurrentActionPoints : gsCurrentActionPoints), 0, TRUE ) )
+	if ( !EnoughPoints( ITEM_PTR_SOLDIER, CURRENT_AP, 0, TRUE ) )
 	{
-		if ( gfDontChargeAPsToPickup && (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->sCurrentActionPoints : gsCurrentActionPoints) == AP_PICKUP_ITEM )
+		if ( gfDontChargeAPsToPickup && CURRENT_AP == AP_PICKUP_ITEM )
 		{
 
 		}
@@ -3355,7 +3368,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	}
 
 	// SEE IF WE ARE OVER A TALKABLE GUY!
-	SOLDIERTYPE* const tgt = (gRPC_ItemPointerClick ? ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget);
+	SOLDIERTYPE* const tgt = FULL_TARGET;
 	BOOLEAN fGiveItem = tgt != NULL && IsValidTalkableNPC(tgt, TRUE, FALSE, TRUE);
 
 	// OK, if different than default, change....
@@ -3379,36 +3392,42 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	// Get Pyth spaces away.....
 	if (gRPC_ItemPointerClick)
 	{
-		sDist = PythSpacesAway( gpItemPointerSoldierRPC[gRPC_ClientIndex]->sGridNo, gRPC_ItemPointerClick->usMapPos);
+		sDist =
+			PythSpacesAway( gpItemPointerSoldierRPC[gRPC_ClientIndex]->sGridNo,
+				gRPC_ItemPointerClick->usMapPos);
 	}
 	else
 	{
-		sDist = PythSpacesAway( gpItemPointerSoldier->sGridNo, gusCurMousePos );
+		sDist =
+			PythSpacesAway( gpItemPointerSoldier->sGridNo, gusCurMousePos );
 	}
+
 
 	if ( fGiveItem )
 	{
-		usItem = (gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex]->usItem : gpItemPointer->usItem);
+		usItem = (gRPC_ItemPointerClick ?
+			gpItemPointerRPC[gRPC_ClientIndex]->usItem :
+			gpItemPointer->usItem);
 
 		// If the target is a robot,
 		if (tgt->uiStatusFlags & SOLDIER_ROBOT)
 		{
 			// Charge APs to reload robot!
-			sAPCost = GetAPsToReloadRobot((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), tgt);
+			sAPCost = GetAPsToReloadRobot(ITEM_PTR_SOLDIER, tgt);
 		}
 		else
 		{
 			// Calculate action point costs!
-			sAPCost = GetAPsToGiveItem( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), usMapPos );
+			sAPCost = GetAPsToGiveItem( ITEM_PTR_SOLDIER, usMapPos );
 		}
 
 		// Place it back in our hands!
 
-		TempObject = *(gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer);
+		TempObject = *ITEM_PTR;
 
-		if ( (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot) != NO_SLOT )
+		if ( ITEM_PTR_SRC_SLOT != NO_SLOT )
 		{
-			PlaceObject( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot), (gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer) );
+			PlaceObject( ITEM_PTR_SOLDIER, ITEM_PTR_SRC_SLOT, ITEM_PTR );
 			fInterfacePanelDirty = DIRTYLEVEL2;
 		}
 		/*
@@ -3426,7 +3445,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 			return( TRUE );
 		}*/
 
-		if ( EnoughPoints( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), sAPCost, 0, TRUE ) )
+		if ( EnoughPoints( ITEM_PTR_SOLDIER, sAPCost, 0, TRUE ) )
 		{
 			// If we are a robot, check if this is proper item to reload!
 			if (tgt->uiStatusFlags & SOLDIER_ROBOT)
@@ -3440,36 +3459,38 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 
 					// Walk up to him and reload!
 					// See if we can get there to stab
-					sActionGridNo = FindAdjacentGridEx((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), tgt->sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
+					sActionGridNo = FindAdjacentGridEx(ITEM_PTR_SOLDIER,
+						tgt->sGridNo, &ubDirection, &sAdjustedGridNo, TRUE,
+						FALSE);
 
-					if ( sActionGridNo != -1 && (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot) != NO_SLOT )
+					if ( sActionGridNo != -1 && ITEM_PTR_SRC_SLOT != NO_SLOT )
 					{
 							// Make a temp object for ammo...
-							SetTempObject((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), TempObject);
+							SetTempObject(ITEM_PTR_SOLDIER, TempObject);
 
 							// Remove from soldier's inv...
-							RemoveObjs( &( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->inv[ (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot) ] ), 1 );
+							RemoveObjs(&( ITEM_PTR_SOLDIER->inv[ ITEM_PTR_SRC_SLOT ] ), 1 );
 
-							(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sPendingActionData2  = sAdjustedGridNo;
-							(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->uiPendingActionData1 = (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot);
-							(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->bPendingActionData3  = ubDirection;
-							(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->ubPendingActionAnimCount = 0;
+							ITEM_PTR_SOLDIER->sPendingActionData2  = sAdjustedGridNo;
+							ITEM_PTR_SOLDIER->uiPendingActionData1 = ITEM_PTR_SRC_SLOT;
+							ITEM_PTR_SOLDIER->bPendingActionData3  = ubDirection;
+							ITEM_PTR_SOLDIER->ubPendingActionAnimCount = 0;
 
 							// CHECK IF WE ARE AT THIS GRIDNO NOW
-							if ( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sGridNo != sActionGridNo )
+							if ( ITEM_PTR_SOLDIER->sGridNo != sActionGridNo )
 							{
-								Soldier{(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)}.setPendingAction(MERC_RELOADROBOT);
+								Soldier{ITEM_PTR_SOLDIER}.setPendingAction(MERC_RELOADROBOT);
 
 								// WALK UP TO DEST FIRST
-								EVENT_InternalGetNewSoldierPath( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), sActionGridNo, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->usUIMovementMode, FALSE, FALSE );
+								EVENT_InternalGetNewSoldierPath( ITEM_PTR_SOLDIER, sActionGridNo, ITEM_PTR_SOLDIER->usUIMovementMode, FALSE, FALSE );
 							}
 							else
 							{
-								EVENT_SoldierBeginReloadRobot( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), sAdjustedGridNo, ubDirection, (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot) );
+								EVENT_SoldierBeginReloadRobot( ITEM_PTR_SOLDIER, sAdjustedGridNo, ubDirection, ITEM_PTR_SRC_SLOT );
 							}
 
 							// OK, set UI
-							SetUIBusy((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier));
+							SetUIBusy(ITEM_PTR_SOLDIER);
 					}
 
 				}
@@ -3482,7 +3503,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 				//if (gbItemPointerSrcSlot != NO_SLOT )
 				{
 					// Give guy this item.....
-					SoldierGiveItem((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), tgt, &TempObject, (gRPC_ItemPointerClick ? gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot));
+					SoldierGiveItem(ITEM_PTR_SOLDIER, tgt, &TempObject, ITEM_PTR_SRC_SLOT);
 
 					gfDontChargeAPsToPickup = FALSE;
 					EndItemPointer( );
@@ -3490,7 +3511,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 					// If we are giving it to somebody not on our team....
 					if (tgt->ubProfile != NO_PROFILE && !MercProfile(tgt->ubProfile).isPlayerMerc() && !RPC_RECRUITED(tgt))
 					{
-						SetEngagedInConvFromPCAction( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier) );
+						SetEngagedInConvFromPCAction( ITEM_PTR_SOLDIER );
 					}
 				}
 			}
@@ -3501,33 +3522,36 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 
 	// CHECK IF WE ARE NOT ON THE SAME GRIDNO
 	if (sDist <= 1 &&
-			((gRPC_ItemPointerClick ? ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget) == NULL || (gRPC_ItemPointerClick ? ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget) == (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)))
+			(FULL_TARGET == NULL || FULL_TARGET == ITEM_PTR_SOLDIER))
 	{
 		// Check some things here....
 		// 1 ) are we at the exact gridno that we stand on?
-		if ( usMapPos == (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sGridNo )
+		if ( usMapPos == ITEM_PTR_SOLDIER->sGridNo )
 		{
 			// Drop
 			if ( !gfDontChargeAPsToPickup )
 			{
 				// Deduct points
-				DeductPoints( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), AP_PICKUP_ITEM, 0 );
+				DeductPoints( ITEM_PTR_SOLDIER, AP_PICKUP_ITEM, 0 );
 			}
 
-			SoldierDropItem( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), (gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer) );
+			SoldierDropItem( ITEM_PTR_SOLDIER, ITEM_PTR );
 		}
 		else
 		{
 			// Try to drop in an adjacent area....
 			// 1 ) is this not a good OK destination
 			// this will sound strange, but this is OK......
-			if ( !NewOKDestination( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), usMapPos, FALSE, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->bLevel ) || FindBestPath( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), usMapPos, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->bLevel, WALKING, NO_COPYROUTE, 0 ) == 1 )
+			if ( !NewOKDestination( ITEM_PTR_SOLDIER, usMapPos, FALSE,
+				ITEM_PTR_SOLDIER->bLevel ) ||
+				FindBestPath( ITEM_PTR_SOLDIER, usMapPos,
+					ITEM_PTR_SOLDIER->bLevel, WALKING, NO_COPYROUTE, 0 ) == 1 )
 			{
 				// Drop
 				if ( !gfDontChargeAPsToPickup )
 				{
 					// Deduct points
-					DeductPoints( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), AP_PICKUP_ITEM, 0 );
+					DeductPoints( ITEM_PTR_SOLDIER, AP_PICKUP_ITEM, 0 );
 				}
 
 				// Play animation....
@@ -3535,21 +3559,23 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 
 
 
-				switch ( gAnimControl[ (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->usAnimState ].ubHeight )
+				switch ( gAnimControl[ ITEM_PTR_SOLDIER->usAnimState ].ubHeight )
 				{
 					case ANIM_STAND:
-						SetTempObject((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), *(gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer));
-						(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sPendingActionData2 = usMapPos;
+						SetTempObject(ITEM_PTR_SOLDIER, *ITEM_PTR);
+						ITEM_PTR_SOLDIER->sPendingActionData2 = usMapPos;
 
 						// Turn towards.....gridno
-						EVENT_SetSoldierDesiredDirectionForward((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), (INT8)GetDirectionFromGridNo(usMapPos, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)));
+						EVENT_SetSoldierDesiredDirectionForward(ITEM_PTR_SOLDIER, (INT8)GetDirectionFromGridNo(usMapPos, ITEM_PTR_SOLDIER));
 
-						EVENT_InitNewSoldierAnim( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), DROP_ADJACENT_OBJECT, 0 , FALSE );
+						EVENT_InitNewSoldierAnim( ITEM_PTR_SOLDIER,
+							DROP_ADJACENT_OBJECT, 0 , FALSE );
 						break;
 
 					case ANIM_CROUCH:
 					case ANIM_PRONE:
-						AddItemToPool(usMapPos, (gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer), VISIBLE, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->bLevel, 0 , -1);
+						AddItemToPool(usMapPos, ITEM_PTR, VISIBLE,
+							ITEM_PTR_SOLDIER->bLevel, 0 , -1);
 						NotifySoldiersToLookforItems( );
 						break;
 				}
@@ -3560,10 +3586,10 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 				if ( !gfDontChargeAPsToPickup )
 				{
 					// Deduct points
-					DeductPoints( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), AP_PICKUP_ITEM, 0 );
+					DeductPoints( ITEM_PTR_SOLDIER, AP_PICKUP_ITEM, 0 );
 				}
 
-				SoldierDropItem( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), (gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer) );
+				SoldierDropItem( ITEM_PTR_SOLDIER, ITEM_PTR );
 			}
 		}
 	}
@@ -3571,7 +3597,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	{
 		sGridNo = usMapPos;
 
-		SOLDIERTYPE* const pSoldier = (gRPC_ItemPointerClick ? ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget);
+		SOLDIERTYPE* const pSoldier = FULL_TARGET;
 		if (sDist <= PASSING_ITEM_DISTANCE_OKLIFE &&
 			pSoldier != NULL &&
 			pSoldier->bTeam == OUR_TEAM &&
@@ -3582,32 +3608,36 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 			{
 				{
 					if ( !EnoughPoints( pSoldier, 3, 0, TRUE ) ||
-						!EnoughPoints( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), 3, 0, TRUE ) )
+						!EnoughPoints( ITEM_PTR_SOLDIER, 3, 0, TRUE ) )
 					{
 						return( FALSE );
 					}
 
-					sDistVisible = DistanceVisible( pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sGridNo, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->bLevel );
+					sDistVisible = DistanceVisible( pSoldier,
+						DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT,
+						ITEM_PTR_SOLDIER->sGridNo, ITEM_PTR_SOLDIER->bLevel );
 
 					// Check LOS....
-					if ( !SoldierTo3DLocationLineOfSightTest( pSoldier, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sGridNo,  (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->bLevel, 3, (UINT8) sDistVisible, TRUE ) )
+					if ( !SoldierTo3DLocationLineOfSightTest( pSoldier,
+						ITEM_PTR_SOLDIER->sGridNo,  ITEM_PTR_SOLDIER->bLevel,
+						3, (UINT8) sDistVisible, TRUE ) )
 					{
 						return( FALSE );
 					}
 
 					// Charge AP values...
 					DeductPoints( pSoldier, 3, 0 );
-					DeductPoints( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), 3, 0 );
+					DeductPoints( ITEM_PTR_SOLDIER, 3, 0 );
 
-					usItem = (gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer)->usItem;
+					usItem = ITEM_PTR->usItem;
 
 					// try to auto place object....
-					if ( AutoPlaceObject( pSoldier, (gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer), TRUE ) )
+					if ( AutoPlaceObject( pSoldier, ITEM_PTR, TRUE ) )
 					{
 						ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(pMessageStrings[ MSG_ITEM_PASSED_TO_MERC ], GCM->getItem(usItem)->getShortName(), pSoldier->name) );
 
 						// Check if it's the same now!
-						if ( (gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer)->ubNumberOfObjects == 0 )
+						if ( ITEM_PTR->ubNumberOfObjects == 0 )
 						{
 							EndItemPointer( );
 						}
@@ -3617,7 +3647,8 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 							UINT8 ubFacingDirection;
 
 							// Get direction to face.....
-							ubFacingDirection = (UINT8)GetDirectionFromGridNo( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sGridNo, pSoldier );
+							ubFacingDirection = (UINT8)GetDirectionFromGridNo(
+								ITEM_PTR_SOLDIER->sGridNo, pSoldier );
 
 							// Stop merc first....
 							EVENT_StopMerc(pSoldier);
@@ -3631,11 +3662,13 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 								pSoldier->usPendingAnimation = PASS_OBJECT;
 							}
 
-							if ( gAnimControl[ (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->usAnimState ].ubEndHeight == ANIM_STAND && !MercInWater( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier) ) )
+							if ( gAnimControl[ ITEM_PTR_SOLDIER->usAnimState ].ubEndHeight == ANIM_STAND && !MercInWater( ITEM_PTR_SOLDIER ) )
 							{
-								EVENT_SetSoldierDesiredDirection((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), OppositeDirection(ubFacingDirection));
-								(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->fTurningUntilDone = TRUE;
-								(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->usPendingAnimation = PASS_OBJECT;
+								EVENT_SetSoldierDesiredDirection(
+									ITEM_PTR_SOLDIER,
+									OppositeDirection(ubFacingDirection));
+								ITEM_PTR_SOLDIER->fTurningUntilDone = TRUE;
+								ITEM_PTR_SOLDIER->usPendingAnimation = PASS_OBJECT;
 							}
 						}
 
@@ -3660,7 +3693,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 
 			// Deduct points
 			//DeductPoints( gpItemPointerSoldier, AP_TOSS_ITEM, 0 );
-			(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->fDontChargeTurningAPs = TRUE;
+			ITEM_PTR_SOLDIER->fDontChargeTurningAPs = TRUE;
 			// Will be dome later....
 
 			ubThrowActionCode = NO_THROW_ACTION;
@@ -3676,7 +3709,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 					// OK, on our team,
 
 					// How's our direction?
-					if ( SoldierCanSeeCatchComing( pSoldier, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sGridNo ) )
+					if ( SoldierCanSeeCatchComing( pSoldier, ITEM_PTR_SOLDIER->sGridNo ) )
 					{
 						// Setup as being the catch target
 						ubThrowActionCode = THROW_TARGET_MERC_CATCH;
@@ -3705,7 +3738,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 						}
 
 						// Get direction
-						ubDirection = (UINT8)GetDirectionFromGridNo( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->sGridNo, pSoldier );
+						ubDirection = (UINT8)GetDirectionFromGridNo( ITEM_PTR_SOLDIER->sGridNo, pSoldier );
 
 						// ATE: Goto stationary...
 						SoldierGotoStationaryStance( pSoldier );
@@ -3717,19 +3750,20 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 			}
 
 			// CHANGE DIRECTION AT LEAST
-			ubDirection = (UINT8)GetDirectionFromGridNo( sGridNo, (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier) );
-			EVENT_SetSoldierDesiredDirection( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), ubDirection );
-			(gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)->fTurningUntilDone = TRUE;
+			ubDirection = (UINT8)GetDirectionFromGridNo( sGridNo,
+				ITEM_PTR_SOLDIER );
+			EVENT_SetSoldierDesiredDirection( ITEM_PTR_SOLDIER, ubDirection );
+			ITEM_PTR_SOLDIER->fTurningUntilDone = TRUE;
 
 			// Increment attacker count...
 			gTacticalStatus.ubAttackBusyCount++;
 			SLOGD("INcremtning ABC: Throw item to {}", gTacticalStatus.ubAttackBusyCount);
 
 			// Given our gridno, throw grenate!
-			CalculateLaunchItemParamsForThrow((gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), sGridNo, gsInterfaceLevel, gsInterfaceLevel * 256 + sEndZ, gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer, 0, ubThrowActionCode, target);
+			CalculateLaunchItemParamsForThrow(ITEM_PTR_SOLDIER, sGridNo, gsInterfaceLevel, gsInterfaceLevel * 256 + sEndZ, gRPC_ItemPointerClick ? gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer, 0, ubThrowActionCode, target);
 
 			// OK, goto throw animation
-			HandleSoldierThrowItem( (gRPC_ItemPointerClick ? gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier), usMapPos );
+			HandleSoldierThrowItem( ITEM_PTR_SOLDIER, usMapPos );
 		}
 	}
 

@@ -1145,14 +1145,6 @@ static void BtnAuthorizeButtonCallback(GUI_BUTTON *btn, UINT32 reason)
 
 					giBuyEquipmentButton[0]->SpecifyDisabledStyle(GUI_BUTTON::DISABLED_STYLE_NONE);
 					giBuyEquipmentButton[1]->SpecifyDisabledStyle(GUI_BUTTON::DISABLED_STYLE_NONE);
-
-					// FIXME: Find a more "universal" place where this packet can be sent (to handle both AIM and MERC cases)
-					if (!(IS_CLIENT)) // We are server
-					{
-						struct USER_PACKET_MESSAGE up_broadcast;
-						up_broadcast.id = ID_USER_PACKET_TEAM_PANEL_DIRTY;
-						gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-					}
 				}
 			}
 #if 0 // XXX was commented out
@@ -1268,19 +1260,12 @@ static INT8 AimMemberHireMerc(void)
 		// Add an entry in the history page for the hiring of the merc
 		AddHistoryToPlayersLog(HISTORY_HIRED_MERC_FROM_AIM, pid, GetWorldTotalMin(), SGPSector(-1, -1));
 
-		// Broadcast
-		struct USER_PACKET_MESSAGE up_broadcast;
 		char str[256];
+		sprintf(str, "%s hired %s.", gNetworkOptions.name.c_str(),
+			s->name.c_str());
+		SendToChat(str, TRUE);
 
-		up_broadcast.id = ID_USER_PACKET_MESSAGE;
-		sprintf(str, "%s hired %s.", gNetworkOptions.name.c_str(), s->name.c_str());
-		strcpy(up_broadcast.message, str);
-
-		gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast),
-			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-
-		// FIXME: The line below doesn't (always?) show the message in the host chat
-		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str);
+		UpdateTeamPanel(); // With the new merc
 
 		return TRUE;
 	}
@@ -1289,6 +1274,7 @@ static INT8 AimMemberHireMerc(void)
 		// Display a warning saying you can't hire more then 20 mercs
 		DoLapTopMessageBox(MSG_BOX_LAPTOP_DEFAULT, AimPopUpText[AIM_MEMBER_ALREADY_HAVE_20_MERCS], LAPTOP_SCREEN, MSG_BOX_FLAG_OK, NULL);
 	}
+
 	return FALSE;
 }
 

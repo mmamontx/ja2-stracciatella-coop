@@ -127,6 +127,6 @@ extern BOOLEAN      gfDeductPoints;
 extern BOOLEAN      gfSMDisableForItems;
 
 void ProgressBarBackgroundRect(const INT16 sLeft, const INT16 sTop, const INT16 sWidth, const INT16 sHeight, const UINT32 rgb, const UINT8 scale_rgb);
-extern void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason);
+void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason);
 
 #endif

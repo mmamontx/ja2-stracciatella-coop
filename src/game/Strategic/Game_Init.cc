@@ -261,13 +261,15 @@ void InitNewGame()
 
 		SetLaptopExitScreen(INIT_SCREEN);
 		//SetPendingNewScreen(LAPTOP_SCREEN);
-		SetPendingNewScreen(MAP_SCREEN); // It is more natural for MP to start in the lobby
+		SetPendingNewScreen(MAP_SCREEN); // Start in the lobby (strategic map)
 		gubScreenCount = 1;
 
 		// Set the fact the game is in progress
 		gTacticalStatus.fHasAGameBeenStarted = TRUE;
 
-		DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &gMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
+		DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
+			GetCurrentProcess(), &gMainThread, 0, FALSE,
+			DUPLICATE_SAME_ACCESS);
 	}
 	else if (gubScreenCount == 1)
 	{
@@ -356,14 +358,15 @@ void ReStartingGame()
 	// RPCs
 	gRPC_Enable = TRUE;
 	gRPC_Squad = FALSE;
+	gRPC_Events.clear();
+	gRPC_ClientIndex = -1;
+	gRPC_InvClick = NULL;
+	gRPC_ItemPointerClick = NULL;
 	FOR_EACH_CLIENT(i)
 	{
 		gpItemPointerRPC[i] = NULL;
 		gpItemPointerSoldierRPC[i] = NULL;
 	}
-	gRPC_InvClick = NULL;
-	gRPC_ItemPointerClick = NULL;
-	gRPC_Events.clear();
 
 	// Etc.
 	gEnableTimeCompression = FALSE;

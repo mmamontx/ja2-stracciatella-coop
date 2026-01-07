@@ -731,16 +731,26 @@ void EnableDisAbleMapScreenOptionsButton( BOOLEAN fEnable )
 
 BOOLEAN AllowedToTimeCompress( void )
 {
-	if (IS_CLIENT) { // We are client - can't time compress
-		if (gEnableTimeCompression)
-			return TRUE;
-		else
-			return FALSE;
-	} else { // We are server
+	if (IS_CLIENT)
+	{
+		return gEnableTimeCompression ? TRUE : FALSE;
+	}
+	else
+	{
 		FOR_EACH_PLAYER(i)
-			if ((gPlayers[i].guid != UNASSIGNED_RAKNET_GUID) && !(gPlayers[i].ready))
+		{
+			// If it is a valid client and is not ready yet
+			if ((gPlayers[i].guid != UNASSIGNED_RAKNET_GUID) &&
+				!(gPlayers[i].ready))
+			{
 				return FALSE;
-		return gStrategicReadyButtonValue && gfAtLeastOneMercWasHired; // If every player (client) is ready then we check if the server is ready and there is at least one merc hired and, if so, enable time compression
+			}
+		}
+		/*
+		 * If every client is ready then check if the server is ready as well
+		 * and also if there is at least one merc hired.
+		 */
+		return gStrategicReadyButtonValue && gfAtLeastOneMercWasHired;
 	}
 
 	// if already leaving, disallow any other attempts to exit

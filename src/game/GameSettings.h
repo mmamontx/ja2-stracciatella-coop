@@ -98,7 +98,7 @@ struct GAME_OPTIONS
 	UINT8		ubDifficultyLevel;
 	BOOLEAN	fTurnTimeLimit;
 	UINT8		ubGameSaveMode;
-	BOOLEAN fNetwork;
+	BOOLEAN fNetworkClient;
 };
 
 //This structure will contain general Ja2 settings  NOT individual game settings.

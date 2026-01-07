@@ -1,3 +1,4 @@
+#include "Coop.h"
 #include "Font_Control.h"
 #include "Handle_Doors.h"
 #include "ItemModel.h"
@@ -75,8 +76,6 @@
 #include "GameInstance.h"
 #include "Soldier.h"
 #include "MercProfile.h"
-
-#include "Coop.h"
 
 #include <string_theory/format>
 #include <string_theory/string>
@@ -495,29 +494,17 @@ ScreenID HandleTacticalUI(void)
 	// Clearing it does things like set first time flag, param variavles, etc
 	if ( uiNewEvent != guiOldEvent )
 	{
-		if (IS_CLIENT) { // Execute the new event remotely on the server side
+		if (IS_CLIENT) // Execute the new event remotely on the server side
+		{
 			SOLDIERTYPE* sel;
-			RakNet::BitStream bs;
+			BitStream bs;
 			RPC_DATA_EVENT data;
 
 			data.puiNewEvent = uiNewEvent;
 
-			switch (uiNewEvent) {
-			case A_CHANGE_TO_CONFIM_ACTION:
-				//SLOGI("A_CHANGE_TO_CONFIM_ACTION");
-				break;
-			case A_CHANGE_TO_MOVE:
-				//SLOGI("A_CHANGE_TO_MOVE");
-				break;
-			case A_END_ACTION: // The crosshair cursor is de-activated
-				//SLOGI("A_END_ACTION");
-				break;
-			case A_ON_TERRAIN: // The crosshair cursor is activated
-				//SLOGI("A_ON_TERRAIN");
-				break;
+			switch (uiNewEvent)
+			{
 			case C_MOVE_MERC:
-				//SLOGI("C_MOVE_MERC");
-
 				sel = GetSelectedMan();
 
 				data.id = Soldier2ID(sel);
@@ -526,15 +513,13 @@ ScreenID HandleTacticalUI(void)
 
 				bs.WriteCompressed(data);
 
-				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
+				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY,
+					RELIABLE_ORDERED, 0,
+					gPeerInterface->GetSystemAddressFromIndex(0),
+					false, false);
 
-				break;
-			case C_WAIT_FOR_CONFIRM:
-				//SLOGI("C_WAIT_FOR_CONFIRM");
 				break;
 			case CA_MERC_SHOOT:
-				//SLOGI("CA_MERC_SHOOT");
-
 				sel = GetSelectedMan();
 
 				data.id = Soldier2ID(sel);
@@ -544,27 +529,13 @@ ScreenID HandleTacticalUI(void)
 
 				bs.WriteCompressed(data);
 
-				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
+				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY,
+					RELIABLE_ORDERED, 0,
+					gPeerInterface->GetSystemAddressFromIndex(0),
+					false, false);
 
-				break;
-			case HC_ON_TERRAIN: // The hand cursor is activated
-				//SLOGI("HC_ON_TERRAIN");
-				break;
-			case I_CHANGE_TO_IDLE:
-				//SLOGI("I_CHANGE_TO_IDLE");
-				break;
-			case I_SELECT_MERC:
-				//SLOGI("I_SELECT_MERC");
-				break;
-			case LC_ON_TERRAIN:
-				//SLOGI("LC_ON_TERRAIN");
-				break;
-			case LC_CHANGE_TO_LOOK:
-				//SLOGI("LC_CHANGE_TO_LOOK");
 				break;
 			case LC_LOOK:
-				//SLOGI("LC_LOOK");
-
 				sel = GetSelectedMan();
 
 				data.id = Soldier2ID(sel);
@@ -572,47 +543,59 @@ ScreenID HandleTacticalUI(void)
 
 				bs.WriteCompressed(data);
 
-				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
+				gRPC.Signal("HandleEventRPC", &bs, HIGH_PRIORITY,
+					RELIABLE_ORDERED, 0,
+					gPeerInterface->GetSystemAddressFromIndex(0),
+					false, false);
 
 				break;
+			case A_CHANGE_TO_CONFIM_ACTION:
+			case A_CHANGE_TO_MOVE:
+			case A_END_ACTION: // The crosshair cursor is de-activated
+			case A_ON_TERRAIN: // The crosshair cursor is activated
+			case C_WAIT_FOR_CONFIRM:
+			case HC_ON_TERRAIN: // The hand cursor is activated
+			case I_CHANGE_TO_IDLE:
+			case I_SELECT_MERC:
+			case LC_ON_TERRAIN:
+			case LC_CHANGE_TO_LOOK:
 			case LU_ENDUILOCK:
-				//SLOGI("LU_ENDUILOCK");
-				break;
 			case M_CHANGE_TO_ACTION:
-				//SLOGI("M_CHANGE_TO_ACTION");
-				break;
 			case M_CHANGE_TO_ADJPOS_MODE:
-				//SLOGI("M_CHANGE_TO_ADJPOS_MODE");
-				break;
 			case M_ON_TERRAIN: // The movement cursor is activated
-				//SLOGI("M_ON_TERRAIN");
-				break;
 			case OP_OPENDOORMENU:
-				//SLOGI("OP_OPENDOORMENU");
-				break;
 			case PADJ_ADJUST_STANCE:
-				//SLOGI("PADJ_ADJUST_STANCE");
 				break;
-			default: // Other unimplemented event
-				SLOGI("uiNewEvent = {}", uiNewEvent);
+			default:
+				SLOGW("Triggered unimplemented uiNewEvent = {}", uiNewEvent);
 				break;
 			}
-		} else {
+		}
+		else
+		{
 			// Snap mouse back if it's that type
 			if (gEvents[guiOldEvent].uiFlags & UIEVENT_SNAPMOUSE)
 			{
-				SimulateMouseMovement((UINT32)gusSavedMouseX, (UINT32)gusSavedMouseY);
+				SimulateMouseMovement((UINT32)gusSavedMouseX,
+					(UINT32)gusSavedMouseY);
 			}
 
 			ClearEvent(&gEvents[uiNewEvent]);
 
 			gRPC_Enable = FALSE;
 		}
-	} else if (IS_SERVER) { // If there is no local event, a remote event can be executed (if there is one)
-		if (!(gRPC_Events.empty())) {
-			uiNewEvent = gRPC_Events.front().puiNewEvent;
+	}
+	else
+	{
+		if (IS_SERVER)
+		{
+			// If there is no local event, the server can execute a remote one
+			if (!(gRPC_Events.empty()))
+			{
+				uiNewEvent = gRPC_Events.front().puiNewEvent;
 
-			gRPC_Enable = TRUE;
+				gRPC_Enable = TRUE;
+			}
 		}
 	}
 
@@ -632,7 +615,9 @@ ScreenID HandleTacticalUI(void)
 
 	// HANDLE UI EVENT
 	ScreenID ReturnVal = GAME_SCREEN;
-	switch (uiNewEvent) { // For clients omit local execution of the events that are handed over to the server
+	switch (uiNewEvent)
+	{
+	// For clients omit local execution of the events that are handed over
 	case C_MOVE_MERC:
 	case CA_MERC_SHOOT:
 	case LC_LOOK:
@@ -1192,40 +1177,37 @@ ScreenID UIHandleEndTurn(UI_EVENT* pUIEvent)
 	{
 		struct USER_PACKET_END_TURN p;
 		p.id = ID_USER_PACKET_END_TURN;
-		gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+		gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE,
+			0, UNASSIGNED_RAKNET_GUID, true);
 		return GAME_SCREEN;
 	}
 	else
 	{
-		struct USER_PACKET_MESSAGE up_broadcast;
-		char str[256];
-
 		UINT8 finished = 0;
 		FOR_EACH_PLAYER(i)
-			if (gPlayers[i].endturn)
-				finished++;
+		{
+			if (gPlayers[i].endturn) finished++;
+		}
 
 		UINT8 n = NumberOfPlayers();
 
-		if (!(gPlayers[0].endturn)) {
+		if (!(gPlayers[0].endturn))
+		{
 			gPlayers[0].endturn = true;
 			finished++;
 
-			// Broadcasting to the clients
-			sprintf(str, "%s has finished his/her turn. %d/%d total.", gPlayers[0].name.c_str(), finished, n);
-			up_broadcast.id = ID_USER_PACKET_MESSAGE;
-			strcpy(up_broadcast.message, str);
-			gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
-
-			ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, str); // Duplicating to the server chat
+			char str[256];
+			sprintf(str, "%s has finished his/her turn. %d/%d total finished.",
+				gPlayers[0].name.c_str(), finished, n);
+			SendToChat(str, TRUE);
 		}
 
-		// TODO: In the interrupt mode check only the players, whose mercs have received the interrupt
-		if (finished < n)
-			return GAME_SCREEN;
+		if (finished < n) return GAME_SCREEN;
 
 		FOR_EACH_PLAYER(i)
+		{
 			gPlayers[i].endturn = false;
+		}
 	}
 
 	CancelItemPointer( );
@@ -1791,12 +1773,15 @@ static ScreenID UIHandleCMoveMerc(UI_EVENT* pUIEvent)
 	bool fRPC = RPC_EVENT_READY;
 
 	SOLDIERTYPE* sel;
-	if (fRPC) {
+	if (fRPC)
+	{
 		data = gRPC_Events.front();
 		sel = ID2Soldier(data.id);
 		sel->fUIMovementFast = data.c_move_merc.fUIMovementFast;
 		gRPC_Events.pop_front();
-	} else {
+	}
+	else
+	{
 		sel = GetSelectedMan();
 	}
 
@@ -2454,12 +2439,15 @@ static ScreenID UIHandleCAMercShoot(UI_EVENT* pUIEvent)
 	bool fRPC = RPC_EVENT_READY;
 
 	SOLDIERTYPE* sel;
-	if (fRPC) {
+	if (fRPC)
+	{
 		data = gRPC_Events.front();
 		sel = ID2Soldier(data.id);
 		sel->bShownAimTime = data.ca_merc_shoot.bShownAimTime;
 		gRPC_Events.pop_front();
-	} else {
+	}
+	else
+	{
 		sel = GetSelectedMan();
 	}
 
@@ -2468,11 +2456,16 @@ static ScreenID UIHandleCAMercShoot(UI_EVENT* pUIEvent)
 	// are coming after this line and put the value to true
 	sel->fDontChargeTurningAPs = FALSE;
 
-	const GridNo usMapPos = fRPC ? data.ca_merc_shoot.usMapPos : guiCurrentCursorGridNo;
+	const GridNo usMapPos =
+		fRPC ? data.ca_merc_shoot.usMapPos : guiCurrentCursorGridNo;
 	if (usMapPos == NOWHERE) return GAME_SCREEN;
 
-	SOLDIERTYPE* const tgt = fRPC ? ID2Soldier(data.ca_merc_shoot.tgt_id) : gUIFullTarget;
-	// FIXME: The confirmation pop-up is disabled since it appears on the server
+	SOLDIERTYPE* const tgt =
+		fRPC ? ID2Soldier(data.ca_merc_shoot.tgt_id) : gUIFullTarget;
+	/*
+	 * NB: The confirmation pop-up is disabled since it is processed on the
+	 *     server side.
+	 */
 	/*if (tgt != NULL)
 	{
 		// If this is one of our own guys.....pop up requiester...
@@ -3005,18 +2998,19 @@ static BOOLEAN SoldierCanAffordNewStance(SOLDIERTYPE* pSoldier, UINT8 ubDesiredS
 
 void UIHandleSoldierStanceChange(SOLDIERTYPE* s, INT8 bNewStance)
 {
-	if (IS_CLIENT) {
+	if (IS_CLIENT)
+	{
 		RPC_DATA_STANCE_CHANGE data;
-		RakNet::BitStream bs;
+		BitStream bs;
 
 		data.id = Soldier2ID(s);
 		data.bNewStance = bNewStance;
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("UIHandleSoldierStanceChangeRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
-
-		// FIXME: Update the stance in the bottom menu of the client
+		gRPC.Signal("UIHandleSoldierStanceChangeRPC", &bs, HIGH_PRIORITY,
+			RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0),
+			false, false);
 
 		return;
 	}
@@ -4082,7 +4076,8 @@ static ScreenID UIHandleLCLook(UI_EVENT* pUIEvent)
 	RPC_DATA_EVENT data;
 	bool fRPC = RPC_EVENT_READY;
 
-	if (fRPC) {
+	if (fRPC)
+	{
 		data = gRPC_Events.front();
 		gRPC_Events.pop_front();
 	}
@@ -4104,10 +4099,7 @@ static ScreenID UIHandleLCLook(UI_EVENT* pUIEvent)
 	else
 	{
 		SOLDIERTYPE* sel;
-		if (fRPC)
-			sel = ID2Soldier(data.id);
-		else
-			sel = GetSelectedMan();
+		sel = fRPC ? ID2Soldier(data.id) : GetSelectedMan();
 		if (sel == NULL) return GAME_SCREEN;
 
 		if (MakeSoldierTurn(sel, pos)) SetUIBusy(sel);

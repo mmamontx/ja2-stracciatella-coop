@@ -4105,7 +4105,7 @@ void EnterCombatMode( UINT8 ubStartingTeam )
 
 		StartPlayerTeamTurn( FALSE, TRUE );
 	}
-	else if (!(IS_CLIENT))
+	else if (IS_SERVER)
 	{
 		// have to call EndTurn so that we freeze the interface etc
 		EndTurn( ubStartingTeam );
@@ -4182,7 +4182,7 @@ void ExitCombatMode( )
 	gTacticalStatus.uiTimeSinceLastOpplistDecay = std::max(UINT32(0), GetWorldTotalSeconds() - TIME_BETWEEN_RT_OPPLIST_DECAYS);
 	NonCombatDecayPublicOpplist( GetWorldTotalSeconds() );
 
-	if (!(IS_CLIENT)) {
+	if (IS_SERVER) {
 		struct USER_PACKET_MESSAGE up_broadcast;
 		up_broadcast.id = ID_USER_PACKET_END_COMBAT;
 		gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
@@ -4402,7 +4402,7 @@ BOOLEAN CheckForEndOfCombatMode( BOOLEAN fIncrementTurnsNotSeen )
 		gTacticalStatus.bConsNumTurnsNotSeen = 0;
 
 		// Exit mode!
-		if (!(IS_CLIENT)) ExitCombatMode();
+		if (IS_SERVER) ExitCombatMode();
 
 
 		if ( fNobodyAlerted )
@@ -4551,7 +4551,7 @@ BOOLEAN CheckForEndOfBattle( BOOLEAN fAnEnemyRetreated )
 		if ( gTacticalStatus.uiFlags & INCOMBAT )
 		{
 			// Exit mode!
-			if (!(IS_CLIENT)) ExitCombatMode();
+			if (IS_SERVER) ExitCombatMode();
 		}
 
 		HandleMoraleEvent(NULL, MORALE_HEARD_BATTLE_LOST, gWorldSector);
@@ -4621,7 +4621,7 @@ BOOLEAN CheckForEndOfBattle( BOOLEAN fAnEnemyRetreated )
 		if ( gTacticalStatus.uiFlags & INCOMBAT )
 		{
 			// Exit mode!
-			if (!(IS_CLIENT)) ExitCombatMode();
+			if (IS_SERVER) ExitCombatMode();
 		}
 
 		if ( gTacticalStatus.bBoxingState == NOT_BOXING ) // if boxing don't do any of this stuff

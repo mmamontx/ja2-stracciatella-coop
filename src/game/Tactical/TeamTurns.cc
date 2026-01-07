@@ -358,7 +358,7 @@ void BeginTeamTurn( UINT8 ubTeam )
 				SOLDIERTYPE* const s = RemoveFirstAIListEntry();
 				if (s != NULL)
 				{
-					if (!(IS_CLIENT))
+					if (IS_SERVER)
 					{
 						// Dirty panel interface!
 						fInterfacePanelDirty = DIRTYLEVEL2;
@@ -413,7 +413,7 @@ void DisplayHiddenInterrupt( SOLDIERTYPE * pSoldier )
 	const MESSAGE_TYPES msg =
 		pSoldier->bTeam == MILITIA_TEAM ? MILITIA_INTERRUPT_MESSAGE:
 					COMPUTER_INTERRUPT_MESSAGE;
-	if (!(IS_CLIENT))
+	if (IS_SERVER)
 	{
 		AddTopMessage(msg);
 	}
@@ -450,7 +450,7 @@ void DisplayHiddenTurnbased( SOLDIERTYPE * pActingSoldier )
 
 	if ( gTacticalStatus.ubTopMessageType != COMPUTER_TURN_MESSAGE)
 	{
-		if (!(IS_CLIENT))
+		if (IS_SERVER)
 		{
 			// Dirty panel interface!
 			fInterfacePanelDirty = DIRTYLEVEL2;
@@ -896,7 +896,7 @@ static void EndInterrupt(BOOLEAN fMarkInterruptOccurred)
 
 			}
 
-			if (!(IS_CLIENT))
+			if (IS_SERVER)
 			{
 				AddTopMessage(COMPUTER_TURN_MESSAGE);
 			}

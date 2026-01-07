@@ -609,7 +609,7 @@ struct MERCPROFILESTRUCT : public Replica3
 	}
 
 	virtual RM3SerializationResult Serialize(RakNet::SerializeParameters* serializeParameters) {
-		if (gGameOptions.fNetwork) // If we are client we don't serialize objects back to server
+		if (gGameOptions.fNetworkClient) // If we are client we don't serialize objects back to server
 			return RM3SR_DO_NOT_SERIALIZE;
 		else
 			PreSerialize();
@@ -1000,15 +1000,15 @@ struct MERCPROFILESTRUCT : public Replica3
 	}
 
 	virtual RM3ConstructionState QueryConstruction(RakNet::Connection_RM3* destinationConnection, ReplicaManager3* replicaManager3) {
-		return QueryConstruction_ServerConstruction(destinationConnection, gGameOptions.fNetwork == 0);
+		return QueryConstruction_ServerConstruction(destinationConnection, gGameOptions.fNetworkClient == 0);
 	}
 
 	virtual bool QueryRemoteConstruction(RakNet::Connection_RM3* sourceConnection) {
-		return QueryRemoteConstruction_ServerConstruction(sourceConnection, gGameOptions.fNetwork == 0);
+		return QueryRemoteConstruction_ServerConstruction(sourceConnection, gGameOptions.fNetworkClient == 0);
 	}
 
 	virtual RM3QuerySerializationResult QuerySerialization(RakNet::Connection_RM3* destinationConnection) {
-		return QuerySerialization_ServerSerializable(destinationConnection, gGameOptions.fNetwork == 0);
+		return QuerySerialization_ServerSerializable(destinationConnection, gGameOptions.fNetworkClient == 0);
 	}
 
 	virtual RM3ActionOnPopConnection QueryActionOnPopConnection(RakNet::Connection_RM3* droppedConnection) const {

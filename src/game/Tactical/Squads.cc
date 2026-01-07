@@ -203,7 +203,7 @@ BOOLEAN AddCharacterToSquad(SOLDIERTYPE* const s, INT8 const bSquadValue)
 
 		if (s == GetSelectedMan()) SetCurrentSquad(bSquadValue, TRUE);
 
-		if (!(IS_CLIENT))
+		if (IS_SERVER)
 		{
 			// Broadcast this call to clients
 			RakNet::BitStream bs;

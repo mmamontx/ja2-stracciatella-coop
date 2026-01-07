@@ -259,7 +259,7 @@ static void DoneFadeOutKilledQueen()
 	}
 
 	// 'End' battle
-	if (!(IS_CLIENT)) ExitCombatMode();
+	if (IS_SERVER) ExitCombatMode();
 	gTacticalStatus.fLastBattleWon = TRUE;
 	// Set enemy presence to false
 	gTacticalStatus.fEnemyInSector = FALSE;

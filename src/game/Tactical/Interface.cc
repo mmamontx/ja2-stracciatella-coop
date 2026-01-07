@@ -1883,16 +1883,20 @@ static void CreateTopMessage(void)
 
 	gfTopMessageDirty = TRUE;
 
-	if (!(IS_CLIENT))
+	if (IS_SERVER)
 	{
 		// Broadcasting to all the clients
 		struct USER_PACKET_TOP_MESSAGE up;
+
 		up.id = ID_USER_PACKET_TOP_MESSAGE;
 		up.ubCurrentTeam = gTacticalStatus.ubCurrentTeam;
 		up.ubTopMessageType = gTacticalStatus.ubTopMessageType;
-		up.usTactialTurnLimitCounter = gTacticalStatus.usTactialTurnLimitCounter;
+		up.usTactialTurnLimitCounter =
+			gTacticalStatus.usTactialTurnLimitCounter;
 		up.usTactialTurnLimitMax = gTacticalStatus.usTactialTurnLimitMax;
-		gPeerInterface->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+
+		gPeerInterface->Send((char*)&up, sizeof(up), MEDIUM_PRIORITY, RELIABLE,
+			0, UNASSIGNED_RAKNET_GUID, true);
 	}
 }
 
@@ -1911,7 +1915,7 @@ void HandleTopMessages(void)
 	// yet.  This is mostly for loading saved games.
 	if (!gTopMessage.fCreated)
 	{
-		if (!(IS_CLIENT))
+		if (IS_SERVER)
 		{
 			gfTopMessageDirty = TRUE;
 			AddTopMessage((MESSAGE_TYPES)ts->ubTopMessageType);
@@ -1927,7 +1931,7 @@ void HandleTopMessages(void)
 			// OK, update timer.....
 			if (COUNTERDONE(TEAMTURNUPDATE))
 			{
-				if (!(IS_CLIENT))
+				if (IS_SERVER)
 				{
 					// Update counter....
 					if (ts->usTactialTurnLimitCounter < ts->usTactialTurnLimitMax)
@@ -1981,10 +1985,7 @@ void HandleTopMessages(void)
 						++ts->usTactialTurnLimitCounter;
 					}
 
-					if (!(IS_CLIENT))
-					{
-						CreateTopMessage();
-					}
+					if (IS_SERVER) CreateTopMessage();
 
 					// Have we reached max?
 					if (ts->usTactialTurnLimitCounter == ts->usTactialTurnLimitMax - 1)
@@ -2050,10 +2051,7 @@ void UpdateEnemyUIBar( )
 		gTacticalStatus.ubTopMessageType == COMPUTER_TURN_MESSAGE)
 	{
 		// Update message!
-		if (!(IS_CLIENT))
-		{
-			CreateTopMessage();
-		}
+		if (IS_SERVER) CreateTopMessage();
 	}
 }
 
@@ -2064,9 +2062,10 @@ void InitPlayerUIBar( BOOLEAN fInterrupt )
 
 	if ( !gGameOptions.fTurnTimeLimit )
 	{
-		if (!(IS_CLIENT))
+		if (IS_SERVER)
 		{
-			AddTopMessage(fInterrupt == TRUE ? PLAYER_INTERRUPT_MESSAGE : PLAYER_TURN_MESSAGE);
+			AddTopMessage(fInterrupt == TRUE ? PLAYER_INTERRUPT_MESSAGE :
+				PLAYER_TURN_MESSAGE);
 		}
 		return;
 	}
@@ -2109,9 +2108,10 @@ void InitPlayerUIBar( BOOLEAN fInterrupt )
 	RESETCOUNTER(TEAMTURNUPDATE);
 
 	// OK, set value
-	if (!(IS_CLIENT))
+	if (IS_SERVER)
 	{
-		AddTopMessage(fInterrupt != TRUE ? PLAYER_TURN_MESSAGE : PLAYER_INTERRUPT_MESSAGE);
+		AddTopMessage(fInterrupt != TRUE ? PLAYER_TURN_MESSAGE :
+			PLAYER_INTERRUPT_MESSAGE);
 	}
 }
 

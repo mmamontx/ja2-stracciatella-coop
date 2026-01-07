@@ -79,9 +79,9 @@
 #define GIO_IRON_MAN_SETTING_Y		GIO_GAME_SETTINGS_Y
 #define GIO_IRON_MAN_SETTING_WIDTH	GIO_DIF_SETTINGS_WIDTH
 
-#define GIO_NETWORK_SETTINGS_X			GIO_DIF_SETTINGS_X
-#define GIO_NETWORK_SETTINGS_Y			(STD_SCREEN_Y + 42)
-#define GIO_NETWORK_SETTINGS_WIDTH		GIO_DIF_SETTINGS_WIDTH
+#define GIO_NETWORK_SETTINGS_X		GIO_DIF_SETTINGS_X
+#define GIO_NETWORK_SETTINGS_Y		(STD_SCREEN_Y + 42)
+#define GIO_NETWORK_SETTINGS_WIDTH	GIO_DIF_SETTINGS_WIDTH
 
 #define GIO_FIELD_NETWORK_NAME_X		(GIO_GAME_SETTINGS_X + 20)
 #define GIO_FIELD_NETWORK_NAME_Y		(GIO_NETWORK_SETTINGS_Y + 20)
@@ -162,6 +162,8 @@ static BOOLEAN gfGIOScreenEntry      = TRUE;
 static BOOLEAN gfGIOScreenExit       = FALSE;
 static BOOLEAN gfReRenderGIOScreen   = TRUE;
 static BOOLEAN gfGIOButtonsAllocated = FALSE;
+static BOOLEAN gfClientThreadCreated = FALSE;
+static BOOLEAN gfNetworkInitialized  = FALSE;
 
 static UINT8 gubGameOptionScreenHandler = GIO_NOTHING;
 
@@ -353,33 +355,34 @@ static void EnterGIOScreen()
 	SetTextInputCursor(CUROSR_IBEAM_WHITE);
 	SetTextInputFont(FONT12ARIALFIXEDWIDTH);
 	Set16BPPTextFieldColor(Get16BPPColor(FROMRGB(0, 0, 0)));
-	SetBevelColors(Get16BPPColor(FROMRGB(136, 138, 135)), Get16BPPColor(FROMRGB(24, 61, 81)));
+	SetBevelColors(Get16BPPColor(FROMRGB(136, 138, 135)),
+		Get16BPPColor(FROMRGB(24, 61, 81)));
 	SetTextInputRegularColors(FONT_WHITE, 2);
 	SetTextInputHilitedColors(2, FONT_WHITE, FONT_WHITE);
 	SetCursorColor(Get16BPPColor(FROMRGB(255, 255, 255)));
 
-	AddTextInputField(GIO_FIELD_NETWORK_NAME_X, // Left
-		GIO_FIELD_NETWORK_NAME_Y, // Top
-		GIO_FIELD_NETWORK_NAME_WIDTH, // Width
-		GIO_FIELD_NETWORK_NAME_HEIGHT, // Height
+	AddTextInputField(GIO_FIELD_NETWORK_NAME_X,
+		GIO_FIELD_NETWORK_NAME_Y,
+		GIO_FIELD_NETWORK_NAME_WIDTH,
+		GIO_FIELD_NETWORK_NAME_HEIGHT,
 		MSYS_PRIORITY_HIGH,
 		"Player Name",
 		MAX_NAME_LEN,
 		INPUTTYPE_DOSFILENAME); // Alphanumeric
 
-	AddTextInputField(GIO_FIELD_NETWORK_IP_X, // Left
-		GIO_FIELD_NETWORK_IP_Y, // Top
-		GIO_FIELD_NETWORK_IP_WIDTH, // Width
-		GIO_FIELD_NETWORK_IP_HEIGHT, // Height
+	AddTextInputField(GIO_FIELD_NETWORK_IP_X,
+		GIO_FIELD_NETWORK_IP_Y,
+		GIO_FIELD_NETWORK_IP_WIDTH,
+		GIO_FIELD_NETWORK_IP_HEIGHT,
 		MSYS_PRIORITY_HIGH,
 		"127.0.0.1",
 		15, // 4 numbers up to 3 digits each + 3 points between them
-		INPUTTYPE_FULL_TEXT); // TODO: Verify that it matches IP address format
+		INPUTTYPE_FULL_TEXT);
 
-	AddTextInputField(GIO_FIELD_NETWORK_PORT_X, // Left
-		GIO_FIELD_NETWORK_PORT_Y, // Top
-		GIO_FIELD_NETWORK_PORT_WIDTH, // Width
-		GIO_FIELD_NETWORK_PORT_HEIGHT, // Height
+	AddTextInputField(GIO_FIELD_NETWORK_PORT_X,
+		GIO_FIELD_NETWORK_PORT_Y,
+		GIO_FIELD_NETWORK_PORT_WIDTH,
+		GIO_FIELD_NETWORK_PORT_HEIGHT,
 		MSYS_PRIORITY_HIGH,
 		"60005",
 		5, // Max digits in IPv4 port number
@@ -457,55 +460,60 @@ static void DisplayMessageToUserAboutDeadIsDeadSaveScreen(const ST::string& zStr
 	DoMessageBox(MSG_BOX_BASIC_STYLE, zString, GAME_INIT_OPTIONS_SCREEN, MSG_BOX_FLAG_OK, ReturnCallback, NULL);
 }
 
-static BOOLEAN bNetworkInitialized = FALSE;
-static BOOLEAN bClientThreadCreated = FALSE;
-
 void NetworkShutdown(void)
 {
-	if (!bNetworkInitialized) return;
+	if (!gfNetworkInitialized) return;
 
 	if (gPacketThread) TerminateThread(gPacketThread, 0);
-	bClientThreadCreated = FALSE;
+	gfClientThreadCreated = FALSE;
 
 	gReplicaManager.Clear();
 	gReplicaList.Clear(TRUE, NULL, 0);
 	gNetworkIdManager.Clear();
 
-	if (gConnected) {
+	if (gConnected)
+	{
 		gPeerInterface->Shutdown(1000, 0);
 		gConnected = FALSE;
 	}
 
-	bNetworkInitialized = FALSE;
+	gfNetworkInitialized = FALSE;
 }
 
 static void NetworkInit()
 {
-	if (bNetworkInitialized) return;
+	if (gfNetworkInitialized) return;
 
 	gPeerInterface = RakPeerInterface::GetInstance();
 
-	// Register RPC
 	gPeerInterface->AttachPlugin(&gRPC);
 
-	gRPC.RegisterSlot("HandleEventRPC", HandleEventRPC, 0);
-
 	gRPC.RegisterSlot("AddCharacterToSquadRPC", AddCharacterToSquadRPC, 0);
-	gRPC.RegisterSlot("AddHistoryToPlayersLogRPC", AddHistoryToPlayersLogRPC, 0);
+	gRPC.RegisterSlot("AddHistoryToPlayersLogRPC", AddHistoryToPlayersLogRPC,
+		0);
 	gRPC.RegisterSlot("AddStrategicEventRPC", AddStrategicEventRPC, 0);
-	gRPC.RegisterSlot("AddTransactionToPlayersBookRPC", AddTransactionToPlayersBookRPC, 0);
-	gRPC.RegisterSlot("BeginSoldierClimbDownRoofRPC", BeginSoldierClimbDownRoofRPC, 0);
-	gRPC.RegisterSlot("BeginSoldierClimbFenceRPC", BeginSoldierClimbFenceRPC, 0);
-	gRPC.RegisterSlot("BeginSoldierClimbUpRoofRPC", BeginSoldierClimbUpRoofRPC, 0);
-	gRPC.RegisterSlot("BtnStealthModeCallbackRPC", BtnStealthModeCallbackRPC, 0);
+	gRPC.RegisterSlot("AddTransactionToPlayersBookRPC",
+		AddTransactionToPlayersBookRPC, 0);
+	gRPC.RegisterSlot("BeginSoldierClimbDownRoofRPC",
+		BeginSoldierClimbDownRoofRPC, 0);
+	gRPC.RegisterSlot("BeginSoldierClimbFenceRPC",
+		BeginSoldierClimbFenceRPC, 0);
+	gRPC.RegisterSlot("BeginSoldierClimbUpRoofRPC",
+		BeginSoldierClimbUpRoofRPC, 0);
+	gRPC.RegisterSlot("BtnStealthModeCallbackRPC",
+		BtnStealthModeCallbackRPC, 0);
 	gRPC.RegisterSlot("ChangeWeaponModeRPC", ChangeWeaponModeRPC, 0);
-	gRPC.RegisterSlot("HandleItemPointerClickRPC", HandleItemPointerClickRPC, 0);
+	gRPC.RegisterSlot("HandleEventRPC", HandleEventRPC, 0);
+	gRPC.RegisterSlot("HandleItemPointerClickRPC", HandleItemPointerClickRPC,
+		0);
 	gRPC.RegisterSlot("HireMercRPC", HireMercRPC, 0);
-	gRPC.RegisterSlot("SMInvClickCallbackPrimaryRPC", SMInvClickCallbackPrimaryRPC, 0);
-	gRPC.RegisterSlot("UIHandleSoldierStanceChangeRPC", UIHandleSoldierStanceChangeRPC, 0);
+	gRPC.RegisterSlot("SMInvClickCallbackPrimaryRPC",
+		SMInvClickCallbackPrimaryRPC, 0);
+	gRPC.RegisterSlot("UIHandleSoldierStanceChangeRPC",
+		UIHandleSoldierStanceChangeRPC, 0);
 
-	// Init gPlayers
-	for (int i = 0; i < MAX_NUM_PLAYERS; i++) {
+	for (int i = 0; i < MAX_NUM_PLAYERS; i++)
+	{
 		gPlayers[i].guid = UNASSIGNED_RAKNET_GUID;
 		gPlayers[i].name = "";
 		gPlayers[i].ready = FALSE;
@@ -514,7 +522,8 @@ static void NetworkInit()
 
 	if (IS_SERVER)
 	{
-		gPeerInterface->Startup(MAX_NUM_PLAYERS - 1, &SocketDescriptor(gNetworkOptions.port, 0), 1);
+		gPeerInterface->Startup(MAX_NUM_PLAYERS - 1,
+			&SocketDescriptor(gNetworkOptions.port, 0), 1);
 		gPeerInterface->AttachPlugin(&gReplicaManager);
 		gReplicaManager.SetNetworkIDManager(&gNetworkIdManager);
 		gPeerInterface->SetMaximumIncomingConnections(MAX_NUM_PLAYERS - 1);
@@ -533,9 +542,10 @@ static void NetworkInit()
 		for (int i = 0; i < MAX_NUM_PLAYERS; i++)
 			gReplicaManager.Reference(&(gPlayers[i]));
 
-		gConnected = TRUE; // Always TRUE for server
+		gConnected = TRUE;
 
-		gPacketThread = CreateThread(NULL, 0, ServerProcessesPacketsHere, NULL, 0, NULL);
+		gPacketThread = CreateThread(NULL, 0, ServerProcessesPacketsHere, NULL,
+			0, NULL);
 	}
 	else
 	{
@@ -546,21 +556,23 @@ static void NetworkInit()
 		gConnected = FALSE;
 	}
 
-	bNetworkInitialized = TRUE;
+	gfNetworkInitialized = TRUE;
 }
 
 static void ConnectToHost(void)
 {
 	if (gConnected) return;
 
-	if (!bNetworkInitialized) NetworkInit();
+	if (!gfNetworkInitialized) NetworkInit();
 
-	gPeerInterface->Connect(gNetworkOptions.ip.c_str(), gNetworkOptions.port, 0, 0);
+	gPeerInterface->Connect(gNetworkOptions.ip.c_str(), gNetworkOptions.port,
+		0, 0);
 
-	if (!(bClientThreadCreated))
+	if (!(gfClientThreadCreated))
 	{
-		gPacketThread = CreateThread(NULL, 0, ClientProcessesPacketsHere, NULL, 0, NULL);
-		bClientThreadCreated = TRUE;
+		gPacketThread = CreateThread(NULL, 0, ClientProcessesPacketsHere, NULL,
+			0, NULL);
+		gfClientThreadCreated = TRUE;
 	}
 }
 
@@ -576,74 +588,36 @@ static void HandleGIOScreen(void)
 				break;
 
 			case GIO_EXIT:
-				gGameOptions.fNetwork = GetCurrentNetworkButtonSetting();
+				gGameOptions.fNetworkClient = GetCurrentNetworkButtonSetting();
+
 				gNetworkOptions.name = GetStringFromField(0);
 				gNetworkOptions.ip = GetStringFromField(1);
 				gNetworkOptions.port = atoi(GetStringFromField(2).c_str());
 
-				if (!bNetworkInitialized) NetworkInit();
+				if (!gfNetworkInitialized) NetworkInit();
 
 				if (IS_CLIENT)
 				{
 					ConnectToHost();
 
-					// Wait until connection
-					UINT32 t = 0, period = 33;
-					do {
-						Sleep(period);
-						t += period;
-					} while ((!(gConnected)) && (t < TIMEOUT_MS));
-					if (!(gConnected))
-					{
-						SLOGI("gConnected == 0");
-						NetworkShutdown();
-						break; // TODO: Display a message?
-					}
+					WAIT_WHILE_COND_ELSE_NET_SHUTDOWN(!gConnected, TIMEOUT_MS,
+						"!gConnected");
 
 					struct USER_PACKET_CONNECT p;
 					p.id = ID_USER_PACKET_CONNECT;
-					p.ready = 0;
+					p.ready = FALSE;
 					strcpy(p.name, gNetworkOptions.name.c_str());
-					gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+					gPeerInterface->Send((char*)&p, sizeof(p), MEDIUM_PRIORITY,
+						RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 
-					// Wait until the objects are replicated
-					t = 0;
-					do {
-						Sleep(period);
-						t += period;
-					} while ((gReplicaList.Size() == 0) && (t < TIMEOUT_MS));
-					if (gReplicaList.Size() == 0)
-					{
-						SLOGI("gReplicaList.Size() == 0");
-						NetworkShutdown();
-						break; // TODO: Display a message?
-					}
-
-					// Wait until the player is registered
-					t = 0;
-					do {
-						Sleep(period);
-						t += period;
-					} while ((ClientIndex(gPeerInterface->GetMyGUID()) == -1) && (t < TIMEOUT_MS));
-					if (ClientIndex(gPeerInterface->GetMyGUID()) == -1)
-					{
-						SLOGI("ClientIndex() == -1");
-						NetworkShutdown();
-						break; // TODO: Display a message?
-					}
-
-					// Wait until the game options are received
-					t = 0;
-					do {
-						Sleep(period);
-						t += period;
-					} while ((!gGameOptionsReceived) && (t < TIMEOUT_MS));
-					if (!gGameOptionsReceived)
-					{
-						SLOGI("!gGameOptionsReceived");
-						NetworkShutdown();
-						break; // TODO: Display a message?
-					}
+					WAIT_WHILE_COND_ELSE_NET_SHUTDOWN(
+						(gReplicaList.Size() == 0),
+						TIMEOUT_MS, "gReplicaList.Size() == 0");
+					WAIT_WHILE_COND_ELSE_NET_SHUTDOWN(
+						(ClientIndex(gPeerInterface->GetMyGUID()) == -1),
+						TIMEOUT_MS, "ClientIndex() == -1");
+					WAIT_WHILE_COND_ELSE_NET_SHUTDOWN(!gGameOptionsReceived,
+						TIMEOUT_MS, "!gGameOptionsReceived");
 				}
 
 				//if we are already fading out, get out of here
@@ -669,12 +643,14 @@ static void HandleGIOScreen(void)
 		gubGameOptionScreenHandler = GIO_NOTHING;
 	}
 
-	static BOOLEAN client_selected_old = 0;
+	static BOOLEAN client_selected_old = FALSE;
 	BOOLEAN client_selected = GetCurrentNetworkButtonSetting();
 
 	int i;
-	if (client_selected != client_selected_old) {
-		if (client_selected) {
+	if (client_selected != client_selected_old)
+	{
+		if (client_selected)
+		{
 			for (i = 0; i < lengthof(guiDifficultySettingsToggles); i++)
 				DisableButton(guiDifficultySettingsToggles[i]);
 			for (i = 0; i < lengthof(guiGameStyleToggles); i++)
@@ -683,7 +659,9 @@ static void HandleGIOScreen(void)
 				DisableButton(guiGunOptionToggles[i]);
 			for (i = 0; i < lengthof(guiGameSaveToggles); i++)
 				DisableButton(guiGameSaveToggles[i]);
-		} else {
+		}
+		else
+		{
 			for (i = 0; i < lengthof(guiDifficultySettingsToggles); i++)
 				EnableButton(guiDifficultySettingsToggles[i]);
 			for (i = 0; i < lengthof(guiGameStyleToggles); i++)
@@ -782,7 +760,7 @@ static void RenderGIOScreen(void)
 	DisplayWrappedString(GIO_IRON_MAN_SETTING_X + GIO_OFFSET_TO_TEXT, usPosY, GIO_DIF_SETTINGS_WIDTH, 2, GIO_TOGGLE_TEXT_FONT, GIO_TOGGLE_TEXT_COLOR, gzGIOScreenText[GIO_DEAD_IS_DEAD_TEXT], FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
 	DisplayWrappedString(GIO_IRON_MAN_SETTING_X + GIO_OFFSET_TO_TEXT, usPosY+20, 220, 2, FONT12ARIAL, GIO_TOGGLE_TEXT_COLOR, zNewTacticalMessages[TCTL_MSG__CANNOT_LOAD_PREVIOUS_SAVE], FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
 
-	//Display the Network Settings Text
+	//Display the Network Settings Title Text
 	usPosY = GIO_NETWORK_SETTINGS_Y + 20;
 	DisplayWrappedString(GIO_NETWORK_SETTINGS_X + GIO_OFFSET_TO_TEXT, usPosY, GIO_NETWORK_SETTINGS_WIDTH, 2, GIO_TOGGLE_TEXT_FONT, GIO_TOGGLE_TEXT_COLOR, "Server", FONT_MCOLOR_BLACK, LEFT_JUSTIFIED);
 
