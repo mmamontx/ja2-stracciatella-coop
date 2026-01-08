@@ -77,11 +77,6 @@ struct PLAYER : public Replica3
 		rname = name.c_str();
 	}
 
-	void PostDeserialize()
-	{
-		name = rname;
-	}
-
 	virtual RM3SerializationResult
 		Serialize(SerializeParameters* serializeParameters)
 	{
@@ -106,6 +101,11 @@ struct PLAYER : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(endturn);
 
 		PostDeserialize();
+	}
+
+	void PostDeserialize()
+	{
+		name = rname;
 	}
 
 	virtual void
