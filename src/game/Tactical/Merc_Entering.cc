@@ -405,8 +405,10 @@ void StartHelicopterRun( INT16 sGridNoSweetSpot )
 	gsGridNoSweetSpot = sGridNoSweetSpot;
 
 #ifdef COOP_DEBUG
-	if (IS_CLIENT) {
-		FOR_EACH_IN_TEAM(s, OUR_TEAM) {
+	if (IS_CLIENT)
+	{
+		FOR_EACH_IN_TEAM(s, OUR_TEAM)
+		{
 			AddMercToHeli(s);
 		}
 	}
@@ -467,8 +469,9 @@ void HandleHeliDrop( )
 			guiPendingOverrideEvent = LU_BEGINUILOCK;
 		}
 
+		// NB: Omitting helicopter drop animation
 		//if (_KeyDown(SDLK_ESCAPE))
-		if (1) // FIXME: Omitting helicopter drop animation - not sure how it would affect multiplayer
+		if (1)
 		{
 			// Loop through all mercs not yet placed
 			for ( cnt = gbCurDrop; cnt < gbNumHeliSeatsOccupied; cnt++ )
@@ -511,7 +514,8 @@ void HandleHeliDrop( )
 					{
 						if (gHeliSeats[i]->ubPlayer == ubPlayer)
 						{
-							SelectSoldier(gHeliSeats[i], SELSOLDIER_FORCE_RESELECT);
+							SelectSoldier(gHeliSeats[i],
+								SELSOLDIER_FORCE_RESELECT);
 							break;
 						}
 					}

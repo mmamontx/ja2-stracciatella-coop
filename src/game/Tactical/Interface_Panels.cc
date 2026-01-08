@@ -1539,8 +1539,8 @@ static BOOLEAN UIHandleItemPlacement(UINT8 ubHandPos, UINT16 usOldItemIndex, UIN
 {
 	if ( (gRPC_InvClick ? gRPC_InvClick->ubCtrl : _KeyDown(CTRL)) )
 	{
-		CleanUpStack( &( INV_CLICK_CURRENT_MERC->inv[ ubHandPos ] ), INV_CLICK_ITEM_PTR );
-		if ( INV_CLICK_ITEM_PTR->ubNumberOfObjects == 0 )
+		CleanUpStack( &( INV_CLICK_CURRENT_MERC->inv[ ubHandPos ] ), ITEM_PTR );
+		if ( ITEM_PTR->ubNumberOfObjects == 0 )
 		{
 			EndItemPointer( );
 		}
@@ -1548,14 +1548,14 @@ static BOOLEAN UIHandleItemPlacement(UINT8 ubHandPos, UINT16 usOldItemIndex, UIN
 	}
 
 	// Try to place here
-	if ( PlaceObject( INV_CLICK_CURRENT_MERC, ubHandPos, INV_CLICK_ITEM_PTR ) )
+	if ( PlaceObject( INV_CLICK_CURRENT_MERC, ubHandPos, ITEM_PTR ) )
 	{
 		if ( fDeductPoints )
 		{
 			// Deduct points
-			if ( INV_CLICK_ITEM_PTR_SOLDIER->bLife >= CONSCIOUSNESS )
+			if ( ITEM_PTR_SOLDIER->bLife >= CONSCIOUSNESS )
 			{
-				DeductPoints( INV_CLICK_ITEM_PTR_SOLDIER,  2, 0 );
+				DeductPoints( ITEM_PTR_SOLDIER,  2, 0 );
 			}
 			if ( INV_CLICK_CURRENT_MERC->bLife >= CONSCIOUSNESS )
 			{
@@ -1570,12 +1570,12 @@ static BOOLEAN UIHandleItemPlacement(UINT8 ubHandPos, UINT16 usOldItemIndex, UIN
 		fInterfacePanelDirty = DIRTYLEVEL2;
 
 		// Check if cursor is empty now
-		if ( INV_CLICK_ITEM_PTR->ubNumberOfObjects == 0 )
+		if ( ITEM_PTR->ubNumberOfObjects == 0 )
 		{
 			EndItemPointer( );
 		}
 
-		if ( INV_CLICK_ITEM_PTR_SOLDIER != INV_CLICK_CURRENT_MERC )
+		if ( ITEM_PTR_SOLDIER != INV_CLICK_CURRENT_MERC )
 		{
 			ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE,
 				st_format_printf(pMessageStrings[ MSG_ITEM_PASSED_TO_MERC ],
@@ -1593,7 +1593,7 @@ static BOOLEAN UIHandleItemPlacement(UINT8 ubHandPos, UINT16 usOldItemIndex, UIN
 			gpItemPointerSoldier = gpSMCurrentMerc;
 		}
 
-		if ( INV_CLICK_ITEM_PTR != NULL )
+		if ( ITEM_PTR != NULL )
 		{
 			ReevaluateItemHatches( INV_CLICK_CURRENT_MERC, FALSE );
 		}
@@ -1660,7 +1660,7 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 	}
 
 	// If we do not have an item in hand, start moving it
-	if ( INV_CLICK_ITEM_PTR == NULL )
+	if ( ITEM_PTR == NULL )
 	{
 
 		// Return if empty
@@ -1690,7 +1690,6 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 		// move item into the mouse cursor
 		BeginItemPointer( INV_CLICK_SM_CURRENT_MERC, (UINT8)INV_CLICK_HAND_POS );
 
-		// TODO: Enable shopping with RPCs
 		//if we are in the shopkeeper interface
 		if (guiCurrentScreen == SHOPKEEPER_SCREEN)
 		{
@@ -1711,7 +1710,7 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 		BOOLEAN fDeductPoints = FALSE;
 
 		// ATE: OK, get source, dest guy if different... check for and then charge appropriate APs
-		if (INV_CLICK_SM_CURRENT_MERC == INV_CLICK_ITEM_PTR_SOLDIER)
+		if (INV_CLICK_SM_CURRENT_MERC == ITEM_PTR_SOLDIER)
 		{
 			// We are doing this ourselve, continue
 			fOKToGo = TRUE;
@@ -1722,9 +1721,9 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 			fDeductPoints = TRUE;
 
 			// First check points for src guy
-			if ( INV_CLICK_ITEM_PTR_SOLDIER->bLife >= CONSCIOUSNESS )
+			if ( ITEM_PTR_SOLDIER->bLife >= CONSCIOUSNESS )
 			{
-				if ( EnoughPoints( INV_CLICK_ITEM_PTR_SOLDIER, 3, 0, TRUE ) )
+				if ( EnoughPoints( ITEM_PTR_SOLDIER, 3, 0, TRUE ) )
 				{
 					fOKToGo = TRUE;
 				}
@@ -1756,14 +1755,14 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 			// OK, check if this is Nails, and we're in the vest position , don't allow
 			// it to come off....
 			if ( HandleNailsVestFetish( INV_CLICK_SM_CURRENT_MERC,
-				INV_CLICK_HAND_POS, INV_CLICK_ITEM_PTR->usItem ) )
+				INV_CLICK_HAND_POS, ITEM_PTR->usItem ) )
 			{
 				return;
 			}
 
 			usOldItemIndex =
 				INV_CLICK_SM_CURRENT_MERC->inv[ INV_CLICK_HAND_POS ].usItem;
-			usNewItemIndex = INV_CLICK_ITEM_PTR->usItem;
+			usNewItemIndex = ITEM_PTR->usItem;
 
 			if ( INV_CLICK_HAND_POS == HANDPOS ||
 				INV_CLICK_HAND_POS == SECONDHANDPOS ||
@@ -1790,7 +1789,6 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 					gusNewItemIndex = usNewItemIndex;
 					gfDeductPoints = fDeductPoints;
 
-					// TODO: Enable shopping with RPCs
 					if (guiCurrentScreen == SHOPKEEPER_SCREEN)
 					{
 						//the only way to merge items is to pick them up.  In SKI when you pick up an item, the cursor is
@@ -1808,7 +1806,7 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 
 
 			// remember the item type currently in the item pointer
-			usItemPrevInItemPointer = INV_CLICK_ITEM_PTR->usItem;
+			usItemPrevInItemPointer = ITEM_PTR->usItem;
 
 			if (guiCurrentScreen == SHOPKEEPER_SCREEN)
 			{
@@ -1820,7 +1818,6 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 			if ( UIHandleItemPlacement( (UINT8) INV_CLICK_HAND_POS,
 				usOldItemIndex, usNewItemIndex, fDeductPoints ) )
 			{
-				// TODO: Enable shopping with RPCs
 				// it worked!  if we're in the SKI...
 				if (guiCurrentScreen == SHOPKEEPER_SCREEN)
 				{
@@ -1828,7 +1825,7 @@ void SMInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 						( UINT8 ) INV_CLICK_HAND_POS, fNewItem );
 
 					// and the cursor is now empty
-					if( INV_CLICK_ITEM_PTR == NULL )
+					if( ITEM_PTR == NULL )
 					{
 						// clean up
 						gMoveingItem = INVENTORY_IN_SLOT{};

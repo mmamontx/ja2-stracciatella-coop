@@ -333,6 +333,7 @@ void SetInputFieldString(UINT8 ubField, const ST::string& str)
 		curr->numCodepoints = str.to_utf32().size();
 		Assert(curr->numCodepoints <= curr->maxCodepoints);
 	}
+	// Enable clearing the chat text input field on text entering
 	//else if (!curr->fUserField)
 	else
 	{

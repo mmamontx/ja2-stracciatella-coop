@@ -1,4 +1,5 @@
 #include "Animation_Control.h"
+#include "CoopReplicaManager.h"
 #include "Finances.h"
 #include "Game_Clock.h"
 #include "Game_Event_Hook.h"

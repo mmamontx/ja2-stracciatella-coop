@@ -4,6 +4,7 @@
 #include "Coop.h"
 #include "Debug.h"
 #include "JA2Types.h"
+#include "Overhead_Types.h"
 #include "Soldier_Profile_Type.h"
 
 
@@ -15,7 +16,11 @@ extern MERCPROFILESTRUCT gMercProfiles[NUM_PROFILES];
 static inline MERCPROFILESTRUCT& GetProfile(ProfileID const id)
 {
 	if (id < lengthof(gMercProfiles))
-		return IS_VALID_CLIENT ? *((MERCPROFILESTRUCT*)gReplicaList[REPLICA_PROFILE_INDEX + id]) : gMercProfiles[id];
+	{
+		return IS_VALID_CLIENT ?
+			*((MERCPROFILESTRUCT*)gReplicaList[REPLICA_PROFILE_INDEX + id]) :
+			gMercProfiles[id];
+	}
 	SLOGA("invalid profile id {}", id);
 	abort();
 }

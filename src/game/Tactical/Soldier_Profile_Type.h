@@ -1,20 +1,9 @@
 #ifndef __SOLDER_PROFILE_TYPE_H
 #define __SOLDER_PROFILE_TYPE_H
 
+#include "Coop.h"
 #include "GameSettings.h"
 #include "Types.h"
-#define GROUP GROUP_JA2
-#include "ReplicaManager3.h"
-#undef GROUP
-
-using namespace RakNet;
-
-#define BS_ARRAY_WRITE(array, size) \
-	for (int i = 0; i < size; i++) \
-		serializeParameters->outputBitstream[0].Write(array[i])
-#define BS_ARRAY_READ(array, size) \
-	for (int i = 0; i < size; i++) \
-		deserializeParameters->serializationBitstream[0].Read(array[i])
 
 #include <string_theory/string>
 
@@ -564,43 +553,43 @@ struct MERCPROFILESTRUCT : public Replica3
 		*this = other;
 	}
 
-	virtual RakNet::RakString GetName(void) const { return RakNet::RakString("MERCPROFILESTRUCT"); }
+	virtual RakString GetName(void) const { return RakString("MERCPROFILESTRUCT"); }
 
-	virtual void WriteAllocationID(RakNet::Connection_RM3* destinationConnection, RakNet::BitStream* allocationIdBitstream) const {
+	virtual void WriteAllocationID(Connection_RM3* destinationConnection, BitStream* allocationIdBitstream) const {
 		allocationIdBitstream->Write(GetName());
 	}
 
-	void PrintStringInBitstream(RakNet::BitStream* bs)
+	void PrintStringInBitstream(BitStream* bs)
 	{
 		if (bs->GetNumberOfBitsUsed() == 0)
 			return;
-		RakNet::RakString rakString;
+		RakString rakString;
 		bs->Read(rakString);
 		//printf("Receive: %s\n", rakString.C_String());
 	}
 
-	virtual void SerializeConstruction(RakNet::BitStream* constructionBitstream, RakNet::Connection_RM3* destinationConnection) {
+	virtual void SerializeConstruction(BitStream* constructionBitstream, Connection_RM3* destinationConnection) {
 
-		constructionBitstream->Write(GetName() + RakNet::RakString(" SerializeConstruction"));
+		constructionBitstream->Write(GetName() + RakString(" SerializeConstruction"));
 	}
 
-	virtual bool DeserializeConstruction(RakNet::BitStream* constructionBitstream, RakNet::Connection_RM3* sourceConnection) {
+	virtual bool DeserializeConstruction(BitStream* constructionBitstream, Connection_RM3* sourceConnection) {
 		PrintStringInBitstream(constructionBitstream);
 		return true;
 	}
 
-	virtual void SerializeDestruction(RakNet::BitStream* destructionBitstream, RakNet::Connection_RM3* destinationConnection) {
+	virtual void SerializeDestruction(BitStream* destructionBitstream, Connection_RM3* destinationConnection) {
 
-		destructionBitstream->Write(GetName() + RakNet::RakString(" SerializeDestruction"));
+		destructionBitstream->Write(GetName() + RakString(" SerializeDestruction"));
 
 	}
 
-	virtual bool DeserializeDestruction(RakNet::BitStream* destructionBitstream, RakNet::Connection_RM3* sourceConnection) {
+	virtual bool DeserializeDestruction(BitStream* destructionBitstream, Connection_RM3* sourceConnection) {
 		PrintStringInBitstream(destructionBitstream);
 		return true;
 	}
 
-	virtual void DeallocReplica(RakNet::Connection_RM3* sourceConnection) {
+	virtual void DeallocReplica(Connection_RM3* sourceConnection) {
 		delete this;
 	}
 
@@ -608,8 +597,8 @@ struct MERCPROFILESTRUCT : public Replica3
 	virtual void OnUserReplicaPreSerializeTick(void) {
 	}
 
-	virtual RM3SerializationResult Serialize(RakNet::SerializeParameters* serializeParameters) {
-		if (gGameOptions.fNetworkClient) // If we are client we don't serialize objects back to server
+	virtual RM3SerializationResult Serialize(SerializeParameters* serializeParameters) {
+		if (IS_CLIENT) // If we are client we don't serialize objects back to server
 			return RM3SR_DO_NOT_SERIALIZE;
 		else
 			PreSerialize();
@@ -786,7 +775,7 @@ struct MERCPROFILESTRUCT : public Replica3
 		return RM3SR_BROADCAST_IDENTICALLY;
 	}
 
-	virtual void Deserialize(RakNet::DeserializeParameters* deserializeParameters) {
+	virtual void Deserialize(DeserializeParameters* deserializeParameters) {
 		/*deserializeParameters->serializationBitstream[0].Read(zName);
 		deserializeParameters->serializationBitstream[0].Read(zNickname);*/
 		deserializeParameters->serializationBitstream[0].Read(rzName);
@@ -977,41 +966,41 @@ struct MERCPROFILESTRUCT : public Replica3
 		HAIR = rHAIR;
 	}
 
-	virtual void SerializeConstructionRequestAccepted(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* requestingConnection) {
-		serializationBitstream->Write(GetName() + RakNet::RakString(" SerializeConstructionRequestAccepted"));
+	virtual void SerializeConstructionRequestAccepted(BitStream* serializationBitstream, Connection_RM3* requestingConnection) {
+		serializationBitstream->Write(GetName() + RakString(" SerializeConstructionRequestAccepted"));
 	}
 
-	virtual void DeserializeConstructionRequestAccepted(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* acceptingConnection) {
+	virtual void DeserializeConstructionRequestAccepted(BitStream* serializationBitstream, Connection_RM3* acceptingConnection) {
 		PrintStringInBitstream(serializationBitstream);
 	}
 
-	virtual void SerializeConstructionRequestRejected(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* requestingConnection) {
-		serializationBitstream->Write(GetName() + RakNet::RakString(" SerializeConstructionRequestRejected"));
+	virtual void SerializeConstructionRequestRejected(BitStream* serializationBitstream, Connection_RM3* requestingConnection) {
+		serializationBitstream->Write(GetName() + RakString(" SerializeConstructionRequestRejected"));
 	}
 
-	virtual void DeserializeConstructionRequestRejected(RakNet::BitStream* serializationBitstream, RakNet::Connection_RM3* rejectingConnection) {
+	virtual void DeserializeConstructionRequestRejected(BitStream* serializationBitstream, Connection_RM3* rejectingConnection) {
 		PrintStringInBitstream(serializationBitstream);
 	}
 
-	virtual void OnPoppedConnection(RakNet::Connection_RM3* droppedConnection) {
+	virtual void OnPoppedConnection(Connection_RM3* droppedConnection) {
 	}
 
 	void NotifyReplicaOfMessageDeliveryStatus(RakNetGUID guid, uint32_t receiptId, bool messageArrived) {
 	}
 
-	virtual RM3ConstructionState QueryConstruction(RakNet::Connection_RM3* destinationConnection, ReplicaManager3* replicaManager3) {
-		return QueryConstruction_ServerConstruction(destinationConnection, gGameOptions.fNetworkClient == 0);
+	virtual RM3ConstructionState QueryConstruction(Connection_RM3* destinationConnection, ReplicaManager3* replicaManager3) {
+		return QueryConstruction_ServerConstruction(destinationConnection, IS_SERVER);
 	}
 
-	virtual bool QueryRemoteConstruction(RakNet::Connection_RM3* sourceConnection) {
-		return QueryRemoteConstruction_ServerConstruction(sourceConnection, gGameOptions.fNetworkClient == 0);
+	virtual bool QueryRemoteConstruction(Connection_RM3* sourceConnection) {
+		return QueryRemoteConstruction_ServerConstruction(sourceConnection, IS_SERVER);
 	}
 
-	virtual RM3QuerySerializationResult QuerySerialization(RakNet::Connection_RM3* destinationConnection) {
-		return QuerySerialization_ServerSerializable(destinationConnection, gGameOptions.fNetworkClient == 0);
+	virtual RM3QuerySerializationResult QuerySerialization(Connection_RM3* destinationConnection) {
+		return QuerySerialization_ServerSerializable(destinationConnection, IS_SERVER);
 	}
 
-	virtual RM3ActionOnPopConnection QueryActionOnPopConnection(RakNet::Connection_RM3* droppedConnection) const {
+	virtual RM3ActionOnPopConnection QueryActionOnPopConnection(Connection_RM3* droppedConnection) const {
 		return QueryActionOnPopConnection_Server(droppedConnection);
 	}
 

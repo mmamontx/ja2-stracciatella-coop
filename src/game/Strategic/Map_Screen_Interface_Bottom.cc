@@ -1,3 +1,4 @@
+#include "Coop.h"
 #include "Directories.h"
 #include "Font.h"
 #include "Interface.h"

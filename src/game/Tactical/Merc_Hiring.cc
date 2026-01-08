@@ -159,7 +159,7 @@ INT8 HireMerc(MERC_HIRE_STRUCT& h)
 		if (IS_SERVER)
 		{
 			RPC_DATA_ADD_STRATEGIC_EVENT data;
-			RakNet::BitStream bs;
+			BitStream bs;
 
 			data.Kind = EVENT_DELAYED_HIRING_OF_MERC;
 			data.uiMinStamp = h.uiTimeTillMercArrives;
@@ -167,10 +167,13 @@ INT8 HireMerc(MERC_HIRE_STRUCT& h)
 
 			bs.WriteCompressed(data);
 
-			// Broadcasting so that every player would place the hired merc into the
-			// chopper - no matter whether the merc belongs to the player or not.
-			gRPC.Signal("AddStrategicEventRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED,
-				0, gPeerInterface->GetMyGUID(), true, false);
+			/*
+			 * Broadcasting so that every player would place the hired merc
+			 * into the chopper - no matter whether the merc belongs to the
+			 * player or not.
+			 */
+			gRPC.Signal("AddStrategicEventRPC", &bs, HIGH_PRIORITY,
+				RELIABLE_ORDERED, 0, gPeerInterface->GetMyGUID(), true, false);
 		}
 		// Specify that the merc is hired but has not arrived yet
 		p.bMercStatus = MERC_HIRED_BUT_NOT_ARRIVED_YET;

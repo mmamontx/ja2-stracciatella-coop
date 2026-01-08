@@ -3750,15 +3750,18 @@ void EnsureConsistentWeaponMode(SOLDIERTYPE* const s)
 // the cycle NORMAL ➔ BURST ➔ ATTACHED
 void ChangeWeaponMode(SOLDIERTYPE* const s)
 {
-	if (IS_CLIENT) {
-		RakNet::BitStream bs;
+	if (IS_CLIENT)
+	{
+		BitStream bs;
 		RPC_DATA_CHANGE_WEAPON_MODE data;
 
 		data.id = Soldier2ID(s);
 
 		bs.WriteCompressed(data);
 
-		gRPC.Signal("ChangeWeaponModeRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0), false, false);
+		gRPC.Signal("ChangeWeaponModeRPC", &bs, HIGH_PRIORITY,
+			RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0),
+			false, false);
 
 		return;
 	}

@@ -2504,8 +2504,11 @@ void RadioSightings(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const about, UINT8
 	SOLDIERTYPE* pOpponent;
 
 	// loop through every one of this guy's opponents
+	/*
+	 * Simplify the loop by removing the pointer iteration - for some reason it
+	 * causes indeterministic crashes when working with replicated objects.
+	 */
 	//for (iLoop = start; iLoop < end; iLoop++,pOpponent++,pPersOL++,pbPublOL++)
-	// Simplify the loop by removing the pointer iteration - for some reason it causes non-deterministic crashes when working with replicated objects
 	for (iLoop = start; iLoop < end; iLoop++,pPersOL++,pbPublOL++)
 	{
 		pOpponent = &GetMan(iLoop);

@@ -2,6 +2,7 @@
 #define __COOP_H
 
 #include "Game_Event_Hook.h"
+#include "GameSettings.h"
 #include "Handle_UI.h"
 #define GROUP GROUP_JA2
 #include "NetworkIDManager.h"
@@ -11,9 +12,9 @@
 #undef GROUP
 #include "Merc_Hiring.h"
 #include "MessageIdentifiers.h"
-#include "Soldier_Control.h"
-#include "Soldier_Profile_Type.h"
 
+
+using namespace RakNet;
 
 #define COOP_DEBUG // Comment out for releases
 #define COOP_DEBUG_NUM_MERCS_TOTAL      4
@@ -39,25 +40,22 @@
 #define REPLICA_PROFILE_INDEX TOTAL_SOLDIERS
 #define REPLICA_PLAYER_INDEX  (TOTAL_SOLDIERS + NUM_PROFILES)
 
-#define CURRENT_AP (gRPC_ItemPointerClick ? \
-	gRPC_ItemPointerClick->sCurrentActionPoints : gsCurrentActionPoints)
-#define FULL_TARGET (gRPC_ItemPointerClick ? \
-	ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget)
-#define ITEM_PTR (gRPC_ItemPointerClick ? \
+#define ITEM_PTR ((gRPC_ClientIndex != -1) ? \
 	gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer)
-#define ITEM_PTR_SOLDIER (gRPC_ItemPointerClick ? \
+#define ITEM_PTR_SOLDIER ((gRPC_ClientIndex != -1) ? \
 	gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)
-#define ITEM_PTR_SRC_SLOT (gRPC_ItemPointerClick ? \
+
+#define ITEM_PTR_CLICK_CURRENT_AP (gRPC_ItemPointerClick ? \
+	gRPC_ItemPointerClick->sCurrentActionPoints : gsCurrentActionPoints)
+#define ITEM_PTR_CLICK_FULL_TARGET (gRPC_ItemPointerClick ? \
+	ID2Soldier(gRPC_ItemPointerClick->tgt_id) : gUIFullTarget)
+#define ITEM_PTR_CLICK_SRC_SLOT (gRPC_ItemPointerClick ? \
 	gRPC_ItemPointerClick->ubHandPos : gbItemPointerSrcSlot)
 
 #define INV_CLICK_CURRENT_MERC (gRPC_InvClick ? \
 	ID2Soldier(gRPC_InvClick->id) : gpSMCurrentMerc)
 #define INV_CLICK_HAND_POS (gRPC_InvClick ? \
 	gRPC_InvClick->ubHandPos : uiHandPos)
-#define INV_CLICK_ITEM_PTR (gRPC_InvClick ? \
-	gpItemPointerRPC[gRPC_ClientIndex] : gpItemPointer)
-#define INV_CLICK_ITEM_PTR_SOLDIER (gRPC_InvClick ? \
-	gpItemPointerSoldierRPC[gRPC_ClientIndex] : gpItemPointerSoldier)
 #define INV_CLICK_SM_CURRENT_MERC (gRPC_InvClick ? \
 	pSMCurrentMercRPC : gpSMCurrentMerc)
 
@@ -98,6 +96,13 @@
 #define PLAYER_GUID(i) (IS_VALID_CLIENT ? \
     ((PLAYER*)(gReplicaList[REPLICA_PLAYER_INDEX + i]))->guid : \
     gPlayers[i].guid)
+
+#define BS_ARRAY_READ(array, size) \
+    for (int i = 0; i < size; i++) \
+		deserializeParameters->serializationBitstream[0].Read(array[i])
+#define BS_ARRAY_WRITE(array, size) \
+    for (int i = 0; i < size; i++) \
+		serializeParameters->outputBitstream[0].Write(array[i])
 
 // The following fields are initialized in the game init options screen
 struct NETWORK_OPTIONS
@@ -170,213 +175,7 @@ struct USER_PACKET_GAME_OPTIONS
 	UINT8	ubGameSaveMode;
 };
 
-struct PLAYER : public Replica3
-{
-	RakNetGUID guid;
-	ST::string name;
-	RakString rname;
-	BOOLEAN ready; // Ready button (on the strategic map in the very beginning)
-	BOOLEAN endturn;
-
-	bool operator == (const PLAYER& s) const { return guid == s.guid; }
-
-	virtual RakString GetName(void) const
-	{
-		return RakString("PLAYER");
-	}
-
-	virtual void WriteAllocationID(Connection_RM3* destinationConnection,
-		BitStream* allocationIdBitstream) const
-	{
-		allocationIdBitstream->Write(GetName());
-	}
-
-	void PrintStringInBitstream(BitStream* bs)
-	{
-		if (bs->GetNumberOfBitsUsed() == 0) return;
-		RakString rakString;
-		bs->Read(rakString);
-		//SLOGI("Receive: {}", rakString.C_String());
-	}
-
-	virtual void SerializeConstruction(BitStream* constructionBitstream,
-		Connection_RM3* destinationConnection)
-	{
-		constructionBitstream->Write(GetName() +
-			RakString(" SerializeConstruction"));
-	}
-
-	virtual bool DeserializeConstruction(BitStream* constructionBitstream,
-		Connection_RM3* sourceConnection)
-	{
-		PrintStringInBitstream(constructionBitstream);
-		return true;
-	}
-
-	virtual void SerializeDestruction(BitStream* destructionBitstream,
-		Connection_RM3* destinationConnection)
-	{
-		destructionBitstream->Write(GetName() +
-			RakString(" SerializeDestruction"));
-	}
-
-	virtual bool DeserializeDestruction(BitStream* destructionBitstream,
-		Connection_RM3* sourceConnection)
-	{
-		PrintStringInBitstream(destructionBitstream);
-		return true;
-	}
-
-	virtual void DeallocReplica(Connection_RM3* sourceConnection)
-	{
-		delete this;
-	}
-
-	virtual void OnUserReplicaPreSerializeTick(void)
-	{
-	}
-
-	void PreSerialize()
-	{
-		rname = name.c_str();
-	}
-
-	void PostDeserialize()
-	{
-		name = rname;
-	}
-
-	virtual RM3SerializationResult
-	Serialize(SerializeParameters* serializeParameters)
-	{
-		// If we are a client we don't serialize the objects back to the server
-		if (gGameOptions.fNetworkClient) return RM3SR_DO_NOT_SERIALIZE;
-
-		PreSerialize();
-
-		serializeParameters->outputBitstream[0].Write(guid);
-		serializeParameters->outputBitstream[0].Write(rname);
-		serializeParameters->outputBitstream[0].Write(ready);
-		serializeParameters->outputBitstream[0].Write(endturn);
-
-		return RM3SR_BROADCAST_IDENTICALLY;
-	}
-
-	virtual void Deserialize(DeserializeParameters* deserializeParameters)
-	{
-		deserializeParameters->serializationBitstream[0].Read(guid);
-		deserializeParameters->serializationBitstream[0].Read(rname);
-		deserializeParameters->serializationBitstream[0].Read(ready);
-		deserializeParameters->serializationBitstream[0].Read(endturn);
-
-		PostDeserialize();
-	}
-
-	virtual void
-	SerializeConstructionRequestAccepted(BitStream* serializationBitstream,
-		Connection_RM3* requestingConnection)
-	{
-		serializationBitstream->Write(GetName() +
-			RakString(" SerializeConstructionRequestAccepted"));
-	}
-
-	virtual void
-	DeserializeConstructionRequestAccepted(BitStream* serializationBitstream,
-		Connection_RM3* acceptingConnection)
-	{
-		PrintStringInBitstream(serializationBitstream);
-	}
-
-	virtual void
-	SerializeConstructionRequestRejected(BitStream* serializationBitstream,
-		Connection_RM3* requestingConnection)
-	{
-		serializationBitstream->Write(GetName() +
-			RakString(" SerializeConstructionRequestRejected"));
-	}
-
-	virtual void
-	DeserializeConstructionRequestRejected(BitStream* serializationBitstream,
-		Connection_RM3* rejectingConnection)
-	{
-		PrintStringInBitstream(serializationBitstream);
-	}
-
-	virtual void OnPoppedConnection(Connection_RM3* droppedConnection)
-	{
-	}
-
-	void NotifyReplicaOfMessageDeliveryStatus(RakNetGUID guid,
-		uint32_t receiptId, bool messageArrived)
-	{
-	}
-
-	virtual RM3ConstructionState
-	QueryConstruction(Connection_RM3* destinationConnection,
-		ReplicaManager3* replicaManager3)
-	{
-		return QueryConstruction_ServerConstruction(destinationConnection,
-			IS_SERVER);
-	}
-
-	virtual bool QueryRemoteConstruction(Connection_RM3* sourceConnection)
-	{
-		return QueryRemoteConstruction_ServerConstruction(sourceConnection,
-			IS_SERVER);
-	}
-
-	virtual RM3QuerySerializationResult
-	QuerySerialization(Connection_RM3* destinationConnection)
-	{
-		return QuerySerialization_ServerSerializable(destinationConnection,
-			IS_SERVER);
-	}
-
-	virtual RM3ActionOnPopConnection
-	QueryActionOnPopConnection(Connection_RM3* droppedConnection) const
-	{
-		return QueryActionOnPopConnection_Server(droppedConnection);
-	}
-};
-
-class CoopConnection : public Connection_RM3
-{
-public:
-
-	CoopConnection(const SystemAddress& _systemAddress, RakNetGUID _guid) :
-		Connection_RM3(_systemAddress, _guid) {}
-
-	virtual ~CoopConnection() {}
-
-	bool QueryGroupDownloadMessages(void) const { return true; }
-
-	virtual Replica3*
-	AllocReplica(BitStream* allocationId, ReplicaManager3* replicaManager3)
-	{
-		RakString typeName;
-		allocationId->Read(typeName);
-		if (typeName == "SOLDIERTYPE") return new SOLDIERTYPE;
-		if (typeName == "MERCPROFILESTRUCT") return new MERCPROFILESTRUCT;
-		if (typeName == "PLAYER") return new PLAYER;
-		return 0;
-	}
-
-protected:
-};
-
-class CoopReplicaManager : public ReplicaManager3
-{
-	virtual Connection_RM3* AllocConnection(const SystemAddress& systemAddress,
-		RakNetGUID rakNetGUID) const
-	{
-		return new CoopConnection(systemAddress, rakNetGUID);
-	}
-
-	virtual void DeallocConnection(Connection_RM3* connection) const
-	{
-		delete connection;
-	}
-};
+using SoldierID = UINT8;
 
 // AddCharacterToSquadRPC
 struct RPC_DATA_ADD_TO_SQUAD

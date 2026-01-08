@@ -3336,18 +3336,18 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	}
 
 	// This implies we have no path....
-	if ( CURRENT_AP == 0 )
+	if ( ITEM_PTR_CLICK_CURRENT_AP == 0 )
 	{
 		ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_UI_FEEDBACK, TacticalStr[ NO_PATH ] );
 		return( FALSE );
 	}
 
-	if (FULL_TARGET != NULL)
+	if (ITEM_PTR_CLICK_FULL_TARGET != NULL)
 	{
 		// Force mouse position to guy...
-		usMapPos = FULL_TARGET->sGridNo;
+		usMapPos = ITEM_PTR_CLICK_FULL_TARGET->sGridNo;
 
-		if (gAnimControl[FULL_TARGET->usAnimState].uiFlags & ANIM_MOVING)
+		if (gAnimControl[ITEM_PTR_CLICK_FULL_TARGET->usAnimState].uiFlags & ANIM_MOVING)
 		{
 			return( FALSE );
 		}
@@ -3355,9 +3355,9 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	}
 
 	// Check if we have APs....
-	if ( !EnoughPoints( ITEM_PTR_SOLDIER, CURRENT_AP, 0, TRUE ) )
+	if ( !EnoughPoints( ITEM_PTR_SOLDIER, ITEM_PTR_CLICK_CURRENT_AP, 0, TRUE ) )
 	{
-		if ( gfDontChargeAPsToPickup && CURRENT_AP == AP_PICKUP_ITEM )
+		if ( gfDontChargeAPsToPickup && ITEM_PTR_CLICK_CURRENT_AP == AP_PICKUP_ITEM )
 		{
 
 		}
@@ -3368,7 +3368,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	}
 
 	// SEE IF WE ARE OVER A TALKABLE GUY!
-	SOLDIERTYPE* const tgt = FULL_TARGET;
+	SOLDIERTYPE* const tgt = ITEM_PTR_CLICK_FULL_TARGET;
 	BOOLEAN fGiveItem = tgt != NULL && IsValidTalkableNPC(tgt, TRUE, FALSE, TRUE);
 
 	// OK, if different than default, change....
@@ -3425,9 +3425,9 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 
 		TempObject = *ITEM_PTR;
 
-		if ( ITEM_PTR_SRC_SLOT != NO_SLOT )
+		if ( ITEM_PTR_CLICK_SRC_SLOT != NO_SLOT )
 		{
-			PlaceObject( ITEM_PTR_SOLDIER, ITEM_PTR_SRC_SLOT, ITEM_PTR );
+			PlaceObject( ITEM_PTR_SOLDIER, ITEM_PTR_CLICK_SRC_SLOT, ITEM_PTR );
 			fInterfacePanelDirty = DIRTYLEVEL2;
 		}
 		/*
@@ -3463,16 +3463,16 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 						tgt->sGridNo, &ubDirection, &sAdjustedGridNo, TRUE,
 						FALSE);
 
-					if ( sActionGridNo != -1 && ITEM_PTR_SRC_SLOT != NO_SLOT )
+					if ( sActionGridNo != -1 && ITEM_PTR_CLICK_SRC_SLOT != NO_SLOT )
 					{
 							// Make a temp object for ammo...
 							SetTempObject(ITEM_PTR_SOLDIER, TempObject);
 
 							// Remove from soldier's inv...
-							RemoveObjs(&( ITEM_PTR_SOLDIER->inv[ ITEM_PTR_SRC_SLOT ] ), 1 );
+							RemoveObjs(&( ITEM_PTR_SOLDIER->inv[ ITEM_PTR_CLICK_SRC_SLOT ] ), 1 );
 
 							ITEM_PTR_SOLDIER->sPendingActionData2  = sAdjustedGridNo;
-							ITEM_PTR_SOLDIER->uiPendingActionData1 = ITEM_PTR_SRC_SLOT;
+							ITEM_PTR_SOLDIER->uiPendingActionData1 = ITEM_PTR_CLICK_SRC_SLOT;
 							ITEM_PTR_SOLDIER->bPendingActionData3  = ubDirection;
 							ITEM_PTR_SOLDIER->ubPendingActionAnimCount = 0;
 
@@ -3486,7 +3486,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 							}
 							else
 							{
-								EVENT_SoldierBeginReloadRobot( ITEM_PTR_SOLDIER, sAdjustedGridNo, ubDirection, ITEM_PTR_SRC_SLOT );
+								EVENT_SoldierBeginReloadRobot( ITEM_PTR_SOLDIER, sAdjustedGridNo, ubDirection, ITEM_PTR_CLICK_SRC_SLOT );
 							}
 
 							// OK, set UI
@@ -3503,7 +3503,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 				//if (gbItemPointerSrcSlot != NO_SLOT )
 				{
 					// Give guy this item.....
-					SoldierGiveItem(ITEM_PTR_SOLDIER, tgt, &TempObject, ITEM_PTR_SRC_SLOT);
+					SoldierGiveItem(ITEM_PTR_SOLDIER, tgt, &TempObject, ITEM_PTR_CLICK_SRC_SLOT);
 
 					gfDontChargeAPsToPickup = FALSE;
 					EndItemPointer( );
@@ -3522,7 +3522,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 
 	// CHECK IF WE ARE NOT ON THE SAME GRIDNO
 	if (sDist <= 1 &&
-			(FULL_TARGET == NULL || FULL_TARGET == ITEM_PTR_SOLDIER))
+			(ITEM_PTR_CLICK_FULL_TARGET == NULL || ITEM_PTR_CLICK_FULL_TARGET == ITEM_PTR_SOLDIER))
 	{
 		// Check some things here....
 		// 1 ) are we at the exact gridno that we stand on?
@@ -3597,7 +3597,7 @@ BOOLEAN HandleItemPointerClick( UINT16 usMapPos )
 	{
 		sGridNo = usMapPos;
 
-		SOLDIERTYPE* const pSoldier = FULL_TARGET;
+		SOLDIERTYPE* const pSoldier = ITEM_PTR_CLICK_FULL_TARGET;
 		if (sDist <= PASSING_ITEM_DISTANCE_OKLIFE &&
 			pSoldier != NULL &&
 			pSoldier->bTeam == OUR_TEAM &&

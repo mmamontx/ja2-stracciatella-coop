@@ -23,6 +23,7 @@ struct MERCPROFILESTRUCT;
 struct MercPopUpBox;
 struct OBJECTTYPE;
 struct PathSt;
+struct PLAYER;
 struct PopUpBox;
 struct REAL_OBJECT;
 struct SMOKEEFFECT;
@@ -32,6 +33,9 @@ struct STRUCTURE_FILE_REF;
 struct TILE_IMAGERY;
 struct VEHICLETYPE;
 struct VIDEO_OVERLAY;
+
+class CoopConnection;
+class CoopReplicaManager;
 
 using grams = int;
 

@@ -3,6 +3,7 @@
 #include "Campaign.h"
 #include "Cheats.h"
 #include "ContentManager.h"
+#include "Coop.h"
 #include "Creature_Spreading.h"
 #include "Cursor_Control.h"
 #include "Cursors.h"

@@ -369,7 +369,10 @@ void HandleSoldierAI( SOLDIERTYPE *pSoldier )
 	{
 		if (GetJA2Clock() - gTacticalStatus.uiTimeSinceMercAIStart > DEADLOCK_DELAY)
 		{
-			// For MP it is ignored since the networking logic utilizes thread locking calls
+			/*
+			 * It is a valid behavior since the networking logic suspends the
+			 * main thread.
+			 */
 			/*// ATE: Display message that deadlock occured...
 			SLOGI("Breaking Deadlock");
 			// If we are in beta version, also report message!

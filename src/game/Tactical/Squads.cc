@@ -206,7 +206,7 @@ BOOLEAN AddCharacterToSquad(SOLDIERTYPE* const s, INT8 const bSquadValue)
 		if (IS_SERVER)
 		{
 			// Broadcast this call to clients
-			RakNet::BitStream bs;
+			BitStream bs;
 			RPC_DATA_ADD_TO_SQUAD data;
 
 			data.id = Soldier2ID(s);
@@ -214,7 +214,8 @@ BOOLEAN AddCharacterToSquad(SOLDIERTYPE* const s, INT8 const bSquadValue)
 
 			bs.WriteCompressed(data);
 
-			gRPC.Signal("AddCharacterToSquadRPC", &bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0, gPeerInterface->GetMyGUID(), true, false);
+			gRPC.Signal("AddCharacterToSquadRPC", &bs, HIGH_PRIORITY,
+				RELIABLE_ORDERED, 0, gPeerInterface->GetMyGUID(), true, false);
 		}
 
 		return TRUE;

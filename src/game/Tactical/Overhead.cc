@@ -547,7 +547,6 @@ static BOOLEAN HandleAtNewGridNo(SOLDIERTYPE* pSoldier, BOOLEAN* pfKeepMoving);
 static void HandleCreatureTenseQuote(void);
 
 
-// TODO: Disable AI for the clients
 void ExecuteOverhead(void)
 {
 	BOOLEAN fKeepMoving;
@@ -4096,7 +4095,9 @@ void EnterCombatMode( UINT8 ubStartingTeam )
 			{
 				if (OkControllableMerc(s) && s->bOppCnt > 0)
 				{
-					if (s->bAssignment == player_squad) { // Disallow selecting mercs owned by other players
+					// Disallow selecting mercs owned by other players
+					if (s->bAssignment == player_squad)
+					{
 						SelectSoldier(s, SELSOLDIER_FORCE_RESELECT);
 					}
 				}
@@ -4105,10 +4106,13 @@ void EnterCombatMode( UINT8 ubStartingTeam )
 
 		StartPlayerTeamTurn( FALSE, TRUE );
 	}
-	else if (IS_SERVER)
+	else
 	{
-		// have to call EndTurn so that we freeze the interface etc
-		EndTurn( ubStartingTeam );
+		if (IS_SERVER)
+		{
+			// have to call EndTurn so that we freeze the interface etc
+			EndTurn(ubStartingTeam);
+		}
 	}
 
 
@@ -4182,10 +4186,12 @@ void ExitCombatMode( )
 	gTacticalStatus.uiTimeSinceLastOpplistDecay = std::max(UINT32(0), GetWorldTotalSeconds() - TIME_BETWEEN_RT_OPPLIST_DECAYS);
 	NonCombatDecayPublicOpplist( GetWorldTotalSeconds() );
 
-	if (IS_SERVER) {
+	if (IS_SERVER)
+	{
 		struct USER_PACKET_MESSAGE up_broadcast;
 		up_broadcast.id = ID_USER_PACKET_END_COMBAT;
-		gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast), MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
+		gPeerInterface->Send((char*)&up_broadcast, sizeof(up_broadcast),
+			MEDIUM_PRIORITY, RELIABLE, 0, UNASSIGNED_RAKNET_GUID, true);
 	}
 }
 

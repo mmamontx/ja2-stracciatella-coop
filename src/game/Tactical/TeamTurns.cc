@@ -413,10 +413,7 @@ void DisplayHiddenInterrupt( SOLDIERTYPE * pSoldier )
 	const MESSAGE_TYPES msg =
 		pSoldier->bTeam == MILITIA_TEAM ? MILITIA_INTERRUPT_MESSAGE:
 					COMPUTER_INTERRUPT_MESSAGE;
-	if (IS_SERVER)
-	{
-		AddTopMessage(msg);
-	}
+	if (IS_SERVER) AddTopMessage(msg);
 
 	gfHiddenInterrupt = FALSE;
 }
@@ -896,10 +893,7 @@ static void EndInterrupt(BOOLEAN fMarkInterruptOccurred)
 
 			}
 
-			if (IS_SERVER)
-			{
-				AddTopMessage(COMPUTER_TURN_MESSAGE);
-			}
+			if (IS_SERVER) AddTopMessage(COMPUTER_TURN_MESSAGE);
 
 			// Signal UI done enemy's turn
 			guiPendingOverrideEvent = LU_BEGINUILOCK;
