@@ -2,9 +2,7 @@
 #define __SOLDER_PROFILE_TYPE_H
 
 #include "Coop.h"
-#include "GameSettings.h"
 #include "Types.h"
-
 #include <string_theory/string>
 
 
@@ -184,8 +182,6 @@ struct MERCPROFILESTRUCT : public Replica3
 {
 	MERCPROFILESTRUCT()
 	{
-		/*zName = 0;
-		zNickname = 0;*/
 		bSex = 0;
 		ubCivilianGroup = 0;
 
@@ -194,9 +190,8 @@ struct MERCPROFILESTRUCT : public Replica3
 		ubMiscFlags3 = 0;
 
 		ubBodyType = 0;
-		uiBodyTypeSubFlags = 0; // BODY TYPE SUBSITUTIONS
-		/* Portrait */
-		ubFaceIndex = 0; // overwritten with the char's ID on profile load
+		uiBodyTypeSubFlags = 0;
+		ubFaceIndex = 0;
 		usEyesX = 0;
 		usEyesY = 0;
 		usMouthX = 0;
@@ -204,21 +199,16 @@ struct MERCPROFILESTRUCT : public Replica3
 		uiBlinkFrequency = 0;
 		uiExpressionFrequency = 0;
 
-		/*PANTS = 0;
-		VEST = 0;
-		SKIN = 0;
-		HAIR = 0;*/
-		/* stats */
 		bEvolution = 0;
 
 		bLifeMax = 0;
 		bLife = 0;
-		bAgility = 0; // agility (speed) value
-		bDexterity = 0; // dexterity (hand coord) value
+		bAgility = 0;
+		bDexterity = 0;
 		bStrength = 0;
 		bLeadership = 0;
 		bWisdom = 0;
-		bExpLevel = 0; // general experience level
+		bExpLevel = 0;
 		bMarksmanship = 0;
 		bExplosive = 0;
 		bMechanical = 0;
@@ -248,9 +238,10 @@ struct MERCPROFILESTRUCT : public Replica3
 		sMedicalGain = 0;
 		bMedicalDelta = 0;
 
-		for (int i = 0; i < 12; i++) {
-			usStatChangeChances[i] = 0; // used strictly for balancing, never shown!
-			usStatChangeSuccesses[i] = 0; // used strictly for balancing, never shown!
+		for (int i = 0; i < 12; i++)
+		{
+			usStatChangeChances[i] = 0;
+			usStatChangeSuccesses[i] = 0;
 		}
 
 		bPersonalityTrait = 0;
@@ -259,54 +250,55 @@ struct MERCPROFILESTRUCT : public Replica3
 		bAttitude = 0;
 		bSexist = 0;
 
-		/* Contract */
-		bMercStatus = 0; //The status of the merc. If negative, see flags at the top of this file. Positive: The number of days the merc is away for. 0: Not hired but ready to be.
+		bMercStatus = 0;
 		bReputationTolerance = 0;
 		bDeathRate = 0;
-		uiDayBecomesAvailable = 0; //day the merc will be available. used with the bMercStatus
+		uiDayBecomesAvailable = 0;
 		sSalary = 0;
 		uiWeeklySalary = 0;
 		uiBiWeeklySalary = 0;
-		bMedicalDeposit = 0; // Is medical deposit required?
+		bMedicalDeposit = 0;
 		sMedicalDepositAmount = 0;
-		iMercMercContractLength = 0; //Used for MERC mercs, specifies how many days the merc has gone since last page
+		iMercMercContractLength = 0;
 		usOptionalGearCost = 0;
 		ubSuspiciousDeath = 0;
-		ubDaysOfMoraleHangover = 0; // used only when merc leaves team while having poor morale
-		/* Locations */
+		ubDaysOfMoraleHangover = 0;
 		sSector = 0;
-		sGridNo = 0; // The Gridno the NPC was in before leaving the sector
+		sGridNo = 0;
 		sPreCombatGridNo = 0;
 		ubStrategicInsertionCode = 0;
 		usStrategicInsertionData = 0;
-		fUseProfileInsertionInfo = 0; // Set to various flags, ( contained in TacticalSave.h )
+		fUseProfileInsertionInfo = 0;
 		bTown = 0;
 		bTownAttachment = 0;
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < 2; i++)
+		{
 			ubRoomRangeStart[i] = 0;
 			ubRoomRangeEnd[i] = 0;
 		}
 
-		for (int i = 0; i < 5; i++) {
-			bBuddy[i] = 0; // Only indices 0, 1, 2 are used. Contain id's for friend1, friend2 and eventual friend respectively
-			bHated[i] = 0; // Only indices 0, 1, 2 are used. Contain id's for enemy1, enemy2 and eventual enemy respectively
-			bHatedCount[i] = 0; // Only indices 0, 1, 2 are used. Contain remaining decrements till contract termination due to an enemy present on the team
-			bHatedTime[i] = 0; // Only indices 0, 1, 2 are used. Contain decrements till contract termination due to an enemy present on the team
+		for (int i = 0; i < 5; i++)
+		{
+			bBuddy[i] = 0;
+			bHated[i] = 0;
+			bHatedCount[i] = 0;
+			bHatedTime[i] = 0;
 		}
-		bLearnToLike = 0; // eventual friend's id
-		bLearnToLikeCount = 0; // remaining decrements till the eventual friend becomes an actual friend
-		bLearnToLikeTime = 0; // how many decrements till the eventual friend becomes an actual friend
-		bLearnToHate = 0; // eventual enemy's id
-		bLearnToHateCount = 0; // remaining decrements till the eventual enemy becomes an actual enemy
-		bLearnToHateTime = 0; // how many decrements till the eventual enemy becomes an actual enemy
-		// Flags used for the precedent to repeating oneself in Contract negotiations. Used for quote 80 - ~107. Gets reset every day
+		bLearnToLike = 0;
+		bLearnToLikeCount = 0;
+		bLearnToLikeTime = 0;
+		bLearnToHate = 0;
+		bLearnToHateCount = 0;
+		bLearnToHateTime = 0;
 		ubTimeTillNextHatedComplaint = 0;
 
-		for (int i = 0; i < 75; i++) {
+		for (int i = 0; i < 75; i++)
+		{
 			bMercOpinion[i] = 0;
 		}
 
-		for (int i = 0; i < 19; i++) {
+		for (int i = 0; i < 19; i++)
+		{
 			inv[i] = 0;
 			bInvNumber[i] = 0;
 			bInvStatus[i] = 0;
@@ -316,12 +308,10 @@ struct MERCPROFILESTRUCT : public Replica3
 		bArmourAttractiveness = 0;
 		bMainGunAttractiveness = 0;
 
-		iBalance = 0; // if negative the player owes money to this NPC (e.g. for Skyrider's services)
-		ubNumTimesDrugUseInLifetime = 0; // The # times a drug has been used in the player's lifetime...
-		/* Specific quest or script related */
-		bNPCData = 0; // NPC specific
-		bNPCData2 = 0; // NPC specific
-		/* Dialogue and script records */
+		iBalance = 0;
+		ubNumTimesDrugUseInLifetime = 0;
+		bNPCData = 0;
+		bNPCData2 = 0;
 		ubQuoteRecord = 0;
 		ubLastQuoteSaid = 0;
 		uiPrecedentQuoteSaid = 0;
@@ -333,16 +323,18 @@ struct MERCPROFILESTRUCT : public Replica3
 		bThreatenDefaultResponseUsedRecently = 0;
 
 		bApproached = 0;
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < 4; i++)
+		{
 			usApproachFactor[i] = 0;
 			ubApproachVal[i] = 0;
 		}
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 4; j++) {
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 4; j++)
+			{
 				ubApproachMod[i][j] = 0;
 			}
 		}
-		/* Statistics */
 		usKills = 0;
 		usAssists = 0;
 		usShotsFired = 0;
@@ -350,21 +342,22 @@ struct MERCPROFILESTRUCT : public Replica3
 		usBattlesFought = 0;
 		usTimesWounded = 0;
 		usTotalDaysServed = 0;
-		uiTotalCostToDate = 0; // The total amount of money that has been paid to the merc for their salary
+		uiTotalCostToDate = 0;
 
-		bSectorZ = 0; // unused
-		bRace = 0; // unused
-		bRacist = 0; // unused
-		bNationality = 0; // unused
-		bAppearance = 0; // unused
-		bAppearanceCareLevel = 0; // unused
-		bRefinement = 0; // unused
-		bRefinementCareLevel = 0; // unused
-		bHatedNationality = 0; // unused
-		bHatedNationalityCareLevel = 0; // unused
+		bSectorZ = 0;
+		bRace = 0;
+		bRacist = 0;
+		bNationality = 0;
+		bAppearance = 0;
+		bAppearanceCareLevel = 0;
+		bRefinement = 0;
+		bRefinementCareLevel = 0;
+		bHatedNationality = 0;
+		bHatedNationalityCareLevel = 0;
 	}
 
-	MERCPROFILESTRUCT& MERCPROFILESTRUCT::operator =(const MERCPROFILESTRUCT& other)
+	MERCPROFILESTRUCT&
+	MERCPROFILESTRUCT::operator =(const MERCPROFILESTRUCT& other)
 	{
 		zName = other.zName.c_str();
 		zNickname = other.zNickname.c_str();
@@ -376,9 +369,8 @@ struct MERCPROFILESTRUCT : public Replica3
 		ubMiscFlags3 = other.ubMiscFlags3;
 
 		ubBodyType = other.ubBodyType;
-		uiBodyTypeSubFlags = other.uiBodyTypeSubFlags; // BODY TYPE SUBSITUTIONS
-		/* Portrait */
-		ubFaceIndex = other.ubFaceIndex; // overwritten with the char's ID on profile load
+		uiBodyTypeSubFlags = other.uiBodyTypeSubFlags;
+		ubFaceIndex = other.ubFaceIndex;
 		usEyesX = other.usEyesX;
 		usEyesY = other.usEyesY;
 		usMouthX = other.usMouthX;
@@ -390,17 +382,16 @@ struct MERCPROFILESTRUCT : public Replica3
 		VEST = other.VEST.c_str();
 		SKIN = other.SKIN.c_str();
 		HAIR = other.HAIR.c_str();
-		/* stats */
 		bEvolution = other.bEvolution;
 
 		bLifeMax = other.bLifeMax;
 		bLife = other.bLife;
-		bAgility = other.bAgility; // agility (speed) value
-		bDexterity = other.bDexterity; // dexterity (hand coord) value
+		bAgility = other.bAgility;
+		bDexterity = other.bDexterity;
 		bStrength = other.bStrength;
 		bLeadership = other.bLeadership;
 		bWisdom = other.bWisdom;
-		bExpLevel = other.bExpLevel;  // general experience level
+		bExpLevel = other.bExpLevel;
 		bMarksmanship = other.bMarksmanship;
 		bExplosive = other.bExplosive;
 		bMechanical = other.bMechanical;
@@ -430,9 +421,10 @@ struct MERCPROFILESTRUCT : public Replica3
 		sMedicalGain = other.sMedicalGain;
 		bMedicalDelta = other.bMedicalDelta;
 
-		for (int i = 0; i < 12; i++) {
-			usStatChangeChances[i] = other.usStatChangeChances[i]; // used strictly for balancing, never shown!
-			usStatChangeSuccesses[i] = other.usStatChangeSuccesses[i]; // used strictly for balancing, never shown!
+		for (int i = 0; i < 12; i++)
+		{
+			usStatChangeChances[i] = other.usStatChangeChances[i];
+			usStatChangeSuccesses[i] = other.usStatChangeSuccesses[i];
 		}
 
 		bPersonalityTrait = other.bPersonalityTrait;
@@ -441,54 +433,55 @@ struct MERCPROFILESTRUCT : public Replica3
 		bAttitude = other.bAttitude;
 		bSexist = other.bSexist;
 
-		/* Contract */
-		bMercStatus = other.bMercStatus; //The status of the merc. If negative, see flags at the top of this file. Positive: The number of days the merc is away for. 0: Not hired but ready to be.
+		bMercStatus = other.bMercStatus;
 		bReputationTolerance = other.bReputationTolerance;
 		bDeathRate = other.bDeathRate;
-		uiDayBecomesAvailable = other.uiDayBecomesAvailable; //day the merc will be available. used with the bMercStatus
+		uiDayBecomesAvailable = other.uiDayBecomesAvailable;
 		sSalary = other.sSalary;
 		uiWeeklySalary = other.uiWeeklySalary;
 		uiBiWeeklySalary = other.uiBiWeeklySalary;
-		bMedicalDeposit = other.bMedicalDeposit; // Is medical deposit required?
+		bMedicalDeposit = other.bMedicalDeposit;
 		sMedicalDepositAmount = other.sMedicalDepositAmount;
-		iMercMercContractLength = other.iMercMercContractLength; //Used for MERC mercs, specifies how many days the merc has gone since last page
+		iMercMercContractLength = other.iMercMercContractLength;
 		usOptionalGearCost = other.usOptionalGearCost;
 		ubSuspiciousDeath = other.ubSuspiciousDeath;
-		ubDaysOfMoraleHangover = other.ubDaysOfMoraleHangover; // used only when merc leaves team while having poor morale
-		/* Locations */
+		ubDaysOfMoraleHangover = other.ubDaysOfMoraleHangover;
 		sSector = other.sSector;
-		sGridNo = other.sGridNo; // The Gridno the NPC was in before leaving the sector
+		sGridNo = other.sGridNo;
 		sPreCombatGridNo = other.sPreCombatGridNo;
 		ubStrategicInsertionCode = other.ubStrategicInsertionCode;
 		usStrategicInsertionData = other.usStrategicInsertionData;
-		fUseProfileInsertionInfo = other.fUseProfileInsertionInfo; // Set to various flags, ( contained in TacticalSave.h )
+		fUseProfileInsertionInfo = other.fUseProfileInsertionInfo;
 		bTown = other.bTown;
 		bTownAttachment = other.bTownAttachment;
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < 2; i++)
+		{
 			ubRoomRangeStart[i] = other.ubRoomRangeStart[i];
 			ubRoomRangeEnd[i] = other.ubRoomRangeEnd[i];
 		}
 
-		for (int i = 0; i < 5; i++) {
-			bBuddy[i] = other.bBuddy[i]; // Only indices 0, 1, 2 are used. Contain id's for friend1, friend2 and eventual friend respectively
-			bHated[i] = other.bHated[i]; // Only indices 0, 1, 2 are used. Contain id's for enemy1, enemy2 and eventual enemy respectively
-			bHatedCount[i] = other.bHatedCount[i]; // Only indices 0, 1, 2 are used. Contain remaining decrements till contract termination due to an enemy present on the team
-			bHatedTime[i] = other.bHatedTime[i]; // Only indices 0, 1, 2 are used. Contain decrements till contract termination due to an enemy present on the team
+		for (int i = 0; i < 5; i++)
+		{
+			bBuddy[i] = other.bBuddy[i];
+			bHated[i] = other.bHated[i];
+			bHatedCount[i] = other.bHatedCount[i];
+			bHatedTime[i] = other.bHatedTime[i];
 		}
-		bLearnToLike = other.bLearnToLike; // eventual friend's id
-		bLearnToLikeCount = other.bLearnToLikeCount; // remaining decrements till the eventual friend becomes an actual friend
-		bLearnToLikeTime = other.bLearnToLikeTime; // how many decrements till the eventual friend becomes an actual friend
-		bLearnToHate = other.bLearnToHate; // eventual enemy's id
-		bLearnToHateCount = other.bLearnToHateCount; // remaining decrements till the eventual enemy becomes an actual enemy
-		bLearnToHateTime = other.bLearnToHateTime; // how many decrements till the eventual enemy becomes an actual enemy
-		// Flags used for the precedent to repeating oneself in Contract negotiations. Used for quote 80 - ~107. Gets reset every day
+		bLearnToLike = other.bLearnToLike;
+		bLearnToLikeCount = other.bLearnToLikeCount;
+		bLearnToLikeTime = other.bLearnToLikeTime;
+		bLearnToHate = other.bLearnToHate;
+		bLearnToHateCount = other.bLearnToHateCount;
+		bLearnToHateTime = other.bLearnToHateTime;
 		ubTimeTillNextHatedComplaint = other.ubTimeTillNextHatedComplaint;
 
-		for (int i = 0; i < 75; i++) {
+		for (int i = 0; i < 75; i++)
+		{
 			bMercOpinion[i] = other.bMercOpinion[i];
 		}
 
-		for (int i = 0; i < 19; i++) {
+		for (int i = 0; i < 19; i++)
+		{
 			inv[i] = other.inv[i];
 			bInvNumber[i] = other.bInvNumber[i];
 			bInvStatus[i] = other.bInvStatus[i];
@@ -498,12 +491,10 @@ struct MERCPROFILESTRUCT : public Replica3
 		bArmourAttractiveness = other.bArmourAttractiveness;
 		bMainGunAttractiveness = other.bMainGunAttractiveness;
 
-		iBalance = other.iBalance; // if negative the player owes money to this NPC (e.g. for Skyrider's services)
-		ubNumTimesDrugUseInLifetime = other.ubNumTimesDrugUseInLifetime; // The # times a drug has been used in the player's lifetime...
-		/* Specific quest or script related */
-		bNPCData = other.bNPCData; // NPC specific
-		bNPCData2 = other.bNPCData2; // NPC specific
-		/* Dialogue and script records */
+		iBalance = other.iBalance;
+		ubNumTimesDrugUseInLifetime = other.ubNumTimesDrugUseInLifetime;
+		bNPCData = other.bNPCData;
+		bNPCData2 = other.bNPCData2;
 		ubQuoteRecord = other.ubQuoteRecord;
 		ubLastQuoteSaid = other.ubLastQuoteSaid;
 		uiPrecedentQuoteSaid = other.uiPrecedentQuoteSaid;
@@ -515,16 +506,18 @@ struct MERCPROFILESTRUCT : public Replica3
 		bThreatenDefaultResponseUsedRecently = other.bThreatenDefaultResponseUsedRecently;
 
 		bApproached = other.bApproached;
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < 4; i++)
+		{
 			usApproachFactor[i] = other.usApproachFactor[i];
 			ubApproachVal[i] = other.ubApproachVal[i];
 		}
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 4; j++) {
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 4; j++)
+			{
 				ubApproachMod[i][j] = other.ubApproachMod[i][j];
 			}
 		}
-		/* Statistics */
 		usKills = other.usKills;
 		usAssists = other.usAssists;
 		usShotsFired = other.usShotsFired;
@@ -532,18 +525,18 @@ struct MERCPROFILESTRUCT : public Replica3
 		usBattlesFought = other.usBattlesFought;
 		usTimesWounded = other.usTimesWounded;
 		usTotalDaysServed = other.usTotalDaysServed;
-		uiTotalCostToDate = other.uiTotalCostToDate; // The total amount of money that has been paid to the merc for their salary
+		uiTotalCostToDate = other.uiTotalCostToDate;
 
-		bSectorZ = other.bSectorZ; // unused
-		bRace = other.bRace; // unused
-		bRacist = other.bRacist; // unused
-		bNationality = other.bNationality; // unused
-		bAppearance = other.bAppearance; // unused
-		bAppearanceCareLevel = other.bAppearanceCareLevel; // unused
-		bRefinement = other.bRefinement; // unused
-		bRefinementCareLevel = other.bRefinementCareLevel; // unused
-		bHatedNationality = other.bHatedNationality; // unused
-		bHatedNationalityCareLevel = other.bHatedNationalityCareLevel; // unused
+		bSectorZ = other.bSectorZ;
+		bRace = other.bRace;
+		bRacist = other.bRacist;
+		bNationality = other.bNationality;
+		bAppearance = other.bAppearance;
+		bAppearanceCareLevel = other.bAppearanceCareLevel;
+		bRefinement = other.bRefinement;
+		bRefinementCareLevel = other.bRefinementCareLevel;
+		bHatedNationality = other.bHatedNationality;
+		bHatedNationalityCareLevel = other.bHatedNationalityCareLevel;
 
 		return *this;
 	}
@@ -553,58 +546,80 @@ struct MERCPROFILESTRUCT : public Replica3
 		*this = other;
 	}
 
-	virtual RakString GetName(void) const { return RakString("MERCPROFILESTRUCT"); }
+	virtual RakString GetName(void) const
+	{
+		return RakString("MERCPROFILESTRUCT");
+	}
 
-	virtual void WriteAllocationID(Connection_RM3* destinationConnection, BitStream* allocationIdBitstream) const {
+	virtual void WriteAllocationID(Connection_RM3* destinationConnection,
+		BitStream* allocationIdBitstream) const
+	{
 		allocationIdBitstream->Write(GetName());
 	}
 
 	void PrintStringInBitstream(BitStream* bs)
 	{
-		if (bs->GetNumberOfBitsUsed() == 0)
-			return;
+		if (bs->GetNumberOfBitsUsed() == 0) return;
 		RakString rakString;
 		bs->Read(rakString);
-		//printf("Receive: %s\n", rakString.C_String());
+		//SLOGI("Receive: {}", rakString.C_String());
 	}
 
-	virtual void SerializeConstruction(BitStream* constructionBitstream, Connection_RM3* destinationConnection) {
-
-		constructionBitstream->Write(GetName() + RakString(" SerializeConstruction"));
+	virtual void SerializeConstruction(BitStream* constructionBitstream,
+		Connection_RM3* destinationConnection)
+	{
+		constructionBitstream->Write(GetName() +
+			RakString(" SerializeConstruction"));
 	}
 
-	virtual bool DeserializeConstruction(BitStream* constructionBitstream, Connection_RM3* sourceConnection) {
+	virtual bool DeserializeConstruction(BitStream* constructionBitstream,
+		Connection_RM3* sourceConnection)
+	{
 		PrintStringInBitstream(constructionBitstream);
 		return true;
 	}
 
-	virtual void SerializeDestruction(BitStream* destructionBitstream, Connection_RM3* destinationConnection) {
-
-		destructionBitstream->Write(GetName() + RakString(" SerializeDestruction"));
-
+	virtual void SerializeDestruction(BitStream* destructionBitstream,
+		Connection_RM3* destinationConnection)
+	{
+		destructionBitstream->Write(GetName() +
+			RakString(" SerializeDestruction"));
 	}
 
-	virtual bool DeserializeDestruction(BitStream* destructionBitstream, Connection_RM3* sourceConnection) {
+	virtual bool DeserializeDestruction(BitStream* destructionBitstream,
+		Connection_RM3* sourceConnection)
+	{
 		PrintStringInBitstream(destructionBitstream);
 		return true;
 	}
 
-	virtual void DeallocReplica(Connection_RM3* sourceConnection) {
+	virtual void DeallocReplica(Connection_RM3* sourceConnection)
+	{
 		delete this;
 	}
 
-	/// Overloaded Replica3 function
-	virtual void OnUserReplicaPreSerializeTick(void) {
+	virtual void OnUserReplicaPreSerializeTick(void)
+	{
 	}
 
-	virtual RM3SerializationResult Serialize(SerializeParameters* serializeParameters) {
-		if (IS_CLIENT) // If we are client we don't serialize objects back to server
-			return RM3SR_DO_NOT_SERIALIZE;
-		else
-			PreSerialize();
+	void PreSerialize()
+	{
+		rzName = zName.c_str();
+		rzNickname = zNickname.c_str();
+		rPANTS = PANTS.c_str();
+		rVEST = VEST.c_str();
+		rSKIN = SKIN.c_str();
+		rHAIR = HAIR.c_str();
+	}
 
-		/*serializeParameters->outputBitstream[0].Write(zName);
-		serializeParameters->outputBitstream[0].Write(zNickname);*/
+	virtual
+	RM3SerializationResult Serialize(SerializeParameters* serializeParameters)
+	{
+		// If we are a client we don't serialize the objects back to the server
+		if (IS_CLIENT) return RM3SR_DO_NOT_SERIALIZE;
+
+		PreSerialize();
+
 		serializeParameters->outputBitstream[0].Write(rzName);
 		serializeParameters->outputBitstream[0].Write(rzNickname);
 		serializeParameters->outputBitstream[0].Write(bSex);
@@ -615,9 +630,8 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(ubMiscFlags3);
 
 		serializeParameters->outputBitstream[0].Write(ubBodyType);
-		serializeParameters->outputBitstream[0].Write(uiBodyTypeSubFlags); // BODY TYPE SUBSITUTIONS
-		/* Portrait */
-		serializeParameters->outputBitstream[0].Write(ubFaceIndex); // overwritten with the char's ID on profile load
+		serializeParameters->outputBitstream[0].Write(uiBodyTypeSubFlags);
+		serializeParameters->outputBitstream[0].Write(ubFaceIndex);
 		serializeParameters->outputBitstream[0].Write(usEyesX);
 		serializeParameters->outputBitstream[0].Write(usEyesY);
 		serializeParameters->outputBitstream[0].Write(usMouthX);
@@ -625,25 +639,20 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(uiBlinkFrequency);
 		serializeParameters->outputBitstream[0].Write(uiExpressionFrequency);
 
-		/*serializeParameters->outputBitstream[0].Write(PANTS);
-		serializeParameters->outputBitstream[0].Write(VEST);
-		serializeParameters->outputBitstream[0].Write(SKIN);
-		serializeParameters->outputBitstream[0].Write(HAIR);*/
 		serializeParameters->outputBitstream[0].Write(rPANTS);
 		serializeParameters->outputBitstream[0].Write(rVEST);
 		serializeParameters->outputBitstream[0].Write(rSKIN);
 		serializeParameters->outputBitstream[0].Write(rHAIR);
-		/* stats */
 		serializeParameters->outputBitstream[0].Write(bEvolution);
 
 		serializeParameters->outputBitstream[0].Write(bLifeMax);
 		serializeParameters->outputBitstream[0].Write(bLife);
-		serializeParameters->outputBitstream[0].Write(bAgility); // agility (speed) value
-		serializeParameters->outputBitstream[0].Write(bDexterity); // dexterity (hand coord) value
+		serializeParameters->outputBitstream[0].Write(bAgility);
+		serializeParameters->outputBitstream[0].Write(bDexterity);
 		serializeParameters->outputBitstream[0].Write(bStrength);
 		serializeParameters->outputBitstream[0].Write(bLeadership);
 		serializeParameters->outputBitstream[0].Write(bWisdom);
-		serializeParameters->outputBitstream[0].Write(bExpLevel); // general experience level
+		serializeParameters->outputBitstream[0].Write(bExpLevel);
 		serializeParameters->outputBitstream[0].Write(bMarksmanship);
 		serializeParameters->outputBitstream[0].Write(bExplosive);
 		serializeParameters->outputBitstream[0].Write(bMechanical);
@@ -673,8 +682,8 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(sMedicalGain);
 		serializeParameters->outputBitstream[0].Write(bMedicalDelta);
 
-		BS_ARRAY_WRITE(usStatChangeChances, 12); // used strictly for balancing, never shown!
-		BS_ARRAY_WRITE(usStatChangeSuccesses, 12); // used strictly for balancing, never shown!
+		BS_ARRAY_WRITE(usStatChangeChances, 12);
+		BS_ARRAY_WRITE(usStatChangeSuccesses, 12);
 
 		serializeParameters->outputBitstream[0].Write(bPersonalityTrait);
 		serializeParameters->outputBitstream[0].Write(bSkillTrait);
@@ -682,43 +691,40 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(bAttitude);
 		serializeParameters->outputBitstream[0].Write(bSexist);
 
-		/* Contract */
-		serializeParameters->outputBitstream[0].Write(bMercStatus); //The status of the merc. If negative, see flags at the top of this file. Positive: The number of days the merc is away for. 0: Not hired but ready to be.
+		serializeParameters->outputBitstream[0].Write(bMercStatus);
 		serializeParameters->outputBitstream[0].Write(bReputationTolerance);
 		serializeParameters->outputBitstream[0].Write(bDeathRate);
-		serializeParameters->outputBitstream[0].Write(uiDayBecomesAvailable); //day the merc will be available. used with the bMercStatus
+		serializeParameters->outputBitstream[0].Write(uiDayBecomesAvailable);
 		serializeParameters->outputBitstream[0].Write(sSalary);
 		serializeParameters->outputBitstream[0].Write(uiWeeklySalary);
 		serializeParameters->outputBitstream[0].Write(uiBiWeeklySalary);
-		serializeParameters->outputBitstream[0].Write(bMedicalDeposit); // Is medical deposit required?
+		serializeParameters->outputBitstream[0].Write(bMedicalDeposit);
 		serializeParameters->outputBitstream[0].Write(sMedicalDepositAmount);
-		serializeParameters->outputBitstream[0].Write(iMercMercContractLength); //Used for MERC mercs, specifies how many days the merc has gone since last page
+		serializeParameters->outputBitstream[0].Write(iMercMercContractLength);
 		serializeParameters->outputBitstream[0].Write(usOptionalGearCost);
 		serializeParameters->outputBitstream[0].Write(ubSuspiciousDeath);
-		serializeParameters->outputBitstream[0].Write(ubDaysOfMoraleHangover); // used only when merc leaves team while having poor morale
-		/* Locations */
+		serializeParameters->outputBitstream[0].Write(ubDaysOfMoraleHangover);
 		serializeParameters->outputBitstream[0].Write(sSector);
-		serializeParameters->outputBitstream[0].Write(sGridNo); // The Gridno the NPC was in before leaving the sector
+		serializeParameters->outputBitstream[0].Write(sGridNo);
 		serializeParameters->outputBitstream[0].Write(sPreCombatGridNo);
 		serializeParameters->outputBitstream[0].Write(ubStrategicInsertionCode);
 		serializeParameters->outputBitstream[0].Write(usStrategicInsertionData);
-		serializeParameters->outputBitstream[0].Write(fUseProfileInsertionInfo); // Set to various flags, ( contained in TacticalSave.h )
+		serializeParameters->outputBitstream[0].Write(fUseProfileInsertionInfo);
 		serializeParameters->outputBitstream[0].Write(bTown);
 		serializeParameters->outputBitstream[0].Write(bTownAttachment);
 		BS_ARRAY_WRITE(ubRoomRangeStart, 2);
 		BS_ARRAY_WRITE(ubRoomRangeEnd, 2);
 
-		BS_ARRAY_WRITE(bBuddy, 5); // Only indices 0, 1, 2 are used. Contain id's for friend1, friend2 and eventual friend respectively
-		BS_ARRAY_WRITE(bHated, 5); // Only indices 0, 1, 2 are used. Contain id's for enemy1, enemy2 and eventual enemy respectively
-		BS_ARRAY_WRITE(bHatedCount, 5); // Only indices 0, 1, 2 are used. Contain remaining decrements till contract termination due to an enemy present on the team
-		BS_ARRAY_WRITE(bHatedTime, 5); // Only indices 0, 1, 2 are used. Contain decrements till contract termination due to an enemy present on the team
-		serializeParameters->outputBitstream[0].Write(bLearnToLike); // eventual friend's id
-		serializeParameters->outputBitstream[0].Write(bLearnToLikeCount); // remaining decrements till the eventual friend becomes an actual friend
-		serializeParameters->outputBitstream[0].Write(bLearnToLikeTime); // how many decrements till the eventual friend becomes an actual friend
-		serializeParameters->outputBitstream[0].Write(bLearnToHate); // eventual enemy's id
-		serializeParameters->outputBitstream[0].Write(bLearnToHateCount); // remaining decrements till the eventual enemy becomes an actual enemy
-		serializeParameters->outputBitstream[0].Write(bLearnToHateTime); // how many decrements till the eventual enemy becomes an actual enemy
-		// Flags used for the precedent to repeating oneself in Contract negotiations. Used for quote 80 - ~107. Gets reset every day
+		BS_ARRAY_WRITE(bBuddy, 5);
+		BS_ARRAY_WRITE(bHated, 5);
+		BS_ARRAY_WRITE(bHatedCount, 5);
+		BS_ARRAY_WRITE(bHatedTime, 5);
+		serializeParameters->outputBitstream[0].Write(bLearnToLike);
+		serializeParameters->outputBitstream[0].Write(bLearnToLikeCount);
+		serializeParameters->outputBitstream[0].Write(bLearnToLikeTime);
+		serializeParameters->outputBitstream[0].Write(bLearnToHate);
+		serializeParameters->outputBitstream[0].Write(bLearnToHateCount);
+		serializeParameters->outputBitstream[0].Write(bLearnToHateTime);
 		serializeParameters->outputBitstream[0].Write(ubTimeTillNextHatedComplaint);
 
 		BS_ARRAY_WRITE(bMercOpinion, 75);
@@ -731,12 +737,10 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(bArmourAttractiveness);
 		serializeParameters->outputBitstream[0].Write(bMainGunAttractiveness);
 
-		serializeParameters->outputBitstream[0].Write(iBalance); // if negative the player owes money to this NPC (e.g. for Skyrider's services)
-		serializeParameters->outputBitstream[0].Write(ubNumTimesDrugUseInLifetime); // The # times a drug has been used in the player's lifetime...
-		/* Specific quest or script related */
-		serializeParameters->outputBitstream[0].Write(bNPCData); // NPC specific
-		serializeParameters->outputBitstream[0].Write(bNPCData2); // NPC specific
-		/* Dialogue and script records */
+		serializeParameters->outputBitstream[0].Write(iBalance);
+		serializeParameters->outputBitstream[0].Write(ubNumTimesDrugUseInLifetime);
+		serializeParameters->outputBitstream[0].Write(bNPCData);
+		serializeParameters->outputBitstream[0].Write(bNPCData2);
 		serializeParameters->outputBitstream[0].Write(ubQuoteRecord);
 		serializeParameters->outputBitstream[0].Write(ubLastQuoteSaid);
 		serializeParameters->outputBitstream[0].Write(uiPrecedentQuoteSaid);
@@ -751,7 +755,6 @@ struct MERCPROFILESTRUCT : public Replica3
 		BS_ARRAY_WRITE(usApproachFactor, 4);
 		BS_ARRAY_WRITE(ubApproachVal, 4);
 		BS_ARRAY_WRITE(ubApproachMod, 3 * 4);
-		/* Statistics */
 		serializeParameters->outputBitstream[0].Write(usKills);
 		serializeParameters->outputBitstream[0].Write(usAssists);
 		serializeParameters->outputBitstream[0].Write(usShotsFired);
@@ -759,25 +762,24 @@ struct MERCPROFILESTRUCT : public Replica3
 		serializeParameters->outputBitstream[0].Write(usBattlesFought);
 		serializeParameters->outputBitstream[0].Write(usTimesWounded);
 		serializeParameters->outputBitstream[0].Write(usTotalDaysServed);
-		serializeParameters->outputBitstream[0].Write(uiTotalCostToDate); // The total amount of money that has been paid to the merc for their salary
+		serializeParameters->outputBitstream[0].Write(uiTotalCostToDate);
 
-		serializeParameters->outputBitstream[0].Write(bSectorZ); // unused
-		serializeParameters->outputBitstream[0].Write(bRace); // unused
-		serializeParameters->outputBitstream[0].Write(bRacist); // unused
-		serializeParameters->outputBitstream[0].Write(bNationality); // unused
-		serializeParameters->outputBitstream[0].Write(bAppearance); // unused
-		serializeParameters->outputBitstream[0].Write(bAppearanceCareLevel); // unused
-		serializeParameters->outputBitstream[0].Write(bRefinement); // unused
-		serializeParameters->outputBitstream[0].Write(bRefinementCareLevel); // unused
-		serializeParameters->outputBitstream[0].Write(bHatedNationality); // unused
-		serializeParameters->outputBitstream[0].Write(bHatedNationalityCareLevel); // unused
+		serializeParameters->outputBitstream[0].Write(bSectorZ);
+		serializeParameters->outputBitstream[0].Write(bRace);
+		serializeParameters->outputBitstream[0].Write(bRacist);
+		serializeParameters->outputBitstream[0].Write(bNationality);
+		serializeParameters->outputBitstream[0].Write(bAppearance);
+		serializeParameters->outputBitstream[0].Write(bAppearanceCareLevel);
+		serializeParameters->outputBitstream[0].Write(bRefinement);
+		serializeParameters->outputBitstream[0].Write(bRefinementCareLevel);
+		serializeParameters->outputBitstream[0].Write(bHatedNationality);
+		serializeParameters->outputBitstream[0].Write(bHatedNationalityCareLevel);
 
 		return RM3SR_BROADCAST_IDENTICALLY;
 	}
 
-	virtual void Deserialize(DeserializeParameters* deserializeParameters) {
-		/*deserializeParameters->serializationBitstream[0].Read(zName);
-		deserializeParameters->serializationBitstream[0].Read(zNickname);*/
+	virtual void Deserialize(DeserializeParameters* deserializeParameters)
+	{
 		deserializeParameters->serializationBitstream[0].Read(rzName);
 		deserializeParameters->serializationBitstream[0].Read(rzNickname);
 		deserializeParameters->serializationBitstream[0].Read(bSex);
@@ -788,9 +790,8 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(ubMiscFlags3);
 
 		deserializeParameters->serializationBitstream[0].Read(ubBodyType);
-		deserializeParameters->serializationBitstream[0].Read(uiBodyTypeSubFlags); // BODY TYPE SUBSITUTIONS
-		/* Portrait */
-		deserializeParameters->serializationBitstream[0].Read(ubFaceIndex); // overwritten with the char's ID on profile load
+		deserializeParameters->serializationBitstream[0].Read(uiBodyTypeSubFlags);
+		deserializeParameters->serializationBitstream[0].Read(ubFaceIndex);
 		deserializeParameters->serializationBitstream[0].Read(usEyesX);
 		deserializeParameters->serializationBitstream[0].Read(usEyesY);
 		deserializeParameters->serializationBitstream[0].Read(usMouthX);
@@ -798,25 +799,20 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(uiBlinkFrequency);
 		deserializeParameters->serializationBitstream[0].Read(uiExpressionFrequency);
 
-		/*deserializeParameters->serializationBitstream[0].Read(PANTS);
-		deserializeParameters->serializationBitstream[0].Read(VEST);
-		deserializeParameters->serializationBitstream[0].Read(SKIN);
-		deserializeParameters->serializationBitstream[0].Read(HAIR);*/
 		deserializeParameters->serializationBitstream[0].Read(rPANTS);
 		deserializeParameters->serializationBitstream[0].Read(rVEST);
 		deserializeParameters->serializationBitstream[0].Read(rSKIN);
 		deserializeParameters->serializationBitstream[0].Read(rHAIR);
-		/* stats */
 		deserializeParameters->serializationBitstream[0].Read(bEvolution);
 
 		deserializeParameters->serializationBitstream[0].Read(bLifeMax);
 		deserializeParameters->serializationBitstream[0].Read(bLife);
-		deserializeParameters->serializationBitstream[0].Read(bAgility); // agility (speed) value
-		deserializeParameters->serializationBitstream[0].Read(bDexterity); // dexterity (hand coord) value
+		deserializeParameters->serializationBitstream[0].Read(bAgility);
+		deserializeParameters->serializationBitstream[0].Read(bDexterity);
 		deserializeParameters->serializationBitstream[0].Read(bStrength);
 		deserializeParameters->serializationBitstream[0].Read(bLeadership);
 		deserializeParameters->serializationBitstream[0].Read(bWisdom);
-		deserializeParameters->serializationBitstream[0].Read(bExpLevel); // general experience level
+		deserializeParameters->serializationBitstream[0].Read(bExpLevel);
 		deserializeParameters->serializationBitstream[0].Read(bMarksmanship);
 		deserializeParameters->serializationBitstream[0].Read(bExplosive);
 		deserializeParameters->serializationBitstream[0].Read(bMechanical);
@@ -846,8 +842,8 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(sMedicalGain);
 		deserializeParameters->serializationBitstream[0].Read(bMedicalDelta);
 
-		BS_ARRAY_READ(usStatChangeChances, 12); // used strictly for balancing, never shown!
-		BS_ARRAY_READ(usStatChangeSuccesses, 12); // used strictly for balancing, never shown!
+		BS_ARRAY_READ(usStatChangeChances, 12);
+		BS_ARRAY_READ(usStatChangeSuccesses, 12);
 
 		deserializeParameters->serializationBitstream[0].Read(bPersonalityTrait);
 		deserializeParameters->serializationBitstream[0].Read(bSkillTrait);
@@ -855,43 +851,40 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(bAttitude);
 		deserializeParameters->serializationBitstream[0].Read(bSexist);
 
-		/* Contract */
-		deserializeParameters->serializationBitstream[0].Read(bMercStatus); //The status of the merc. If negative, see flags at the top of this file. Positive: The number of days the merc is away for. 0: Not hired but ready to be.
+		deserializeParameters->serializationBitstream[0].Read(bMercStatus);
 		deserializeParameters->serializationBitstream[0].Read(bReputationTolerance);
 		deserializeParameters->serializationBitstream[0].Read(bDeathRate);
-		deserializeParameters->serializationBitstream[0].Read(uiDayBecomesAvailable); //day the merc will be available. used with the bMercStatus
+		deserializeParameters->serializationBitstream[0].Read(uiDayBecomesAvailable);
 		deserializeParameters->serializationBitstream[0].Read(sSalary);
 		deserializeParameters->serializationBitstream[0].Read(uiWeeklySalary);
 		deserializeParameters->serializationBitstream[0].Read(uiBiWeeklySalary);
-		deserializeParameters->serializationBitstream[0].Read(bMedicalDeposit); // Is medical deposit required?
+		deserializeParameters->serializationBitstream[0].Read(bMedicalDeposit);
 		deserializeParameters->serializationBitstream[0].Read(sMedicalDepositAmount);
-		deserializeParameters->serializationBitstream[0].Read(iMercMercContractLength); //Used for MERC mercs, specifies how many days the merc has gone since last page
+		deserializeParameters->serializationBitstream[0].Read(iMercMercContractLength);
 		deserializeParameters->serializationBitstream[0].Read(usOptionalGearCost);
 		deserializeParameters->serializationBitstream[0].Read(ubSuspiciousDeath);
-		deserializeParameters->serializationBitstream[0].Read(ubDaysOfMoraleHangover); // used only when merc leaves team while having poor morale
-		/* Locations */
+		deserializeParameters->serializationBitstream[0].Read(ubDaysOfMoraleHangover);
 		deserializeParameters->serializationBitstream[0].Read(sSector);
-		deserializeParameters->serializationBitstream[0].Read(sGridNo); // The Gridno the NPC was in before leaving the sector
+		deserializeParameters->serializationBitstream[0].Read(sGridNo);
 		deserializeParameters->serializationBitstream[0].Read(sPreCombatGridNo);
 		deserializeParameters->serializationBitstream[0].Read(ubStrategicInsertionCode);
 		deserializeParameters->serializationBitstream[0].Read(usStrategicInsertionData);
-		deserializeParameters->serializationBitstream[0].Read(fUseProfileInsertionInfo); // Set to various flags, ( contained in TacticalSave.h )
+		deserializeParameters->serializationBitstream[0].Read(fUseProfileInsertionInfo);
 		deserializeParameters->serializationBitstream[0].Read(bTown);
 		deserializeParameters->serializationBitstream[0].Read(bTownAttachment);
 		BS_ARRAY_READ(ubRoomRangeStart, 2);
 		BS_ARRAY_READ(ubRoomRangeEnd, 2);
 
-		BS_ARRAY_READ(bBuddy, 5); // Only indices 0, 1, 2 are used. Contain id's for friend1, friend2 and eventual friend respectively
-		BS_ARRAY_READ(bHated, 5); // Only indices 0, 1, 2 are used. Contain id's for enemy1, enemy2 and eventual enemy respectively
-		BS_ARRAY_READ(bHatedCount, 5); // Only indices 0, 1, 2 are used. Contain remaining decrements till contract termination due to an enemy present on the team
-		BS_ARRAY_READ(bHatedTime, 5); // Only indices 0, 1, 2 are used. Contain decrements till contract termination due to an enemy present on the team
-		deserializeParameters->serializationBitstream[0].Read(bLearnToLike); // eventual friend's id
-		deserializeParameters->serializationBitstream[0].Read(bLearnToLikeCount); // remaining decrements till the eventual friend becomes an actual friend
-		deserializeParameters->serializationBitstream[0].Read(bLearnToLikeTime); // how many decrements till the eventual friend becomes an actual friend
-		deserializeParameters->serializationBitstream[0].Read(bLearnToHate); // eventual enemy's id
-		deserializeParameters->serializationBitstream[0].Read(bLearnToHateCount); // remaining decrements till the eventual enemy becomes an actual enemy
-		deserializeParameters->serializationBitstream[0].Read(bLearnToHateTime); // how many decrements till the eventual enemy becomes an actual enemy
-		// Flags used for the precedent to repeating oneself in Contract negotiations. Used for quote 80 - ~107. Gets reset every day
+		BS_ARRAY_READ(bBuddy, 5);
+		BS_ARRAY_READ(bHated, 5);
+		BS_ARRAY_READ(bHatedCount, 5);
+		BS_ARRAY_READ(bHatedTime, 5);
+		deserializeParameters->serializationBitstream[0].Read(bLearnToLike);
+		deserializeParameters->serializationBitstream[0].Read(bLearnToLikeCount);
+		deserializeParameters->serializationBitstream[0].Read(bLearnToLikeTime);
+		deserializeParameters->serializationBitstream[0].Read(bLearnToHate);
+		deserializeParameters->serializationBitstream[0].Read(bLearnToHateCount);
+		deserializeParameters->serializationBitstream[0].Read(bLearnToHateTime);
 		deserializeParameters->serializationBitstream[0].Read(ubTimeTillNextHatedComplaint);
 
 		BS_ARRAY_READ(bMercOpinion, 75);
@@ -904,12 +897,10 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(bArmourAttractiveness);
 		deserializeParameters->serializationBitstream[0].Read(bMainGunAttractiveness);
 
-		deserializeParameters->serializationBitstream[0].Read(iBalance); // if negative the player owes money to this NPC (e.g. for Skyrider's services)
-		deserializeParameters->serializationBitstream[0].Read(ubNumTimesDrugUseInLifetime); // The # times a drug has been used in the player's lifetime...
-		/* Specific quest or script related */
-		deserializeParameters->serializationBitstream[0].Read(bNPCData); // NPC specific
-		deserializeParameters->serializationBitstream[0].Read(bNPCData2); // NPC specific
-		/* Dialogue and script records */
+		deserializeParameters->serializationBitstream[0].Read(iBalance);
+		deserializeParameters->serializationBitstream[0].Read(ubNumTimesDrugUseInLifetime);
+		deserializeParameters->serializationBitstream[0].Read(bNPCData);
+		deserializeParameters->serializationBitstream[0].Read(bNPCData2);
 		deserializeParameters->serializationBitstream[0].Read(ubQuoteRecord);
 		deserializeParameters->serializationBitstream[0].Read(ubLastQuoteSaid);
 		deserializeParameters->serializationBitstream[0].Read(uiPrecedentQuoteSaid);
@@ -924,7 +915,6 @@ struct MERCPROFILESTRUCT : public Replica3
 		BS_ARRAY_READ(usApproachFactor, 4);
 		BS_ARRAY_READ(ubApproachVal, 4);
 		BS_ARRAY_READ(ubApproachMod, 3 * 4);
-		/* Statistics */
 		deserializeParameters->serializationBitstream[0].Read(usKills);
 		deserializeParameters->serializationBitstream[0].Read(usAssists);
 		deserializeParameters->serializationBitstream[0].Read(usShotsFired);
@@ -932,32 +922,24 @@ struct MERCPROFILESTRUCT : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(usBattlesFought);
 		deserializeParameters->serializationBitstream[0].Read(usTimesWounded);
 		deserializeParameters->serializationBitstream[0].Read(usTotalDaysServed);
-		deserializeParameters->serializationBitstream[0].Read(uiTotalCostToDate); // The total amount of money that has been paid to the merc for their salary
+		deserializeParameters->serializationBitstream[0].Read(uiTotalCostToDate);
 
-		deserializeParameters->serializationBitstream[0].Read(bSectorZ); // unused
-		deserializeParameters->serializationBitstream[0].Read(bRace); // unused
-		deserializeParameters->serializationBitstream[0].Read(bRacist); // unused
-		deserializeParameters->serializationBitstream[0].Read(bNationality); // unused
-		deserializeParameters->serializationBitstream[0].Read(bAppearance); // unused
-		deserializeParameters->serializationBitstream[0].Read(bAppearanceCareLevel); // unused
-		deserializeParameters->serializationBitstream[0].Read(bRefinement); // unused
-		deserializeParameters->serializationBitstream[0].Read(bRefinementCareLevel); // unused
-		deserializeParameters->serializationBitstream[0].Read(bHatedNationality); // unused
-		deserializeParameters->serializationBitstream[0].Read(bHatedNationalityCareLevel); // unused
+		deserializeParameters->serializationBitstream[0].Read(bSectorZ);
+		deserializeParameters->serializationBitstream[0].Read(bRace);
+		deserializeParameters->serializationBitstream[0].Read(bRacist);
+		deserializeParameters->serializationBitstream[0].Read(bNationality);
+		deserializeParameters->serializationBitstream[0].Read(bAppearance);
+		deserializeParameters->serializationBitstream[0].Read(bAppearanceCareLevel);
+		deserializeParameters->serializationBitstream[0].Read(bRefinement);
+		deserializeParameters->serializationBitstream[0].Read(bRefinementCareLevel);
+		deserializeParameters->serializationBitstream[0].Read(bHatedNationality);
+		deserializeParameters->serializationBitstream[0].Read(bHatedNationalityCareLevel);
 
 		PostDeserialize();
 	}
 
-	void PreSerialize() {
-		rzName = zName.c_str();
-		rzNickname = zNickname.c_str();
-		rPANTS = PANTS.c_str();
-		rVEST = VEST.c_str();
-		rSKIN = SKIN.c_str();
-		rHAIR = HAIR.c_str();
-	}
-
-	void PostDeserialize() {
+	void PostDeserialize()
+	{
 		zName = rzName;
 		zNickname = rzNickname;
 		PANTS = rPANTS;
@@ -966,41 +948,69 @@ struct MERCPROFILESTRUCT : public Replica3
 		HAIR = rHAIR;
 	}
 
-	virtual void SerializeConstructionRequestAccepted(BitStream* serializationBitstream, Connection_RM3* requestingConnection) {
-		serializationBitstream->Write(GetName() + RakString(" SerializeConstructionRequestAccepted"));
+	virtual void
+	SerializeConstructionRequestAccepted(BitStream* serializationBitstream,
+		Connection_RM3* requestingConnection)
+	{
+		serializationBitstream->Write(GetName() +
+			RakString(" SerializeConstructionRequestAccepted"));
 	}
 
-	virtual void DeserializeConstructionRequestAccepted(BitStream* serializationBitstream, Connection_RM3* acceptingConnection) {
+	virtual void
+	DeserializeConstructionRequestAccepted(BitStream* serializationBitstream,
+		Connection_RM3* acceptingConnection)
+	{
 		PrintStringInBitstream(serializationBitstream);
 	}
 
-	virtual void SerializeConstructionRequestRejected(BitStream* serializationBitstream, Connection_RM3* requestingConnection) {
-		serializationBitstream->Write(GetName() + RakString(" SerializeConstructionRequestRejected"));
+	virtual void
+	SerializeConstructionRequestRejected(BitStream* serializationBitstream,
+		Connection_RM3* requestingConnection)
+	{
+		serializationBitstream->Write(GetName() +
+			RakString(" SerializeConstructionRequestRejected"));
 	}
 
-	virtual void DeserializeConstructionRequestRejected(BitStream* serializationBitstream, Connection_RM3* rejectingConnection) {
+	virtual void
+	DeserializeConstructionRequestRejected(BitStream* serializationBitstream,
+		Connection_RM3* rejectingConnection)
+	{
 		PrintStringInBitstream(serializationBitstream);
 	}
 
-	virtual void OnPoppedConnection(Connection_RM3* droppedConnection) {
+	virtual void OnPoppedConnection(Connection_RM3* droppedConnection)
+	{
 	}
 
-	void NotifyReplicaOfMessageDeliveryStatus(RakNetGUID guid, uint32_t receiptId, bool messageArrived) {
+	void NotifyReplicaOfMessageDeliveryStatus(RakNetGUID guid,
+		uint32_t receiptId, bool messageArrived)
+	{
 	}
 
-	virtual RM3ConstructionState QueryConstruction(Connection_RM3* destinationConnection, ReplicaManager3* replicaManager3) {
-		return QueryConstruction_ServerConstruction(destinationConnection, IS_SERVER);
+	virtual RM3ConstructionState
+	QueryConstruction(Connection_RM3* destinationConnection,
+		ReplicaManager3* replicaManager3)
+	{
+		return QueryConstruction_ServerConstruction(destinationConnection,
+			IS_SERVER);
 	}
 
-	virtual bool QueryRemoteConstruction(Connection_RM3* sourceConnection) {
-		return QueryRemoteConstruction_ServerConstruction(sourceConnection, IS_SERVER);
+	virtual bool QueryRemoteConstruction(Connection_RM3* sourceConnection)
+	{
+		return QueryRemoteConstruction_ServerConstruction(sourceConnection,
+			IS_SERVER);
 	}
 
-	virtual RM3QuerySerializationResult QuerySerialization(Connection_RM3* destinationConnection) {
-		return QuerySerialization_ServerSerializable(destinationConnection, IS_SERVER);
+	virtual RM3QuerySerializationResult
+	QuerySerialization(Connection_RM3* destinationConnection)
+	{
+		return QuerySerialization_ServerSerializable(destinationConnection,
+			IS_SERVER);
 	}
 
-	virtual RM3ActionOnPopConnection QueryActionOnPopConnection(Connection_RM3* droppedConnection) const {
+	virtual RM3ActionOnPopConnection
+	QueryActionOnPopConnection(Connection_RM3* droppedConnection) const
+	{
 		return QueryActionOnPopConnection_Server(droppedConnection);
 	}
 

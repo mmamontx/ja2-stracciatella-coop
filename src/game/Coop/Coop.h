@@ -16,7 +16,7 @@
 
 using namespace RakNet;
 
-#define COOP_DEBUG // Comment out for releases
+//#define COOP_DEBUG // Comment out for releases
 #define COOP_DEBUG_NUM_MERCS_TOTAL      4
 #define COOP_DEBUG_NUM_MERCS_PER_PLAYER 2
 
