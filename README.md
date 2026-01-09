@@ -6,9 +6,9 @@ The goal of the project is to enable the original JA2 campaign walkthrough with 
 
 1. Install original Jagged Alliance 2 game on your computer.  Data files from the original game will be used by JA2-Stracciatella.
 
-2. [Download JA2-Stracciatella](http://ja2-stracciatella.github.io/download/) or [compile](COMPILATION.md) it from the cloned git repository. Follow instructions to point JA2S to the directory where the original game was installed during step 1.
+2. Download the latest release of this project. Move sti files to Data/Interface subdirectory of the original game.
 
-3. Download the latest release of this project. Move sti files to Data/Interface subdirectory of the original game. Run ja2.exe.
+3. Follow the [instructions](https://github.com/ja2-stracciatella/ja2-stracciatella?tab=readme-ov-file#with-the-optional-launcher) to point JA2S to the directory where the original game was installed during step 1.
 
 ## Changes to the original gameplay
 
