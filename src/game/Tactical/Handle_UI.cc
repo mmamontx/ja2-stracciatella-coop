@@ -637,7 +637,8 @@ ScreenID HandleTacticalUI(void)
 
 	// Check if UI mode has changed from previous event
 	if (gEvents[uiNewEvent].ChangeToUIMode != gCurrentUIMode &&
-		(gEvents[uiNewEvent].ChangeToUIMode != DONT_CHANGEMODE))
+		(gEvents[uiNewEvent].ChangeToUIMode != DONT_CHANGEMODE) &&
+		!(gRPC_Enable)) // Don't update gCurrentUIMode for RPCs
 	{
 		gEvents[ uiNewEvent ].uiMenuPreviousMode = gCurrentUIMode;
 
@@ -705,6 +706,8 @@ ScreenID HandleTacticalUI(void)
 			ResetMultiSelection( );
 		}
 	}
+
+	gRPC_Enable = FALSE;
 
 	return( ReturnVal );
 }
@@ -2413,7 +2416,21 @@ static void UIHandleMercAttack(SOLDIERTYPE* pSoldier, SOLDIERTYPE* pTargetSoldie
 	}
 
 
-	if (!(gTacticalStatus.uiFlags & INCOMBAT))
+	if (IS_SERVER && gRPC_Enable)
+	{
+		RPC_DATA_STANCE_CHANGE data;
+		BitStream bs;
+
+		data.id = Soldier2ID(pSoldier);
+
+		bs.WriteCompressed(data);
+
+		gRPC.Signal("HandleUICursorRTFeedbackRPC", &bs, HIGH_PRIORITY,
+			RELIABLE_ORDERED, 0,
+			gPeerInterface->GetSystemAddressFromGuid(gPlayers[pSoldier->ubPlayer].guid),
+			false, false);
+	}
+	else if (!(gTacticalStatus.uiFlags & INCOMBAT))
 	{
 		HandleUICursorRTFeedback( pSoldier );
 	}
@@ -3903,6 +3920,9 @@ static void SetMovementModeCursor(const SOLDIERTYPE* pSoldier)
 
 static void SetConfirmMovementModeCursor(SOLDIERTYPE* pSoldier, BOOLEAN fFromMove)
 {
+	// Don't update the cursor for RPCs
+	if (IS_SERVER && gRPC_Enable) return;
+
 	if (gTacticalStatus.uiFlags & INCOMBAT)
 	{
 		if ( gfUIAllMoveOn )

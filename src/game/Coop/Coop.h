@@ -16,11 +16,11 @@
 
 using namespace RakNet;
 
-//#define COOP_DEBUG // Comment out for releases
+#define COOP_DEBUG // Comment out for releases
 #define COOP_DEBUG_NUM_MERCS_TOTAL      4
 #define COOP_DEBUG_NUM_MERCS_PER_PLAYER 2
 
-#define ENEMY_ENABLED
+//#define ENEMY_ENABLED
 
 #define KEY_RETURN 13
 
@@ -363,6 +363,7 @@ void BtnStealthModeCallbackRPC(BitStream* bitStream, Packet* packet);
 void ChangeWeaponModeRPC(BitStream* bitStream, Packet* packet);
 void HandleEventRPC(BitStream* bitStream, Packet* packet);
 void HandleItemPointerClickRPC(BitStream* bitStream, Packet* packet);
+void HandleUICursorRTFeedbackRPC(BitStream* bitStream, Packet* packet);
 void HireMercRPC(BitStream* bitStream, Packet* packet);
 void SMInvClickCallbackPrimaryRPC(BitStream* bitStream, Packet* packet);
 void UIHandleSoldierStanceChangeRPC(BitStream* bitStream, Packet* packet);

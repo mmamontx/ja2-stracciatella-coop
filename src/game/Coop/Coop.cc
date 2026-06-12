@@ -17,6 +17,7 @@
 #include "Soldier_Profile.h"
 #include "Squads.h"
 #include "Strategic.h"
+#include "UI_Cursors.h"
 #include "Weapons.h"
 
 
@@ -45,7 +46,7 @@ RPC4 gRPC; // Single RPC plugin handle
  * In HandleTacticalUI() the server uses this variable to turn on remote events
  * when there is no local events for processing.
  */
-BOOLEAN gRPC_Enable = TRUE;
+BOOLEAN gRPC_Enable = FALSE;
 /*
  * In AddCharacterToSquad() the server uses this variable to check if it is
  * being executed as an RPC.
@@ -528,6 +529,17 @@ void HandleItemPointerClickRPC(BitStream* bitStream, Packet* packet)
 	gRPC_ItemPointerClick = NULL;
 
 	gRPC_ClientIndex = -1;
+}
+
+void HandleUICursorRTFeedbackRPC(BitStream* bitStream, Packet* packet)
+{
+	RPC_DATA_STANCE_CHANGE data;
+	int offset = bitStream->GetReadOffset();
+	bool read = bitStream->ReadCompressed(data);
+	RakAssert(read);
+
+	EXECUTE_WHILE_MAIN_SUSPENDED(
+		HandleUICursorRTFeedback(ID2Soldier(data.id)));
 }
 
 void HireMercRPC(BitStream* bitStream, Packet* packet)

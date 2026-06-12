@@ -508,6 +508,8 @@ static void NetworkInit()
 	gRPC.RegisterSlot("HandleEventRPC", HandleEventRPC, 0);
 	gRPC.RegisterSlot("HandleItemPointerClickRPC", HandleItemPointerClickRPC,
 		0);
+	gRPC.RegisterSlot("HandleUICursorRTFeedbackRPC",
+		HandleUICursorRTFeedbackRPC, 0);
 	gRPC.RegisterSlot("HireMercRPC", HireMercRPC, 0);
 	gRPC.RegisterSlot("SMInvClickCallbackPrimaryRPC",
 		SMInvClickCallbackPrimaryRPC, 0);

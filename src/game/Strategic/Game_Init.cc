@@ -356,7 +356,7 @@ void ReStartingGame()
 	NetworkShutdown();
 
 	// RPCs
-	gRPC_Enable = TRUE;
+	gRPC_Enable = FALSE;
 	gRPC_Squad = FALSE;
 	gRPC_Events.clear();
 	gRPC_ClientIndex = -1;
