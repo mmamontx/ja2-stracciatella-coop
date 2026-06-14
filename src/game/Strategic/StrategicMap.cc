@@ -574,7 +574,8 @@ void PrepareLoadedSector()
 
 	BeforePrepareSector();
 
-	if( !(gTacticalStatus.uiFlags & LOADING_SAVED_GAME ) )
+	// Don't add duplicated merc slots for clients
+	if( !(IS_CLIENT) && !(gTacticalStatus.uiFlags & LOADING_SAVED_GAME ) )
 	{
 		UpdateMercsInSector();
 	}

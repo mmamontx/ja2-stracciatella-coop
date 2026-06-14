@@ -554,9 +554,12 @@ ScreenID HandleTacticalUI(void)
 			case A_END_ACTION: // The crosshair cursor is de-activated
 			case A_ON_TERRAIN: // The crosshair cursor is activated
 			case C_WAIT_FOR_CONFIRM:
+			case CA_END_CONFIRM_ACTION:
+			case CA_ON_TERRAIN:
 			case HC_ON_TERRAIN: // The hand cursor is activated
 			case I_CHANGE_TO_IDLE:
 			case I_SELECT_MERC:
+			case LA_ENDUIOUTURNLOCK:
 			case LC_ON_TERRAIN:
 			case LC_CHANGE_TO_LOOK:
 			case LU_ENDUILOCK:

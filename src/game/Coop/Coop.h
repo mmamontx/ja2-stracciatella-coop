@@ -20,7 +20,7 @@ using namespace RakNet;
 #define COOP_DEBUG_NUM_MERCS_TOTAL      4
 #define COOP_DEBUG_NUM_MERCS_PER_PLAYER 2
 
-//#define ENEMY_ENABLED
+#define ENEMY_ENABLED
 
 #define KEY_RETURN 13
 
