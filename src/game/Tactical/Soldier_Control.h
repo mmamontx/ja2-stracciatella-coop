@@ -12,6 +12,7 @@
 #include "Coop.h"
 #include "Faces.h"
 #include "GameSettings.h"
+#include "Interface.h"
 #include "JA2Types.h"
 #include "Keys.h"
 #include "Overhead_Types.h"
@@ -1908,7 +1909,9 @@ struct SOLDIERTYPE : public Replica3
 		deserializeParameters->serializationBitstream[0].Read(bBleeding);
 		deserializeParameters->serializationBitstream[0].Read(bBreath);
 		deserializeParameters->serializationBitstream[0].Read(bBreathMax);
+		INT8 bStealthMode_prev = bStealthMode;
 		deserializeParameters->serializationBitstream[0].Read(bStealthMode);
+		if (bStealthMode != bStealthMode_prev) gfUIStanceDifferent = TRUE;
 
 		deserializeParameters->serializationBitstream[0].Read(sBreathRed);
 		deserializeParameters->serializationBitstream[0].Read(fDelayedMovement);

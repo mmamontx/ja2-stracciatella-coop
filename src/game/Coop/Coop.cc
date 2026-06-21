@@ -482,8 +482,14 @@ void BtnStealthModeCallbackRPC(BitStream* bitStream, Packet* packet)
 
 	SOLDIERTYPE* const s = ID2Soldier(data.id);
 
-	gpSMCurrentMerc->bStealthMode = !(s->bStealthMode);
-	gfUIStanceDifferent = TRUE;
+	// The logic below is a copy of BtnStealthModeCallback()
+	s->bStealthMode = !(s->bStealthMode);
+	/*
+	 * No need to update gfUIStanceDifferent for the server. The client will
+	 * set it on his side in the replication logic when it detects bStealthMode
+	 * change.
+	 */
+	//gfUIStanceDifferent = TRUE;
 	gfPlotNewMovement = TRUE;
 	fInterfacePanelDirty = DIRTYLEVEL2;
 }

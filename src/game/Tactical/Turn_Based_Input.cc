@@ -3283,13 +3283,36 @@ static void ToggleStealthMode(SOLDIERTYPE& s)
 	if (gsCurInterfacePanel == SM_PANEL && !giSMStealthButton->Enabled()) return;
 	// Either not in SM panel or the matching button is enabled
 
-	if (&s == gpSMCurrentMerc) gfUIStanceDifferent = TRUE;
+	INT8 bStealthMode = !s.bStealthMode;
 
-	gfPlotNewMovement    = TRUE;
-	fInterfacePanelDirty = DIRTYLEVEL2;
-	s.bStealthMode       = !s.bStealthMode;
+	if (IS_SERVER)
+	{
+		if (&s == gpSMCurrentMerc) gfUIStanceDifferent = TRUE;
 
-	ST::string msg = s.bStealthMode ? pMessageStrings[MSG_MERC_ON_STEALTHMODE] :
+		gfPlotNewMovement = TRUE;
+		fInterfacePanelDirty = DIRTYLEVEL2;
+		s.bStealthMode = bStealthMode;
+	}
+	else
+	{
+		BitStream bs;
+		RPC_DATA_STEALTH_MODE data;
+
+		data.id = Soldier2ID(&s);
+
+		bs.WriteCompressed(data);
+
+		/*
+		 * Leveraging BtnStealthModeCallback() logic, which is in practice the
+		 * same as ToogleStealthMode(), but without the message printed (see
+		 * below).
+		 */
+		gRPC.Signal("BtnStealthModeCallbackRPC", &bs, HIGH_PRIORITY,
+			RELIABLE_ORDERED, 0, gPeerInterface->GetSystemAddressFromIndex(0),
+			false, false);
+	}
+
+	ST::string msg = bStealthMode ? pMessageStrings[MSG_MERC_ON_STEALTHMODE] :
 						pMessageStrings[MSG_MERC_OFF_STEALTHMODE];
 	ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(msg, s.name));
 }
