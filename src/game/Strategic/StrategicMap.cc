@@ -569,7 +569,7 @@ void RemoveMercsInSector( )
 
 void PrepareLoadedSector()
 {
-	BOOLEAN fAddCivs = TRUE;
+	BOOLEAN fAddCivs = IS_SERVER ? TRUE : FALSE;
 	INT8 bMineIndex = -1;
 
 	BeforePrepareSector();
@@ -624,7 +624,8 @@ void PrepareLoadedSector()
 		// OK, set varibles for entring this new sector...
 		gTacticalStatus.fVirginSector = TRUE;
 
-		AddProfilesNotUsingProfileInsertionData();
+		// Prevent creating extra copies of the civilians
+		if (IS_SERVER) AddProfilesNotUsingProfileInsertionData();
 
 		if( !AreInMeanwhile() || GetMeanwhileID() == INTERROGATION )
 		{ // Insert the enemies into the newly loaded map based on the strategic information.
@@ -948,6 +949,8 @@ void UpdateMercsInSector()
 		if (!s.bActive)             continue;
 		if (s.sSector != gWorldSector) continue;
 		if (s.fBetweenSectors)      continue;
+		// Prevent creating duplicated merc slots for the clients
+		if ((s.ubProfile > 0) && (s.ubProfile < 100) && IS_CLIENT) continue;
 
 		if (!(gTacticalStatus.uiFlags & LOADING_SAVED_GAME))
 		{

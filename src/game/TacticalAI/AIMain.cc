@@ -87,6 +87,8 @@ static void TurnBasedHandleNPCAI(SOLDIERTYPE* pSoldier);
 
 void HandleSoldierAI( SOLDIERTYPE *pSoldier )
 {
+	if (IS_CLIENT) return; // Disable AI for the clients
+
 	// ATE
 	// Bail if we are engaged in a NPC conversation/ and/or sequence ... or we have a pause because
 	// we just saw someone... or if there are bombs on the bomb queue

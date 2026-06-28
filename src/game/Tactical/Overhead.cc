@@ -459,6 +459,8 @@ void ShutdownOverhead(void)
 
 static BOOLEAN NextAIToHandle(UINT32 uiCurrAISlot)
 {
+	if (IS_CLIENT) return FALSE; // Disable AI for the clients
+
 	UINT32 cnt;
 	if (uiCurrAISlot >= guiNumMercSlots)
 	{
